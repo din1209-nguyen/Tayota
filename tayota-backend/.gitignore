@@ -1,0 +1,33 @@
+# --- BẢO MẬT ---
+.env
+secrets.xml
+*.pem
+*.log
+
+# --- IDE (IntelliJ, VS Code) ---
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+*.sublime-project
+*.sublime-workspace
+
+# --- BUILD & DEPENDENCIES (Maven/Gradle) ---
+target/
+!.mvn/wrapper/maven-wrapper.jar
+build/
+.gradle/
+*.class
+*.jar
+*.war
+*.ear
+
+# --- DATABASE ---
+data-docker/
+
+# --- HỆ ĐIỀU HÀNH ---
+.DS_Store
+Thumbs.db

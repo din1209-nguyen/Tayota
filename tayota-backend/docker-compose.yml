@@ -1,0 +1,67 @@
+services:
+  api-gateway:
+    build: api-gateway
+    ports:
+      - "${API_GATEWAY_PORT:-9090}:${API_GATEWAY_PORT:-9090}"
+    environment:
+      - API_GATEWAY_PORT=${API_GATEWAY_PORT:-9090}
+      - AUTH_SERVICE_HOST=${AUTH_SERVICE_HOST:-auth-service}
+      - AUTH_SERVICE_PORT=${AUTH_SERVICE_PORT:-9091}
+      - USER_SERVICE_HOST=${USER_SERVICE_HOST:-user-service}
+      - USER_SERVICE_PORT=${USER_SERVICE_PORT:-9092}
+      - CAR_SERVICE_HOST=${CAR_SERVICE_HOST:-car-service}
+      - CAR_SERVICE_PORT=${CAR_SERVICE_PORT:-9093}
+      - OPERATION_SERVICE_HOST=${OPERATION_SERVICE_HOST:-operation-service}
+      - OPERATION_SERVICE_PORT=${OPERATION_SERVICE_PORT:-9094}
+      - WORKSHOP_SERVICE_HOST=${WORKSHOP_SERVICE_HOST:-after-sales-service}
+      - WORKSHOP_SERVICE_PORT=${WORKSHOP_SERVICE_PORT:-9095}
+      - AI_SERVICE_HOST=${AI_SERVICE_HOST:-ai-service}
+      - AI_SERVICE_PORT=${AI_SERVICE_PORT:-9096}
+      - CHAT_SERVICE_HOST=${CHAT_SERVICE_HOST:-chat-service}
+      - CHAT_SERVICE_PORT=${CHAT_SERVICE_PORT:-9097}
+      - ANALYSIS_SERVICE_HOST=${ANALYSIS_SERVICE_HOST:-analysis-service}
+      - ANALYSIS_SERVICE_PORT=${ANALYSIS_SERVICE_PORT:-9099}
+      - NOTIFICATION_SERVICE_HOST=${NOTIFICATION_SERVICE_HOST:-notification-service}
+      - NOTIFICATION_SERVICE_PORT=${NOTIFICATION_SERVICE_PORT:-9099}
+    networks:
+      - tayota-network
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker-data/postgres-tayota:/var/lib/postgresql/data
+    networks:
+      - tayota-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  auth-service:
+    build: auth-service
+    environment:
+      - SERVER_PORT=${AUTH_SERVICE_PORT}
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update # Tự động đồng bộ database với Entity
+      - SPRING_SQL_INIT_MODE=always # Luôn chạy schema.sql khi khởi động dự án
+      - SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION=false # Chạy các file .sql trước Hibernate
+      - SPRING_SQL_INIT_SEPARATOR=//
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+#      - postgres
+      postgres:
+        condition: service_healthy
+    networks:
+      - tayota-network
+networks:
+  tayota-network:
+    driver: bridge

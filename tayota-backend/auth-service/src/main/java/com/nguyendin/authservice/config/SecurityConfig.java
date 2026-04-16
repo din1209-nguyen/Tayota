@@ -1,7 +1,6 @@
-package com.nguyendin.authservice.cofig;
+package com.nguyendin.authservice.config;
 
 import com.nguyendin.authservice.service.CustomUserDetailsService;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,7 +15,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -42,15 +40,7 @@ public class SecurityConfig {
                                 .anyRequest().authenticated())
                 // Đăng ký AuthenticationProvider để xử lý login username/password
                 .authenticationProvider(authenticationProvider());
-                // Xác thực token trước khi vào Security
-                // .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-//                .exceptionHandling(exceptions -> exceptions
-//                        .authenticationEntryPoint((request, response, authException) -> {
-//                            System.out.println("Lỗi xác thực: " + authException.getMessage());
-//                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, authException.getMessage());
-//                        })
-//                );
-                            // Build và trả về chuỗi filter hoàn chỉnh cho Spring
+        // Build và trả về chuỗi filter hoàn chỉnh cho Spring
         return httpSecurity.build();
     }
 

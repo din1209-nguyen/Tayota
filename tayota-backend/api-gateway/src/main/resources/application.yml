@@ -5,6 +5,13 @@ logging:
     org.springframework.cloud.gateway: TRACE
     org.springframework.cloud.gateway.handler.RoutePredicateHandlerMapping: TRACE
     reactor.netty: DEBUG
+
+app:
+  whitelist-paths:
+    - /auth/**
+    - /ai/**
+    - /notification/**
+    - /public/**
 spring:
   application:
     name: api-gateway

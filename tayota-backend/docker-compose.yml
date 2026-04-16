@@ -23,6 +23,7 @@ services:
       - ANALYSIS_SERVICE_PORT=${ANALYSIS_SERVICE_PORT:-9099}
       - NOTIFICATION_SERVICE_HOST=${NOTIFICATION_SERVICE_HOST:-notification-service}
       - NOTIFICATION_SERVICE_PORT=${NOTIFICATION_SERVICE_PORT:-9099}
+      - JWT_SECRET=${JWT_SECRET}
     networks:
       - tayota-network
   postgres:
@@ -44,7 +45,9 @@ services:
       retries: 10
 
   auth-service:
-    build: auth-service
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
     environment:
       - SERVER_PORT=${AUTH_SERVICE_PORT}
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
@@ -56,6 +59,8 @@ services:
       - SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION=false # Chạy các file .sql trước Hibernate
       - SPRING_SQL_INIT_SEPARATOR=//
       - JWT_SECRET=${JWT_SECRET}
+      - JWT_ACCESS_TOKEN_EXPIRATION=${JWT_ACCESS_TOKEN_EXPIRATION}
+      - JWT_REFRESH_TOKEN_EXPIRATION=${JWT_REFRESH_TOKEN_EXPIRATION}
     depends_on:
 #      - postgres
       postgres:

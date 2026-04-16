@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 // Class định dạng lại Response thống nhất để trả về cho client
 @Getter
@@ -44,8 +45,13 @@ public class ApiResponse<T> {
         return new ApiResponse<>(true, code, message, result);
     }
 
-    // Xây dựng Response với trạng thái thất bại (khng có body)
+    // Xây dựng Response với trạng thái thất bại (không có body)
     public static <T> ApiResponse<T> error(int code, String message) {
         return new ApiResponse<>(false, code, message);
+    }
+
+    // Xây dựng Response với trạng thái thất bại (có body)
+    public static ApiResponse<Map<String, String>> error(int code, String message, Map<String, String> errors) {
+        return new ApiResponse<>(false, code, message, errors);
     }
 }

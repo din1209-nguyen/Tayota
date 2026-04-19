@@ -1,6 +1,7 @@
 package com.tayota.commoncore.exception;
 
 import com.tayota.commoncore.dto.ApiResponse;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -9,6 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
+@ConditionalOnProperty(prefix = "common.exception", name = "handler-enabled", havingValue = "true", matchIfMissing = true)
 public class GlobalExceptionHandler {
     // Xử lý các lỗi Validation
     @ExceptionHandler(value = MethodArgumentNotValidException.class)

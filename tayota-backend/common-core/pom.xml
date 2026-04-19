@@ -74,8 +74,6 @@
             - scope=test: chỉ dùng trong môi trường test.
             - Dùng để kiểm thử Repository, Entity, custom query một cách độc lập
               mà không cần khởi động toàn bộ application context.
-            ⚠️ Lưu ý: artifactId "spring-boot-starter-data-jpa-test" không tồn tại chính thức.
-               Thông thường nên dùng @DataJpaTest annotation đi kèm với spring-boot-starter-test.
         -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -106,8 +104,6 @@
             - scope=test: chỉ dùng trong môi trường test.
             - Dùng để test các endpoint có yêu cầu xác thực/phân quyền mà không cần
               user thật hoặc token thật.
-            ⚠️ Lưu ý: artifactId chính xác là "spring-security-test", thường được
-               kéo về tự động qua spring-boot-starter-test. Nên kiểm tra lại tên artifact.
         -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -189,8 +185,6 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
-
-        <!-- ==================== CODE GENERATION / UTILITIES ==================== -->
 
         <!--
             Lombok

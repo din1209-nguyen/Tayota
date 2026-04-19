@@ -2,27 +2,23 @@ services:
   api-gateway:
     build: api-gateway
     ports:
-      - "${API_GATEWAY_PORT:-9090}:${API_GATEWAY_PORT:-9090}"
+      - "${API_GATEWAY_PORT:-8090}:${API_GATEWAY_PORT:-8090}"
     environment:
-      - API_GATEWAY_PORT=${API_GATEWAY_PORT:-9090}
-      - AUTH_SERVICE_HOST=${AUTH_SERVICE_HOST:-auth-service}
-      - AUTH_SERVICE_PORT=${AUTH_SERVICE_PORT:-9091}
+      - API_GATEWAY_PORT=${API_GATEWAY_PORT:-8090}
       - USER_SERVICE_HOST=${USER_SERVICE_HOST:-user-service}
-      - USER_SERVICE_PORT=${USER_SERVICE_PORT:-9092}
+      - USER_SERVICE_PORT=${USER_SERVICE_PORT:-8091}
       - CAR_SERVICE_HOST=${CAR_SERVICE_HOST:-car-service}
-      - CAR_SERVICE_PORT=${CAR_SERVICE_PORT:-9093}
+      - CAR_SERVICE_PORT=${CAR_SERVICE_PORT:-8092}
       - OPERATION_SERVICE_HOST=${OPERATION_SERVICE_HOST:-operation-service}
-      - OPERATION_SERVICE_PORT=${OPERATION_SERVICE_PORT:-9094}
-      - WORKSHOP_SERVICE_HOST=${WORKSHOP_SERVICE_HOST:-after-sales-service}
-      - WORKSHOP_SERVICE_PORT=${WORKSHOP_SERVICE_PORT:-9095}
+      - OPERATION_SERVICE_PORT=${OPERATION_SERVICE_PORT:-8093}
       - AI_SERVICE_HOST=${AI_SERVICE_HOST:-ai-service}
-      - AI_SERVICE_PORT=${AI_SERVICE_PORT:-9096}
+      - AI_SERVICE_PORT=${AI_SERVICE_PORT:-8094}
       - CHAT_SERVICE_HOST=${CHAT_SERVICE_HOST:-chat-service}
-      - CHAT_SERVICE_PORT=${CHAT_SERVICE_PORT:-9097}
+      - CHAT_SERVICE_PORT=${CHAT_SERVICE_PORT:-8095}
       - ANALYSIS_SERVICE_HOST=${ANALYSIS_SERVICE_HOST:-analysis-service}
-      - ANALYSIS_SERVICE_PORT=${ANALYSIS_SERVICE_PORT:-9099}
+      - ANALYSIS_SERVICE_PORT=${ANALYSIS_SERVICE_PORT:-8096}
       - NOTIFICATION_SERVICE_HOST=${NOTIFICATION_SERVICE_HOST:-notification-service}
-      - NOTIFICATION_SERVICE_PORT=${NOTIFICATION_SERVICE_PORT:-9099}
+      - NOTIFICATION_SERVICE_PORT=${NOTIFICATION_SERVICE_PORT:-8097}
       - JWT_SECRET=${JWT_SECRET}
     networks:
       - tayota-network
@@ -62,12 +58,12 @@ services:
     depends_on:
       - redis
 
-  auth-service:
+  user-service:
     build:
       context: .
-      dockerfile: auth-service/Dockerfile
+      dockerfile: user-service/Dockerfile
     environment:
-      - SERVER_PORT=${AUTH_SERVICE_PORT}
+      - SERVER_PORT=${USER_SERVICE_PORT}
       - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update # Tự động đồng bộ database với Entity
       - SPRING_SQL_INIT_MODE=always # Luôn chạy schema.sql khi khởi động dự án

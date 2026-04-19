@@ -3,3 +3,9 @@
 
 ### IntelliJ IDEA ###
 .idea
+
+### Maven ###
+target/
+
+### Nodes ###
+node_modules/

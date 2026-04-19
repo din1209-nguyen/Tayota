@@ -20,8 +20,11 @@ services:
       - NOTIFICATION_SERVICE_HOST=${NOTIFICATION_SERVICE_HOST:-notification-service}
       - NOTIFICATION_SERVICE_PORT=${NOTIFICATION_SERVICE_PORT:-8097}
       - JWT_SECRET=${JWT_SECRET}
+    user-service:
+      condition: service_started
     networks:
       - tayota-network
+  # --- Postgres---
   postgres:
     image: postgres:17
     environment:
@@ -39,14 +42,36 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-
+#    # --- MongoDB ---
+#  mongodb:
+#    image: mongo:8.0
+#    environment:
+#      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+#      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+#    ports:
+#      - "27017:27017"
+#    volumes:
+#      - ./docker-data/mongo-data:/data/db
+#    networks:
+#      - tayota-network
+#    healthcheck:
+#      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
+  # --- Redis ---
   redis:
-    image: redis:7.2-alphine
+    image: redis:7.2-alpine
     volumes:
       - ./docker-data/redis-data:/data
     networks:
       - tayota-network
     command: redis-server --appendonly yes # Bật chế độ lưu trữ dữ liệu lên đĩa (Mỗi khi có dữ liệu mới, ghi ngay một bản sao vào ổ cứng)
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   # (Tùy chọn) Giao diện quản lý Redis trên trình duyệt
   redis-insight:
@@ -57,7 +82,7 @@ services:
       - tayota-network
     depends_on:
       - redis
-
+  # --- User Service ---
   user-service:
     build:
       context: .
@@ -81,11 +106,128 @@ services:
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
     depends_on:
-#      - postgres
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - tayota-network
+#  # --- Car Service ---
+#  car-service:
+#    build:
+#      context: .
+#      dockerfile: car-service/Dockerfile
+#    environment:
+#      - SERVER_PORT=${CAR_SERVICE_PORT}
+#      - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+#      - SPRING_JPA_HIBERNATE_DDL_AUTO=update # Tự động đồng bộ database với Entity
+#      - SPRING_SQL_INIT_MODE=always # Luôn chạy schema.sql khi khởi động dự án
+#      - SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION=false # Chạy các file .sql trước Hibernate
+#      - SPRING_SQL_INIT_SEPARATOR=//
+#      # --- Postgres ---
+#      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+#      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+#      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+#      # --- Redis ---
+#      - SPRING_DATA_REDIS_HOST=redis
+#      - SPRING_DATA_REDIS_PORT=6379
+#    depends_on:
+#      postgres:
+#        condition: service_healthy
+#      redis:
+#        condition: service_healthy
+#    networks:
+#      - tayota-network
+#  # --- Operation Service ---
+#  operation-service:
+#    build:
+#      context: .
+#      dockerfile: operation-service/Dockerfile
+#    environment:
+#      - SERVER_PORT=${OPERATION_SERVICE_PORT}
+#      - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+#      - SPRING_JPA_HIBERNATE_DDL_AUTO=update # Tự động đồng bộ database với Entity
+#      - SPRING_SQL_INIT_MODE=always # Luôn chạy schema.sql khi khởi động dự án
+#      - SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION=false # Chạy các file .sql trước Hibernate
+#      - SPRING_SQL_INIT_SEPARATOR=//
+#      # --- Postgres ---
+#      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+#      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+#      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+#      # --- Redis ---
+#      - SPRING_DATA_REDIS_HOST=redis
+#      - SPRING_DATA_REDIS_PORT=6379
+#    depends_on:
+#      postgres:
+#        condition: service_healthy
+#      redis:
+#        condition: service_healthy
+#    networks:
+#      - tayota-network
+#  # --- Chat Service ---
+#  chat-service:
+#    build: chat-service
+#    environment:
+#      - SERVER_PORT=${CHAT_SERVICE_PORT}
+#      - SPRING_DATA_MONGODB_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/chat_db?authSource=admin
+#      # --- Redis ---
+##      - SPRING_DATA_REDIS_HOST=redis
+##      - SPRING_DATA_REDIS_PORT=6379
+#    depends_on:
+#      mongodb:
+#        condition: service_healthy
+#    networks:
+#      - tayota-network
+#  # --- Notification Service ---
+#  notification-service:
+#    build: notification-service
+#    environment:
+#      - SERVER_PORT=${NOTIFICATION_SERVICE_PORT}
+#      - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+#      - SPRING_JPA_HIBERNATE_DDL_AUTO=update # Tự động đồng bộ database với Entity
+#      - SPRING_SQL_INIT_MODE=always # Luôn chạy schema.sql khi khởi động dự án
+#      - SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION=false # Chạy các file .sql trước Hibernate
+#      - SPRING_SQL_INIT_SEPARATOR=//
+#      # --- Postgres ---
+#      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+#      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+#      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+#      # --- Redis ---
+##      - SPRING_DATA_REDIS_HOST=redis
+##      - SPRING_DATA_REDIS_PORT=6379
+#    depends_on:
+#      postgres:
+#        condition: service_healthy
+#    networks:
+#      - tayota-network
+#  # --- Analysis Service ---
+#  analysis-service:
+#    build: analysis-service
+#    environment:
+#      - SERVER_PORT=${ANALYSIS_SERVICE_PORT}
+#      - SPRING_DATA_MONGODB_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DB}?authSource=admin
+#      # --- Redis ---
+##      - SPRING_DATA_REDIS_HOST=redis
+##      - SPRING_DATA_REDIS_PORT=6379
+#    depends_on:
+#      mongodb:
+#        condition: service_healthy
+#    networks:
+#      - tayota-network
+#  # --- AI Service ---
+#  ai-service:
+#    build: ai-service
+#    environment:
+#      - SERVER_PORT=${AI_SERVICE_PORT}
+#      - SPRING_DATA_MONGODB_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/chat_db?authSource=admin
+#      # --- Redis ---
+##      - SPRING_DATA_REDIS_HOST=redis
+##      - SPRING_DATA_REDIS_PORT=6379
+#    depends_on:
+#      mongodb:
+#        condition: service_healthy
+#    networks:
+#      - tayota-network
 networks:
   tayota-network:
     driver: bridge

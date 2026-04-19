@@ -1,3 +1,0 @@
-DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'status_type') THEN CREATE TYPE status_type AS ENUM ('UNVERIFIED', 'ACTIVE', 'BANNED'); END IF; END $$;
-DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'role_type') THEN CREATE TYPE role_type AS ENUM ('ADMIN', 'MANAGER', 'ASSISTANT', 'MECHANIC', 'USER'); END IF; END $$;
-DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'provider_type') THEN CREATE TYPE provider_type AS ENUM ('LOCAL', 'GOOGLE'); END IF; END $$;

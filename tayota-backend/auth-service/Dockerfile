@@ -8,13 +8,23 @@ FROM maven:3.9.9-eclipse-temurin-21 AS builder
 WORKDIR /build
 # build
 
-# --- Bước 1: Chép thư mục common-core từ máy vào Docker ---
-# Chép file cấu hình thư viện (pom.xml) từ máy vào Docker
-COPY common-core ./common-core
+# --- Bước 1: Build common-core ---
+# Thay vì chép toàn bộ thư mục common-core, ta chỉ chép file pom.xml trước
+# Điều này giúp Docker cache lại layer tải thư viện. Nếu code trong common-core thay đổi nhưng pom.xml không đổi, layer này vẫn được giữ lại
+COPY common-core/pom.xml ./common-core/
 # build
 #    ./ common-core
 #       ./ pom.xml
-#
+
+# Tải trước các dependency cho common-core
+RUN cd common-core && mvn dependency:go-offline -B
+
+# Chép code nguồn của common-core vào SAU KHI đã tải xong thư viện
+COPY common-core/src ./common-core/src
+# build
+#    ./ common-core
+#       ./ pom.xml
+#       ./ src
 
 # Chuyển vào thư mục common-core và cài đặt module này vào kho Maven nội bộ (.m2) của Docker container để các service khác có thể gọi đến
 # -DskipTests: Bỏ qua chạy Test khi build
@@ -85,5 +95,5 @@ COPY --from=builder /build/service/target/auth-service-0.0.1-SNAPSHOT.jar ./app.
 #    ./ app.jar
 
 # Khởi chạy app trong môi trường java, tìm tệp nén (-jar) từ app.jar
-# Tìm META-INF/MANIFEST.MF (-jar), đọc dòng Main-Class để lấy ra tên class chính ví dụ AuthServiceApplication, rồi đi tìm file class tương ứng để chạm hàm Main
+# Tìm META-INF/MANIFEST.MF (-jar), đọc dòng Main-Class để lấy ra tên class chính ví dụ AuthServiceApplication, rồi đi tìm file class tương ứng để chạy hàm Main
 ENTRYPOINT ["java", "-jar", "app.jar"]

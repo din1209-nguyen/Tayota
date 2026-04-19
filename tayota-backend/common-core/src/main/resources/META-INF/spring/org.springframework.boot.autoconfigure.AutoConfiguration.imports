@@ -1,0 +1,3 @@
+com.tayota.commoncore.config.CommonCoreAutoConfiguration
+com.tayota.commoncore.config.SecurityAutoConfiguration
+com.tayota.commoncore.config.RedisConfig

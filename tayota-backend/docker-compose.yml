@@ -44,23 +44,46 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7.2-alphine
+    volumes:
+      - ./docker-data/redis-data:/data
+    networks:
+      - tayota-network
+    command: redis-server --appendonly yes # Bật chế độ lưu trữ dữ liệu lên đĩa (Mỗi khi có dữ liệu mới, ghi ngay một bản sao vào ổ cứng)
+
+  # (Tùy chọn) Giao diện quản lý Redis trên trình duyệt
+  redis-insight:
+    image: redis/redisinsight:latest
+    ports:
+      - "8001:8001"
+    networks:
+      - tayota-network
+    depends_on:
+      - redis
+
   auth-service:
     build:
       context: .
       dockerfile: auth-service/Dockerfile
     environment:
       - SERVER_PORT=${AUTH_SERVICE_PORT}
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
       - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update # Tự động đồng bộ database với Entity
       - SPRING_SQL_INIT_MODE=always # Luôn chạy schema.sql khi khởi động dự án
       - SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION=false # Chạy các file .sql trước Hibernate
       - SPRING_SQL_INIT_SEPARATOR=//
+      # --- Postgres ---
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      # --- JWT ---
       - JWT_SECRET=${JWT_SECRET}
       - JWT_ACCESS_TOKEN_EXPIRATION=${JWT_ACCESS_TOKEN_EXPIRATION}
       - JWT_REFRESH_TOKEN_EXPIRATION=${JWT_REFRESH_TOKEN_EXPIRATION}
+      # --- Redis ---
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
     depends_on:
 #      - postgres
       postgres:

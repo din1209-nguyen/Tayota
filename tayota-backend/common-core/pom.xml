@@ -1,15 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.5</version> <relativePath/>
+        <version>4.0.5</version>
+        <relativePath/>
     </parent>
 
-    <groupId>com.nguyendin</groupId>
+    <groupId>com.tayota</groupId>
     <artifactId>common-core</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>common-core</name>
@@ -20,31 +22,189 @@
     </properties>
 
     <dependencies>
+        <!-- ==================== WEB ==================== -->
+
+        <!--
+            Spring Boot Starter Web
+            - Tích hợp Spring MVC để xây dựng RESTful API và web application.
+            - Bao gồm: Tomcat (embedded server), Jackson (JSON serialization/deserialization),
+              Spring Web MVC, và các thư viện HTTP cần thiết.
+            - Dùng để xử lý HTTP request/response, định nghĩa @RestController, @RequestMapping, v.v.
+        -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
+        <!-- ==================== TESTING ==================== -->
+
+        <!--
+            Spring Boot Starter Test
+            - Cung cấp bộ công cụ kiểm thử tích hợp sẵn cho Spring Boot.
+            - Bao gồm: JUnit 5, Mockito, AssertJ, Spring Test (MockMvc), Hamcrest.
+            - scope=test: chỉ tồn tại trong classpath khi chạy test, không đóng gói vào artifact cuối.
+            - Dùng để viết unit test, integration test cho các component Spring.
+        -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- ==================== SPRING DATA / JPA ==================== -->
+
+        <!--
+            Spring Boot Starter Data JPA
+            - Tích hợp Spring Data JPA để làm việc với cơ sở dữ liệu quan hệ theo mô hình ORM.
+            - Bao gồm: Hibernate (JPA implementation), Spring Data Repositories,
+              Spring ORM, và transaction management.
+            - Cho phép định nghĩa entity (@Entity), repository (JpaRepository),
+              và truy vấn dữ liệu mà không cần viết SQL thủ công.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!--
+            Spring Boot Starter Data JPA Test
+            - Cung cấp hỗ trợ kiểm thử lớp persistence (JPA/Repository).
+            - Bao gồm: @DataJpaTest, H2 in-memory database (mặc định), cấu hình
+              Hibernate tối giản chỉ cho tầng data.
+            - scope=test: chỉ dùng trong môi trường test.
+            - Dùng để kiểm thử Repository, Entity, custom query một cách độc lập
+              mà không cần khởi động toàn bộ application context.
+            ⚠️ Lưu ý: artifactId "spring-boot-starter-data-jpa-test" không tồn tại chính thức.
+               Thông thường nên dùng @DataJpaTest annotation đi kèm với spring-boot-starter-test.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- ==================== SPRING SECURITY ==================== -->
+
+        <!--
+            Spring Boot Starter Security
+            - Tích hợp Spring Security để bảo mật ứng dụng.
+            - Bao gồm: xác thực (Authentication), phân quyền (Authorization),
+              bảo vệ CSRF, session management, filter chain bảo mật.
+            - Mặc định kích hoạt HTTP Basic Auth và bảo vệ toàn bộ endpoint.
+            - Dùng để triển khai JWT, OAuth2, role-based access control (RBAC), v.v.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!--
+            Spring Boot Starter Security Test
+            - Hỗ trợ kiểm thử các tính năng bảo mật của Spring Security.
+            - Bao gồm: @WithMockUser, @WithUserDetails, SecurityMockMvcConfigurer,
+              và các tiện ích mock authentication/authorization.
+            - scope=test: chỉ dùng trong môi trường test.
+            - Dùng để test các endpoint có yêu cầu xác thực/phân quyền mà không cần
+              user thật hoặc token thật.
+            ⚠️ Lưu ý: artifactId chính xác là "spring-security-test", thường được
+               kéo về tự động qua spring-boot-starter-test. Nên kiểm tra lại tên artifact.
+        -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security-test</artifactId>
             <scope>test</scope>
         </dependency>
 
+        <!-- ==================== VALIDATION ==================== -->
+
+        <!--
+            Spring Boot Starter Validation
+            - Tích hợp Bean Validation (JSR-380) thông qua Hibernate Validator.
+            - Cho phép validate dữ liệu đầu vào bằng annotation như:
+              @NotNull, @NotBlank, @Size, @Email, @Pattern, @Min, @Max, v.v.
+            - Thường dùng trên @RequestBody, @RequestParam, hoặc các field của DTO/Entity.
+            - Kích hoạt tự động khi dùng @Valid hoặc @Validated trên controller/service.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- ==================== CACHE / REDIS ==================== -->
+
+        <!--
+            Spring Boot Starter Data Redis
+            - Tích hợp Redis làm in-memory data store cho ứng dụng.
+            - Bao gồm: Spring Data Redis, Lettuce (Redis client mặc định),
+              RedisTemplate, ReactiveRedisTemplate.
+            - Dùng cho: caching (@Cacheable, @CacheEvict), lưu trữ session,
+              pub/sub messaging, rate limiting, lưu token tạm thời (OTP, refresh token), v.v.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- ==================== MESSAGING / KAFKA ==================== -->
+
+        <!--
+            Spring Boot Starter Kafka
+            - Tích hợp Apache Kafka để xây dựng hệ thống messaging bất đồng bộ (event-driven).
+            - Bao gồm: Spring Kafka, KafkaTemplate (producer), @KafkaListener (consumer),
+              cấu hình serializer/deserializer, consumer group management.
+            - Dùng trong kiến trúc microservices để truyền sự kiện giữa các service
+              (event sourcing, CQRS, saga pattern, v.v.).
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-kafka</artifactId>
+        </dependency>
+
+        <!--
+            Spring Boot Starter Kafka Test
+            - Hỗ trợ kiểm thử tích hợp với Apache Kafka.
+            - Bao gồm: EmbeddedKafka (broker Kafka nhúng trong JVM),
+              KafkaTestUtils, và các tiện ích mock producer/consumer.
+            - scope=test: chỉ dùng trong môi trường test.
+            - Dùng để viết integration test cho producer/consumer Kafka
+              mà không cần Kafka server thật đang chạy.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-kafka-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- ==================== DATABASE DRIVER ==================== -->
+
+        <!--
+            PostgreSQL JDBC Driver
+            - Driver JDBC chính thức để kết nối ứng dụng Java với cơ sở dữ liệu PostgreSQL.
+            - scope=runtime: chỉ cần thiết lúc runtime (khi ứng dụng thực sự chạy),
+              không cần trong quá trình biên dịch (compile).
+            - Được Hibernate/JPA sử dụng để thực thi các câu lệnh SQL trên PostgreSQL.
+        -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- ==================== CODE GENERATION / UTILITIES ==================== -->
+
+        <!--
+            Lombok
+            - Thư viện annotation processor giúp giảm boilerplate code trong Java.
+            - Tự động sinh ra: getter/setter (@Getter, @Setter), constructor
+              (@NoArgsConstructor, @AllArgsConstructor, @RequiredArgsConstructor),
+              builder pattern (@Builder), toString/equals/hashCode (@EqualsAndHashCode),
+              logging (@Slf4j, @Log4j2), và nhiều hơn nữa.
+            - scope=provided để tránh đưa Lombok vào runtime dependency.
+        -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
     </dependencies>
-
 </project>

@@ -22,6 +22,7 @@ import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Component
@@ -53,16 +54,28 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         if (whitelistUrls.stream().anyMatch(pattern -> pathMatcher.match(pattern, path))) {
             return chain.filter(exchange);
         }
-        // Tìm header có tên là "Authorization" (Chứa access-token)
-        String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        /* access-token từ Header */
+        //// Tìm header có tên là "Authorization" (Chứa access-token)
+        //String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        //
+        //// Nếu header không tồn tại hoặc không bắt đầu bằng chữ "Bearer " -> Báo lỗi 401
+        //if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        //    return unAuthorizedResponse(exchange.getResponse(), "Không tìm thấy Token hoặc sai định dạng");
+        //}
+        //
+        //// Cắt bỏ 7 ký tự đầu ("Bearer ") để lấy ra chuỗi access-token
+        //String token = authHeader.substring(7);
 
-        // Nếu header không tồn tại hoặc không bắt đầu bằng chữ "Bearer " -> Báo lỗi 401
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return unAuthorizedResponse(exchange.getResponse(), "Không tìm thấy Token hoặc sai định dạng");
+        /* access-token từ Cookie*/
+        String token = request.getCookies()
+                .getFirst("accessToken") != null
+                ? Objects.requireNonNull(request.getCookies().getFirst("accessToken")).getValue()
+                : null;
+
+        // Không tìm thấy cookie accessToken thì báo lỗi 401
+        if (token == null || token.isBlank()) {
+            return unAuthorizedResponse(exchange.getResponse(), "Không tìm thấy accessToken trong Cookie");
         }
-
-        // Cắt bỏ 7 ký tự đầu ("Bearer ") để lấy ra chuỗi access-token
-        String token = authHeader.substring(7);
 
         try {
             // Giải mã và xác thực, nếu lỗi sẽ ném xuống catch
@@ -90,13 +103,11 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
         }
         catch (ExpiredJwtException e) {
-            // BẮT TRÚNG LỖI HẾT HẠN - Báo mã lỗi cụ thể để Client gọi API Refresh Token
-            log.warn("Access-token expired for request: {}", path);
+            // Bắt lỗi Token hết hạn để Client gọi API Refresh Token
             return unAuthorizedResponse(exchange.getResponse(), "Access-token đã hết hạn");
         }
         catch (Exception e) {
             // Bắt lỗi trong quá trình giải mã (sai chữ ký, token bị can thiệp, sai thuật toán...)
-            log.error("Invalid JWT token for request: {}", path);
             return unAuthorizedResponse(exchange.getResponse(), "Access-token không hợp lệ");
         }
     }

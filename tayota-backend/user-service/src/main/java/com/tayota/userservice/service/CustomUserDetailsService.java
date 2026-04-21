@@ -1,6 +1,10 @@
 package com.tayota.userservice.service;
 
+import com.tayota.commoncore.dto.ErrorCode;
+import com.tayota.commoncore.exception.CustomException;
+import com.tayota.userservice.entity.CustomUserDetails;
 import com.tayota.userservice.entity.User;
+import com.tayota.userservice.enums.StatusType;
 import com.tayota.userservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
@@ -19,23 +23,21 @@ import java.util.List;
 public class CustomUserDetailsService implements UserDetailsService {
     private final UserRepository userRepository;
 
-    @Override
     @NullMarked
     public UserDetails loadUserByUsername(String email)  {
-        User user = userRepository.findByEmail(email).orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy email: " + email));
+        // Tìm user theo email
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException(ErrorCode.USER_NOT_FOUND.getMessage()));
 
-        return new org.springframework.security.core.userdetails.User(
-                user.getEmail(),
-                user.getPasswordHash(),
-                getAuthority(user)
-        );
-    }
+        // Kiểm tra trạng thái người dùng
+        if (user.getStatus() == StatusType.UNVERIFIED) {
+            throw new CustomException(403, "Tài khoản chưa được xác thực. Vui lòng kiểm tra email để xác thực tài khoản!");
+        }
+        else if (user.getStatus() == StatusType.BANNED) {
+            throw new CustomException(403, "Tài khoản đã bị khóa!");
+        }
 
-    // Chuyển role User thành quyền authority để Spring Security hiểu
-    private Collection<? extends GrantedAuthority> getAuthority(User user) {
-        String role = "ROLE_" + user.getRole().name();
-        GrantedAuthority authority = new SimpleGrantedAuthority(role);
-        return List.of(authority);
+        return new CustomUserDetails(user);
     }
 }
 

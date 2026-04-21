@@ -1,6 +1,5 @@
 package com.tayota.commoncore.config;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -17,63 +16,90 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.Duration;
 
 @Configuration
-@RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "common.redis", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class RedisConfig {
-    // Đối tượng của Jackson dùng để chuyển đổi (parse/serialize) qua lại giữa Java Object và chuỗi JSON
-    private final ObjectMapper objectMapper;
 
-    // Cấu hình thủ công (Dùng RedisTemplate)
-    // Cung cấp một công cụ để dev có thể tự code các thao tác CRUD với Redis
+    // Tạo ObjectMapper được tối ưu hóa cho Redis
+    // Tự động hỗ trợ serialization các kiểu dữ liệu Java phức tạp
+    private ObjectMapper redisObjectMapper() {
+        // Khởi tạo ObjectMapper từ tools.jackson
+        // ObjectMapper mặc định đã được cấu hình tốt cho JSON serialization
+        return new ObjectMapper();
+    }
+
+    // ==== Cấu hình thủ công (Dùng RedisTemplate) ====
+    // RedisTemplate cho phép dev tự code các thao tác CRUD trực tiếp với Redis
+    // Ví dụ: redisTemplate.opsForValue().set(key, value)
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
-        // Khởi tạo một RedisTemplate nhận Key là String và Value là một Object bất kỳ
+        // Khởi tạo RedisTemplate<String, Object>
+        // - Key: String (key cache sẽ là chuỗi text bình thường)
+        // - Value: Object (có thể lưu bất kỳ object Java nào)
         RedisTemplate<String, Object> template = new RedisTemplate<>();
 
-        /*
-        * Mặc định Redis chỉ lưu dữ liệu dạng bytes (chuỗi nhị phân) nên sẽ khó nhìn vào
-        * Nên sẽ chuẩn đổi dữ liệu thành JSON dễ đọc hơn khi lưu vào Redis
-        */
-
-        // Cấp cho template một kết nối tới server Redis (mặc định Spring dùng thư viện Lettuce hoặc Jedis)
+        // Gán connection factory để template có thể kết nối tới Redis server
         template.setConnectionFactory(connectionFactory);
 
-        // Ép Key luôn được lưu dưới dạng String thuần tuý
+        // Tạo ObjectMapper tùy chỉnh cho serialization
+        ObjectMapper objectMapper = redisObjectMapper();
+        GenericJacksonJsonRedisSerializer jsonRedisSerializer = new GenericJacksonJsonRedisSerializer(objectMapper);
+
+        // Cấu hình Serializer cho Key
+        // Serializer: quy định cách chuyển đổi dữ liệu Java thành bytes khi lưu vào Redis
+        // Ép Key luôn lưu dưới dạng String thuần tuý (không mã hóa)
+        // Đảm bảo key dễ đọc khi dùng Redis CLI hoặc tools quản lý Redis
         template.setKeySerializer(new StringRedisSerializer());
-        // Dùng GenericJacksonJsonRedisSerializer kết hợp với objectMapper
-        // Khi lưu một Object Java vào Redis, nó sẽ tự động biến thành một chuỗi JSON
-        // Áp dụng cho cấu trúc String, List, Set ZSet,...
-        template.setValueSerializer(new GenericJacksonJsonRedisSerializer(objectMapper));
 
-        // Cấu hình tương tự cho cấu trúc dữ liệu Hash (như Map<String, Object> trong Java)
+        // Cấu hình Serializer cho Value
+        // Dùng GenericJacksonJsonRedisSerializer để tự động convert Object -> JSON
+        // Khi lưu: Object Java -> JSON string
+        // Khi lấy ra: JSON string -> Object Java
+        template.setValueSerializer(jsonRedisSerializer);
+
+        // Cấu hình cho Hash
+        // Dùng cho các thao tác với cấu trúc Hash trong Redis
+        // Ví dụ: hset, hget, hgetall
         template.setHashKeySerializer(new StringRedisSerializer());
-        template.setHashValueSerializer(new GenericJacksonJsonRedisSerializer(objectMapper));
+        template.setHashValueSerializer(jsonRedisSerializer);
 
-        // Hoàn tất và trả về bean cho Spring quản lý
+        // Trả về RedisTemplate đã cấu hình xong cho Spring quản lý
         return template;
     }
 
-     // Cấu hình tự động (Cache Management)
-     // Dùng cho các Annotation như @Cacheable, @CachePut, @CacheEvict
+    // ==== Cấu hình tự động (Cache Management) ====
+    // Dùng kết hợp với @Cacheable, @CachePut, @CacheEvict annotations
+    // Giúp tự động cache kết quả hàm mà không cần code thủ công
     @Bean
-    // Nếu trong service chưa khai báo Bean tên là 'cacheManager', Spring sẽ chạy vào common-core này và dùng cấu hình mặc định
     @ConditionalOnMissingBean(name = "cacheManager")
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
+        // Tạo ObjectMapper tùy chỉnh cho Cache Manager
+        ObjectMapper objectMapper = redisObjectMapper();
+        GenericJacksonJsonRedisSerializer jsonRedisSerializer = new GenericJacksonJsonRedisSerializer(objectMapper);
 
-        // Thiết lập các luật (Configuration) cho Cache
+        // Thiết lập cấu hình mặc định cho toàn bộ cache
         RedisCacheConfiguration cacheConfig = RedisCacheConfiguration.defaultCacheConfig()
-                // Thời gian sống mặc định của data trong Redis 1 giờ
+                // TTL (Time To Live): dữ liệu sẽ tự động xóa sau 1 giờ
+                // Tránh Redis bị lấp đầy với dữ liệu cũ không còn cần thiết
                 .entryTtl(Duration.ofHours(1))
-                // Cấu hình cách mã hoá Key cho Cache tự động: Dùng StringSerializer để Key dễ đọc
-                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                // Cấu hình cách mã hoá Value cho Cache tự động: Dùng JSON Serializer giống hệt ở trên
-                // Truyền objectMapper vào để đảm bảo luật parse JSON (ví dụ format ngày tháng) đồng nhất toàn dự án
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJacksonJsonRedisSerializer(objectMapper)))
-                // Nếu hàm trả về kết quả là null, tuyệt đối không lưu chữ "null" đó vào Redis
-                // Tránh tốn dung lượng vô ích và ngăn chặn lỗi mập mờ khi lấy data ra
+
+                // Cấu hình serializer cho Cache Key
+                // Dùng StringRedisSerializer để key dễ nhìn trong Redis CLI
+                .serializeKeysWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(new StringRedisSerializer()))
+
+                // Cấu hình serializer cho Cache Value
+                // Dùng JSON để tất cả các object type đều có thể serialize/deserialize
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(jsonRedisSerializer))
+
+                // Không cache các kết quả null
+                // Giúp tiết kiệm bộ nhớ Redis và tránh lỗi nhập nhằng khi null
+                // (vì không biết là null do method không return hay là null được cache)
                 .disableCachingNullValues();
 
-        // Thiết lập trên vào một CacheManager thông qua Builder pattern và trả về
+        // Xây dựng RedisCacheManager với cấu hình trên
+        // nếu service riêng định nghĩa @Bean("cacheManager") thì sẽ dùng cái riêng
+        // nếu không, sẽ dùng cấu hình mặc định này từ common-core
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(cacheConfig)
                 .build();

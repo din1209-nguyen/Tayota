@@ -1,0 +1,9 @@
+--java_out=D:\Code\FS\Tayota\tayota-backend\operation-service\target\generated-sources\protobuf
+--plugin=protoc-gen-b1715c282864ea30f7355a8345cbf82bc93ed63f=D:\Code\FS\Tayota\tayota-backend\operation-service\target\protobuf-maven-plugin\generate\generate\artifacts\protoc-gen-grpc-java-d29e48349ad7b11089ed1bcfe6127a34e50e7b13.exe
+--b1715c282864ea30f7355a8345cbf82bc93ed63f_out=D:\Code\FS\Tayota\tayota-backend\operation-service\target\generated-sources\protobuf
+--b1715c282864ea30f7355a8345cbf82bc93ed63f_opt=@generated=omit
+D:\Code\FS\Tayota\tayota-backend\operation-service\src\main\proto\notification.proto
+--proto_path=D:\Code\FS\Tayota\tayota-backend\operation-service\src\main\proto
+--proto_path=D:\Code\FS\Tayota\tayota-backend\operation-service\target\protobuf-maven-plugin\generate\generate\archives\grpc-services-1.77.1-914e07c9f3a641ac627a7345dd7efbc76d80da91
+--proto_path=D:\Code\FS\Tayota\tayota-backend\operation-service\target\protobuf-maven-plugin\generate\generate\archives\protobuf-java-4.33.4-07192a817513295dee6da2ea126979191d3d6e89
+--proto_path=D:\Code\FS\Tayota\tayota-backend\operation-service\target\protobuf-maven-plugin\generate\generate\archives\proto-google-common-protos-2.63.2-0e99b5e089ab56c94e3cb9592d0c961058c0b182

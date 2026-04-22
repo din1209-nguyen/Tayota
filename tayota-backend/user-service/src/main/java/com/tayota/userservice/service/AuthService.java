@@ -3,6 +3,7 @@ package com.tayota.userservice.service;
 import com.tayota.commoncore.dto.ErrorCode;
 import com.tayota.userservice.dto.Request.LoginRequestDTO;
 import com.tayota.userservice.dto.Response.TokenPairDTO;
+import com.tayota.userservice.entity.CustomUserDetails;
 import com.tayota.userservice.grpc.NotificationGrpcClient;
 import com.tayota.userservice.dto.Request.RegisterRequestDTO;
 import com.tayota.userservice.entity.User;
@@ -20,10 +21,12 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -136,8 +139,17 @@ public class AuthService {
             // Xoá số lần nhập sai mật khẩu
             redisTemplate.delete(redisKey);
 
+            // Lấy thông tin người dùng từ Authentication
+            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+
+            String userId = userDetails.getId().toString();
+            List<String> roles = userDetails.getAuthorities()
+                    .stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .toList();
+
             // Tạo access-token và refresh-token sau đó trả về
-            return jwtUtil.generateTokenPair(authentication);
+            return jwtUtil.generateTokenPair(userId, roles);
         }
         // Bắt lỗi khi sai mật khẩu
         catch (BadCredentialsException e) {

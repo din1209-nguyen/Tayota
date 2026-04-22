@@ -1,6 +1,9 @@
 ### ENV ###
 .env
 
+### Database ###
+docker-data
+
 ### Node ###
 node_modules
 

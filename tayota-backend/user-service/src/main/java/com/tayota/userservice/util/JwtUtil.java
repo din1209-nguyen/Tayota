@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -42,22 +43,19 @@ public class JwtUtil {
     }
 
     // Tạo access-token và refresh-token
-    public TokenPairDTO generateTokenPair(Authentication authentication) {
+    public TokenPairDTO generateTokenPair(String userId, List<String> role) {
         // Tạo access-token và refresh-token
-        String accessToken = generateToken(authentication, jwtAccessTokenExpirationMs, "access");
-        String refreshToken = generateToken(authentication, jwtRefreshTokenExpirationMs, "refresh");
+        String accessToken = generateToken(userId, role, jwtAccessTokenExpirationMs, "access");
+        String refreshToken = generateToken(userId, role, jwtRefreshTokenExpirationMs, "refresh");
 
         return new TokenPairDTO(accessToken, refreshToken);
     }
 
     // Tạo chi tiết token
-    private String generateToken(Authentication authentication, long expirationMs, String tokenType) {
-        // Lấy thông tin người dùng từ Authentication
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-
+    private String generateToken(String userId, List<String> role, long expirationMs, String tokenType) {
         // Đặt thông tin vào Claims
         Map<String, Object> claims = new HashMap<>();
-        claims.put("role", userDetails.getAuthorities());
+        claims.put("role", role);
         claims.put("tokenType", tokenType);
 
         // Xác định thời gian hiện tại
@@ -67,7 +65,7 @@ public class JwtUtil {
 
         // Tạo token với thông tin người dùng, claims, thời gian tạo và hết hạn, sau đó ký bằng secretKey
         return Jwts.builder()
-                .subject(String.valueOf(userDetails.getId()))
+                .subject(userId)
                 .claims(claims)
                 .issuedAt(now)
                 .expiration(expiryDate)

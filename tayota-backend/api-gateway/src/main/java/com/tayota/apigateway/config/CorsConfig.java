@@ -1,4 +1,4 @@
-package com.tayota.apigateway;
+package com.tayota.apigateway.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -6,6 +6,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
+// Cấu hình CORS (Cross-Origin Resource Sharing)
+// Cho phép gọi từ các domain hợp lệ, và cho phép gửi cookie
 @Configuration
 public class CorsConfig {
 

@@ -1,4 +1,4 @@
-package com.tayota.userservice.entity;
+package com.tayota.userservice.model;
 
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;

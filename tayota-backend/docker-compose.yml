@@ -154,6 +154,8 @@ services:
       # --- gRPC Client---
       - GRPC_NOTIFICATION_SERVICE_HOST=${OPERATION_SERVICE_HOST:-operation-service}
       - GRPC_NOTIFICATION_SERVICE_PORT=${NOTIFICATION_SERVICE_GRPC_PORT:-8193}
+      # --- Cookie ---
+      - COOKIE_SECURE=${COOKIE_SECURE:-false}
     depends_on:
       postgres-user-service:
         condition: service_healthy

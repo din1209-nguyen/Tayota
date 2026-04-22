@@ -34,6 +34,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -41,7 +42,6 @@ import java.util.UUID;
 public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
-    private final VerificationTokenService verificationTokenService;
     private final NotificationGrpcClient notificationGrpcClient;
     private final RedisTemplate<String, Object> redisTemplate;
 
@@ -69,11 +69,11 @@ public class AuthService {
     public void register(RegisterRequestDTO registerRequestDTO) {
         // Kiểm tra email đã tồn tại
         if (userRepository.existsByEmail(registerRequestDTO.getEmail())) {
-            throw new CustomException(ErrorCode.USER_NOT_FOUND);
+            throw new CustomException(ErrorCode.EMAIL_NOT_FOUND);
         }
 
         try {
-            // Băm password
+            // Băm password bằng Bcrypt trước khi lưu vào database
             String newPasswordHash = passwordEncoder.encode(registerRequestDTO.getPassword());
 
             // Tạo user với status UNVERIFIED
@@ -83,8 +83,12 @@ public class AuthService {
             // Lưu user vào database
             User savedUser = userRepository.save(user);
 
-            // Tạo verification token
-            String token = verificationTokenService.generateAndSaveToken(savedUser.getEmail());
+            // Tạo key cho token trong Redis
+            String key = "auth:verification_token" + ":" + savedUser.getEmail();
+            // Tạo verification token bằng UUID
+            String token = UUID.randomUUID().toString();
+            // Lưu token vào Redis
+            redisTemplate.opsForValue().set(key, token, 1, TimeUnit.HOURS);
 
             // Tạo verification link
             String verificationLink = frontendUrl + apiGatePort + "/verify?email=" + savedUser.getEmail() + "&token=" + token;
@@ -101,27 +105,30 @@ public class AuthService {
     public void verify(String email, String token) {
         // Tìm user theo email
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(ErrorCode.EMAIL_NOT_FOUND));
 
         // Kiểm tra trạng thái người dùng
         if (user.getStatus() == StatusType.ACTIVE) {
             throw new CustomException(403, "Tài khoản đã được xác thực!");
         }
 
-        // Kiểm tra token hợp lệ
-        if (!verificationTokenService.verifyToken(email, token)) {
-            throw new CustomException(400, "Mã xác thực không hợp lệ!");
+        // Tạo key cho token trong Redis
+        String key = "auth:verification_token" + ":" + email;
+
+        // Lấy verification token lưu trong Redis
+        Object storedToken = redisTemplate.opsForValue().get(key);
+
+        if (storedToken != null && storedToken.toString().equals(token)) {
+            // Cập nhật status thành ACTIVE
+            user.setStatus(StatusType.ACTIVE);
+            userRepository.save(user);
+
+            // Xoá token khỏi Redis
+            redisTemplate.delete(key);
+
+            // Gửi thông báo xác thực thành công
+            notificationGrpcClient.sendRegistrationSuccessEmail(email);
         }
-
-        // Cập nhật status thành ACTIVE
-        user.setStatus(StatusType.ACTIVE);
-        userRepository.save(user);
-
-        // Xoá token khỏi Redis
-        verificationTokenService.deleteToken(email);
-
-        // Gửi thông báo xác thực thành công
-        notificationGrpcClient.sendRegistrationSuccessEmail(email);
     }
 
     // Đăng nhập tài khoản
@@ -153,7 +160,7 @@ public class AuthService {
             /* Bước 3: Xoá số lần nhập sai mật khẩu */
             redisTemplate.delete(redisKey);
 
-            /* Bước 4: Lấy thông tin user sau khi đăng nhập thành công */
+            /* Bước 4: Lấy thông tin user sau khi đăng nhập thành công từ Spring Security */
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
             String userId = userDetails.getId().toString();

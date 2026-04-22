@@ -169,6 +169,8 @@ public class AuthService {
 
             // Lấy refresh-token cũ từ Cookie
             String oldRefreshToken = cookieUtil.getCookieValue(request, "refresh_token");
+            log.info(">>> [LOGIN] oldRefreshToken from cookie: {}",
+                    oldRefreshToken != null ? "oldRefreshToken" : "NULL");
 
             if (oldRefreshToken != null) {
                 try {

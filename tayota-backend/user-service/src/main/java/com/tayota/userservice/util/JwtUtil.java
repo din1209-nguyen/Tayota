@@ -6,9 +6,11 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.apache.tomcat.util.modeler.Registry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.ObjectMapper;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
@@ -29,11 +31,16 @@ public class JwtUtil {
     @Value("${jwt.refresh-token-expiration}")
     private long jwtRefreshTokenExpirationMs;
 
+    // RedisTemplate để lưu trữ và truy xuất session người dùng (refresh-token hash) trong Redis
     private final RedisTemplate<String, Object> redisTemplate;
+    // ObjectMapper để chuyển đổi giữa Object Java và JSON khi lưu trữ trong Redis
+    private final ObjectMapper objectMapper;
 
-    public JwtUtil(@Value("${jwt.secret}") String secret, RedisTemplate<String, Object> redisTemplate) {
-        // Khởi tạo RedisTemplate để lưu trữ và truy xuất session người dùng (refresh-token hash) trong Redis
+    public JwtUtil(@Value("${jwt.secret}") String secret, RedisTemplate<String, Object> redisTemplate, ObjectMapper objectMapper) {
+        // Khởi tạo RedisTemplate
         this.redisTemplate = redisTemplate;
+        // Khởi tạo ObjectMapper
+        this.objectMapper = objectMapper;
 
         // Khoá bí mật được tạo từ chuỗi secret
         secretKey = Keys.hmacShaKeyFor(secret.getBytes());
@@ -128,7 +135,7 @@ public class JwtUtil {
     // Sử dụng kỹ thuật so sánh thời gian cố định (Constant-time comparison) để chống tấn công Timing Attack
     public boolean compareToRefreshTokenHash(String refreshToken, String sessionKey) {
         // Truy xuất session của người dùng trong Redis
-        UserSession savedSession = (UserSession) redisTemplate.opsForValue().get(sessionKey);
+        UserSession savedSession = objectMapper.convertValue(redisTemplate.opsForValue().get(sessionKey), UserSession.class);
 
         // Trường hợp session tồn tại và chưa hết hạn (TTL) thì mới so sánh hash
         if (savedSession != null) {

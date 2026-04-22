@@ -106,6 +106,8 @@ services:
     image: redis:7.2-alpine
     volumes:
       - ./docker-data/redis-data:/data
+    ports:
+      - "6379:6379"
     networks:
       - tayota-network
     command: redis-server --appendonly yes # Bật chế độ lưu trữ dữ liệu lên đĩa (Mỗi khi có dữ liệu mới, ghi ngay một bản sao vào ổ cứng)
@@ -114,19 +116,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-
-  # (Tùy chọn) Giao diện quản lý Redis trên trình duyệt
-  redis-insight:
-    image: redis/redisinsight:latest
-    ports:
-      - "8001:8001"
-    environment:
-      # Chấp nhận các điều khoản dịch vụ tự động để bỏ qua bước xác nhận lúc đầu
-      - REDISINSIGHT_HOST=0.0.0.0
-    networks:
-      - tayota-network
-    depends_on:
-      - redis
 
    # --- User Service ---
   user-service:

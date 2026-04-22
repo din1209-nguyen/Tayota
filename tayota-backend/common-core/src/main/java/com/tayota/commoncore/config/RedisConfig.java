@@ -18,20 +18,11 @@ import java.time.Duration;
 @Configuration
 @ConditionalOnProperty(prefix = "common.redis", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class RedisConfig {
-
-    // Tạo ObjectMapper được tối ưu hóa cho Redis
-    // Tự động hỗ trợ serialization các kiểu dữ liệu Java phức tạp
-    private ObjectMapper redisObjectMapper() {
-        // Khởi tạo ObjectMapper từ tools.jackson
-        // ObjectMapper mặc định đã được cấu hình tốt cho JSON serialization
-        return new ObjectMapper();
-    }
-
-    // ==== Cấu hình thủ công (Dùng RedisTemplate) ====
+    /* --- Cấu hình thủ công (Dùng RedisTemplate) --- */
     // RedisTemplate cho phép dev tự code các thao tác CRUD trực tiếp với Redis
     // Ví dụ: redisTemplate.opsForValue().set(key, value)
     @Bean
-    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory, ObjectMapper objectMapper) {
         // Khởi tạo RedisTemplate<String, Object>
         // - Key: String (key cache sẽ là chuỗi text bình thường)
         // - Value: Object (có thể lưu bất kỳ object Java nào)
@@ -41,7 +32,6 @@ public class RedisConfig {
         template.setConnectionFactory(connectionFactory);
 
         // Tạo ObjectMapper tùy chỉnh cho serialization
-        ObjectMapper objectMapper = redisObjectMapper();
         GenericJacksonJsonRedisSerializer jsonRedisSerializer = new GenericJacksonJsonRedisSerializer(objectMapper);
 
         // Cấu hình Serializer cho Key
@@ -66,14 +56,13 @@ public class RedisConfig {
         return template;
     }
 
-    // ==== Cấu hình tự động (Cache Management) ====
+    /* --- Cấu hình tự động (Cache Management) --- */
     // Dùng kết hợp với @Cacheable, @CachePut, @CacheEvict annotations
     // Giúp tự động cache kết quả hàm mà không cần code thủ công
     @Bean
     @ConditionalOnMissingBean(name = "cacheManager")
-    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
+    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory, ObjectMapper objectMapper) {
         // Tạo ObjectMapper tùy chỉnh cho Cache Manager
-        ObjectMapper objectMapper = redisObjectMapper();
         GenericJacksonJsonRedisSerializer jsonRedisSerializer = new GenericJacksonJsonRedisSerializer(objectMapper);
 
         // Thiết lập cấu hình mặc định cho toàn bộ cache

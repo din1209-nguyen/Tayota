@@ -1,12 +1,9 @@
 package com.tayota.userservice.util;
 
-import com.tayota.userservice.model.TokenPair;
-import com.tayota.userservice.model.UserSession;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtParser;
-import io.jsonwebtoken.Jwts;
+import com.tayota.userservice.object.TokenPair;
+import com.tayota.userservice.object.UserSession;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
-import org.apache.tomcat.util.modeler.Registry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
@@ -15,6 +12,7 @@ import tools.jackson.databind.ObjectMapper;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import io.jsonwebtoken.security.SignatureException;
 import java.util.*;
 
 @Component
@@ -91,32 +89,32 @@ public class JwtUtil {
                 .compact();
     }
 
-    // Kiểm tra token hợp lệ và có phải là refresh-token
-    public String validateAndExtractDeviceIdFromRefreshToken(String refreshToken) {
-        try {
-            // Xác thực token và lấy ra thông tin Claims
-            Claims claims = getClaims(refreshToken);
-
-            // Kiểm tra token có phải là refresh-token hay không
-            String tokenType = claims.get("type", String.class);
-
-            if (!Objects.equals(tokenType, "refresh")) {
-                return null;
-            }
-            return claims.get("deviceId", String.class);
-        }
-        catch (Exception e) {
-            return null;
-        }
-    }
-
     // Xác thực Token và lấy dữ liệu từ Payload
     public Claims getClaims(String token) {
-        return jwtParser
-                // Thực hiện băm lại và đối chiếu chữ ký, kiểm tra thời gian hết hạn (exp) của token
-                .parseSignedClaims(token)
-                // Trích xuất các thông tin người dùng (Claims) đã được mã hóa trong phần thân của token
-                .getPayload();
+        try {
+            return jwtParser
+                    // Thực hiện băm lại và đối chiếu chữ ký, kiểm tra thời gian hết hạn (exp) của token
+                    .parseSignedClaims(token)
+                    // Trích xuất các thông tin người dùng (Claims) đã được mã hóa trong phần thân của token
+                    .getPayload();
+        } catch (ExpiredJwtException e) {
+            throw new RuntimeException("Token đã hết hạn: " + e.getMessage());
+
+        } catch (SignatureException e) {
+            throw new RuntimeException("Chữ ký Token không hợp lệ: " + e.getMessage());
+
+        } catch (MalformedJwtException e) {
+            throw new RuntimeException("Cấu trúc Token không đúng định dạng: " + e.getMessage());
+
+        } catch (UnsupportedJwtException e) {
+            throw new RuntimeException("Token không được hỗ trợ: " + e.getMessage());
+
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Chuỗi Claims trống hoặc không hợp lệ: " + e.getMessage());
+
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi xác thực Token không xác định: " + e.getMessage());
+        }
     }
 
     // Băm refresh-token bằng SHA-256 để lưu vào Redis (bảo mật hơn so với lưu token gốc)
@@ -127,7 +125,7 @@ public class JwtUtil {
             return Base64.getEncoder().encodeToString(hash);
         }
         catch (Exception e) {
-            throw new RuntimeException("Error hashing token", e);
+            throw new RuntimeException("Lỗi khi băm refresh token", e);
         }
     }
 

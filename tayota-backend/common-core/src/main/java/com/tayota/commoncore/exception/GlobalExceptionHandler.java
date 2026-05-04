@@ -29,12 +29,23 @@ public class GlobalExceptionHandler {
         );
     }
 
+    // Xử lý lỗi CustomException tự định nghĩa trong ứng dụng
     @ExceptionHandler(value = CustomException.class)
     public ApiResponse<Void> handleCustomException(CustomException exception) {
         // Trả về Reponse với lỗi
         return ApiResponse.error(
                 exception.getCode(),
                 exception.getMessage()
+        );
+    }
+
+    // Xử lý các lỗi không được dự đoán trước
+    @ExceptionHandler(value = Exception.class)
+    public ApiResponse<Void> handleException(Exception exception) {
+        // Trả về Reponse với lỗi
+        return ApiResponse.error(
+                exception.hashCode(),
+                "Internal server error: " + exception.getMessage()
         );
     }
 }

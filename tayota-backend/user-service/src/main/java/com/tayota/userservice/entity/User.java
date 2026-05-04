@@ -1,7 +1,7 @@
 package com.tayota.userservice.entity;
 
 import com.tayota.userservice.enums.ProviderType;
-import com.tayota.userservice.enums.RoleType;
+import com.tayota.commoncore.enums.RoleType;
 import com.tayota.userservice.enums.StatusType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
@@ -51,8 +51,8 @@ public class User {
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    @ColumnDefault("'UNVERIFIED'")
-    private StatusType status = StatusType.UNVERIFIED;
+    @ColumnDefault("'ACTIVE'")
+    private StatusType status = StatusType.ACTIVE;
 
     @CreationTimestamp
     @ColumnDefault("CURRENT_TIMESTAMP")

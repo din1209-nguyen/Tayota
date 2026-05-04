@@ -1,3 +1,3 @@
 package com.tayota.userservice.enums;
 
-public enum StatusType { UNVERIFIED, ACTIVE, BANNED }
+public enum StatusType { ACTIVE, BANNED }

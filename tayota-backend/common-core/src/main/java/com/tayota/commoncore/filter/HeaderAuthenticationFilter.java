@@ -9,11 +9,11 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -35,16 +35,29 @@ public class HeaderAuthenticationFilter extends OncePerRequestFilter {
             // Khởi tạo List rỗng
             List<GrantedAuthority> authorities = Collections.emptyList();
 
+            // Nếu có role khi đã đăng nhập
             if (StringUtils.hasText(roleHeader)) {
-                // Xoá khoảng trắng
-                String role = roleHeader.trim();
-                // Spring Security bắt buộc role phải có tiền tố "ROLE_". Nếu chưa có thì thêm vào.
-                if (!role.startsWith("ROLE_")) {
-                    role = "ROLE_" + role;
-                }
+                // Nếu có role, tách chuỗi role thành mảng bởi dấy phẩy
+                String[] roleNames = roleHeader.split(",");
 
-                // Chuyển role thành mảng Object mà Spring Security hiểu được
-                authorities = List.of(new SimpleGrantedAuthority(role));
+                // Khởi tạo List authorities
+                authorities = new ArrayList<>(roleNames.length);
+
+                // Duyệt qua từng role
+                for (String rawRole : roleNames) {
+                    // Loại bỏ khoảng trắng thừa
+                    String role = rawRole.trim();
+
+                    if (!role.isEmpty()) {
+                        // Spring Security bắt buộc role phải có tiền tố "ROLE_". Nếu chưa có thì thêm vào
+                        if (!role.startsWith("ROLE_")) {
+                            role = "ROLE_" + role;
+                        }
+
+                        // Chuyển role thành Object mà Spring Security hiểu được
+                        authorities.add(new SimpleGrantedAuthority(role));
+                    }
+                }
             }
 
             // Tạo một đối tượng Authentication cho Spring Security, đại diện cho một user đã được xác thực
@@ -53,6 +66,8 @@ public class HeaderAuthenticationFilter extends OncePerRequestFilter {
                     null,        // Credentials: Mật khẩu (đặt null vì chỉ dùng login ban đầu, còn lại thì không cần password)
                     authorities  // Danh sách quyền
             );
+
+            System.out.println("HeaderAuthenticationFilter - userId: " + userId + ", role: " + roleHeader);
 
             //// Thêm thông tin chi tiết của request vào Authentication, chứa địa chỉ IP của client, session ID dùng để log
             //authentication.setDetails(

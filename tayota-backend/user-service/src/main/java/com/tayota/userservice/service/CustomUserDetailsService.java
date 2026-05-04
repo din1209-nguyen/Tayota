@@ -2,7 +2,7 @@ package com.tayota.userservice.service;
 
 import com.tayota.commoncore.dto.ErrorCode;
 import com.tayota.commoncore.exception.CustomException;
-import com.tayota.userservice.model.CustomUserDetails;
+import com.tayota.userservice.object.CustomUserDetails;
 import com.tayota.userservice.entity.User;
 import com.tayota.userservice.enums.StatusType;
 import com.tayota.userservice.repository.UserRepository;
@@ -25,10 +25,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException(ErrorCode.USER_NOT_FOUND.getMessage()));
 
         // Kiểm tra trạng thái người dùng
-        if (user.getStatus() == StatusType.UNVERIFIED) {
-            throw new CustomException(403, "Tài khoản chưa được xác thực. Vui lòng kiểm tra email để xác thực tài khoản!");
-        }
-        else if (user.getStatus() == StatusType.BANNED) {
+        if (user.getStatus() == StatusType.BANNED) {
             throw new CustomException(403, "Tài khoản đã bị khóa!");
         }
 

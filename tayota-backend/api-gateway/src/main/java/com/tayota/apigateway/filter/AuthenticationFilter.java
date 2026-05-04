@@ -36,7 +36,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
     // Danh sách các đường dẫn không cần xác thực
     private final List<String> whitelistUrls = List.of(
-            "/user/register", "/user/login", "/user/verify"
+            "/user/register", "/user/verify", "/user/login", "/user/refresh-token"
     );
 
     // Đây là hàm cốt lõi, mọi request đi qua Gateway đều phải chạy qua hàm này
@@ -68,13 +68,13 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
         /* access-token từ Cookie*/
         String token = request.getCookies()
-                .getFirst("accessToken") != null
-                ? Objects.requireNonNull(request.getCookies().getFirst("accessToken")).getValue()
+                .getFirst("access_token") != null
+                ? Objects.requireNonNull(request.getCookies().getFirst("access_token")).getValue()
                 : null;
 
         // Không tìm thấy cookie accessToken thì báo lỗi 401
         if (token == null || token.isBlank()) {
-            return unAuthorizedResponse(exchange.getResponse(), "Không tìm thấy accessToken trong Cookie");
+            return unAuthorizedResponse(exchange.getResponse(), "Vui lòng đăng nhập!");
         }
 
         try {
@@ -83,7 +83,10 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
             // Lấy userId và role từ Claim sau khi đuợc giải mã thành công
             String userId = claims.getSubject();
-            String role = claims.get("role", String.class);
+            List<String> roles = claims.get("role", List.class);
+
+            // Nối các role thành chuỗi cách nhau bởi dấu phẩy để gắn vào header
+            String roleHeaderValue = (roles != null) ? String.join(",", roles) : "";
 
             // Request trong Gateway là "Immutable" (Bất biến, không thể sửa đổi trực tiếp)
             // Do đó ta phải dùng mutate() để tạo ra một bản sao mới của Request
@@ -95,7 +98,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
                     })
                     // Gắn lại header mới từ chính token đã được xác thực
                     .header("X-User-Id", userId)
-                    .header("X-User-Role", role)
+                    .header("X-User-Role", roleHeaderValue)
                     .build(); // Hoàn tất tạo bản sao Request
 
             // Cho phép Request (đã được chỉnh sửa) đi qua Filter này để đến Filter tiếp theo hoặc các Service con
@@ -107,6 +110,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             return unAuthorizedResponse(exchange.getResponse(), "Access-token đã hết hạn");
         }
         catch (Exception e) {
+            log.error("Error validating access token: {}", e.getMessage());
             // Bắt lỗi trong quá trình giải mã (sai chữ ký, token bị can thiệp, sai thuật toán...)
             return unAuthorizedResponse(exchange.getResponse(), "Access-token không hợp lệ");
         }

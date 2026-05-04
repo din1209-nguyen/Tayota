@@ -1,20 +1,25 @@
 package com.tayota.userservice.service;
 
 import com.tayota.commoncore.dto.ErrorCode;
+import com.tayota.commoncore.util.SecurityUtil;
 import com.tayota.userservice.dto.Request.LoginRequestDTO;
-import com.tayota.userservice.model.TokenPair;
-import com.tayota.userservice.model.CustomUserDetails;
+import com.tayota.userservice.dto.Response.DeviceResponseDTO;
+import com.tayota.userservice.object.RegisterCacheData;
+import com.tayota.userservice.object.TokenPair;
+import com.tayota.userservice.object.CustomUserDetails;
 import com.tayota.userservice.grpc.NotificationGrpcClient;
 import com.tayota.userservice.dto.Request.RegisterRequestDTO;
 import com.tayota.userservice.entity.User;
-import com.tayota.userservice.enums.StatusType;
 import com.tayota.userservice.mapper.UserMapper;
-import com.tayota.userservice.model.UserSession;
 import com.tayota.userservice.repository.UserRepository;
 import com.tayota.commoncore.exception.CustomException;
 import com.tayota.userservice.util.CookieUtil;
 import com.tayota.userservice.util.IpUtil;
 import com.tayota.userservice.util.JwtUtil;
+import com.tayota.userservice.util.SessionUtil;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -28,13 +33,15 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+
+import static com.tayota.commoncore.util.SecurityUtil.ROLE_HIERARCHY_MAP;
 
 @Service
 @RequiredArgsConstructor
@@ -44,6 +51,11 @@ public class AuthService {
     private final UserRepository userRepository;
     private final NotificationGrpcClient notificationGrpcClient;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final SessionUtil sessionUtil;
+    private final AuthenticationManager authenticationManager;
+    private final JwtUtil jwtUtil;
+    private final CookieUtil cookieUtil;
+    private final ObjectMapper objectMapper;
 
     @Value("${app.frontend.url:http://localhost:3000}")
     private String frontendUrl;
@@ -51,84 +63,84 @@ public class AuthService {
     @Value("${api-gate-port:8090}")
     private String apiGatePort;
 
-    // Thời gian hết hạn của refresh-token
-    @Value("${jwt.refresh-token-expiration}")
-    private long jwtRefreshTokenExpirationMs;
-
-    // Khởi tạo AuthenticationManager để xác thực người dùng
-    private final AuthenticationManager authenticationManager;
-
-    // Khởi tạo JwtUtil để tạo token
-    private final JwtUtil jwtUtil;
-
-    // Khởi tạo CookieUtil để quản lý cookie
-    private final CookieUtil cookieUtil;
-
+    private static final String VERIFICATION_TOKEN_KEY_PREFIX = "auth:verification_token:";
+    private static final String REFRESH_TOKEN_KEY_PREFIX = "auth:refresh:";
+    private static final String USER_SESSIONS_KEY_PREFIX = "auth:user_sessions:";
 
     // Đăng ký tài khoản người dùng
     public void register(RegisterRequestDTO registerRequestDTO) {
-        // Kiểm tra email đã tồn tại
-        if (userRepository.existsByEmail(registerRequestDTO.getEmail())) {
-            throw new CustomException(ErrorCode.EMAIL_NOT_FOUND);
+        String email = registerRequestDTO.getEmail();
+
+        // Kiểm tra email đã tồn tại trong database
+        if (userRepository.existsByEmail(email)) {
+            throw new CustomException(ErrorCode.EMAIL_ALREADY_EXISTS);
+        }
+        // Kiêm tra nếu đã tồn tại token đăng ký chưa xác thực trong Redis để tránh spam đăng ký nhiều lần trên cùng 1 email
+        if (redisTemplate.opsForValue().get(VERIFICATION_TOKEN_KEY_PREFIX + email) != null) {
+            throw new CustomException(400, "Bạn đã đăng ký tài khoản. Vui lòng kiểm tra email để xác thực tài khoản!");
         }
 
         try {
-            // Băm password bằng Bcrypt trước khi lưu vào database
+            // Băm password bằng Bcrypt
             String newPasswordHash = passwordEncoder.encode(registerRequestDTO.getPassword());
 
-            // Tạo user với status UNVERIFIED
-            User user = UserMapper.toEntity(registerRequestDTO, newPasswordHash);
-            user.setStatus(StatusType.UNVERIFIED);
+            // Tạo user mới nhưng không lưu vào database
+            User pendingUser = UserMapper.toEntity(registerRequestDTO, newPasswordHash);
 
-            // Lưu user vào database
-            User savedUser = userRepository.save(user);
+            // Tạo token ngẫu nhiên
+            String token = UUID.randomUUID().toString();
 
             // Tạo key cho token trong Redis
-            String key = "auth:verification_token" + ":" + savedUser.getEmail();
-            // Tạo verification token bằng UUID
-            String token = UUID.randomUUID().toString();
-            // Lưu token vào Redis
-            redisTemplate.opsForValue().set(key, token, 1, TimeUnit.HOURS);
+            String key = VERIFICATION_TOKEN_KEY_PREFIX + email;
 
-            // Tạo verification link
-            String verificationLink = frontendUrl + apiGatePort + "/verify?email=" + savedUser.getEmail() + "&token=" + token;
+            // Tạo Object chứa thông tin user và token để lưu vào Redis
+             RegisterCacheData registeredUser = new RegisterCacheData(pendingUser, token);
 
-            // Gửi email xác thực qua gRPC (bất đồng bộ - không chặn quá trình đăng ký)
-            notificationGrpcClient.sendVerificationEmail(savedUser.getEmail(), verificationLink);
+            // Lưu token vào Redis với thời gian hết hạn 15 phút
+            redisTemplate.opsForValue().set(key, registeredUser, 1, TimeUnit.MINUTES);
+
+            // Tạo link xác thực
+            String verificationLink = String.format("%s/verify?email=%s&token=%s", frontendUrl, email, token);
+
+            // Gửi email xác thực qua gRPC
+            notificationGrpcClient.sendVerificationEmail(email, verificationLink);
         }
         catch (Exception e) {
-            throw new CustomException(500, "Registration failed: " + e.getMessage());
+            throw new CustomException(500, "Đăng ký thất bại: " + e.getMessage());
         }
     }
 
     // Xác thực tài khoản qua email và token
     public void verify(String email, String token) {
-        // Tìm user theo email
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new CustomException(ErrorCode.EMAIL_NOT_FOUND));
-
-        // Kiểm tra trạng thái người dùng
-        if (user.getStatus() == StatusType.ACTIVE) {
-            throw new CustomException(403, "Tài khoản đã được xác thực!");
-        }
-
         // Tạo key cho token trong Redis
-        String key = "auth:verification_token" + ":" + email;
+        String key = VERIFICATION_TOKEN_KEY_PREFIX + email;
 
-        // Lấy verification token lưu trong Redis
-        Object storedToken = redisTemplate.opsForValue().get(key);
+        // Lấy dữ liệu người dùng đăng ký từ Redis
+        Object registeredUserObject = redisTemplate.opsForValue().get(key);
 
-        if (storedToken != null && storedToken.toString().equals(token)) {
-            // Cập nhật status thành ACTIVE
-            user.setStatus(StatusType.ACTIVE);
-            userRepository.save(user);
-
-            // Xoá token khỏi Redis
-            redisTemplate.delete(key);
-
-            // Gửi thông báo xác thực thành công
-            notificationGrpcClient.sendRegistrationSuccessEmail(email);
+        // Kiểm tra nếu không tồn tại token trong Redis hoặc đã hết hạn
+        if (registeredUserObject == null) {
+            throw new CustomException(401, "Link xác thực không hợp lệ hoặc đã hết hạn. Vui lòng đăng ký lại tài khoản!");
         }
+
+        // Chuyển đổi Object lấy từ Redis về đúng kiểu dữ liệu RegisterCacheData
+        RegisterCacheData registeredUser = objectMapper.convertValue(registeredUserObject, RegisterCacheData.class);
+
+        // Kiểm tra token truyền vào có khớp với token đã lưu trong Redis
+        String storedToken = registeredUser.getToken();
+        if (!storedToken.equals(token)) {
+            throw new CustomException(401, "Link xác thực không hợp lệ!");
+        }
+
+        // Lưu tài khoản người dùng vào database
+        User user = registeredUser.getUser();
+        userRepository.save(user);
+
+        // Xoá token khỏi Redis
+        redisTemplate.delete(key);
+
+        // Gửi thông báo xác thực thành công
+        notificationGrpcClient.sendRegistrationSuccessEmail(user.getEmail());
     }
 
     // Đăng nhập tài khoản
@@ -176,28 +188,17 @@ public class AuthService {
 
             // Lấy refresh-token cũ từ Cookie
             String oldRefreshToken = cookieUtil.getCookieValue(request, "refresh_token");
-            log.info(">>> [LOGIN] oldRefreshToken from cookie: {}",
-                    oldRefreshToken != null ? "oldRefreshToken" : "NULL");
 
             if (oldRefreshToken != null) {
-                try {
-                    // Xác thực và truy xuất deviceId từ refresh-token cũ
-                    String oldDeviceId = jwtUtil.validateAndExtractDeviceIdFromRefreshToken(oldRefreshToken);
+                // Xác thực và truy xuất deviceId từ refresh-token cũ
+                String oldDeviceId = jwtUtil.getClaims(oldRefreshToken).get("deviceId", String.class);
 
-                    // Tạo session-key cũ
-                    String oldSessionKey = "auth:refresh:" + userId + ":" + oldDeviceId;
+                // Kiểm tra: nếu hash trong Redis khớp với refresh token cũ thì xóa session cũ
+                String oldSessionKey = REFRESH_TOKEN_KEY_PREFIX + userId + ":" + oldDeviceId;
 
-                    if (jwtUtil.compareToRefreshTokenHash(oldRefreshToken, oldSessionKey)) {
-                        // Kiểm tra refresh-token cũ hợp lệ hay không so với refresh-token được lưu trong Redis và xoá nó
-                        // Xoá sessionKey cũ trong Redis
-                        redisTemplate.delete(oldSessionKey);
-                        // Xoá deviceId cũ khỏi danh sách userSessionsKey trong Redis
-                        String userSessionsKey = "auth:user_sessions:" + userId;
-                        redisTemplate.opsForSet().remove(userSessionsKey, oldDeviceId);
-                    }
-                }
-                catch (Exception e) {
-                    log.warn("Old refresh token is invalid or expired: {}", e.getMessage());
+                if (jwtUtil.compareToRefreshTokenHash(oldRefreshToken, oldSessionKey)) {
+                    // Xóa: dùng RedisUtil xóa session và remove deviceId khỏi set
+                    sessionUtil.deleteSession(userId, oldDeviceId);
                 }
             }
 
@@ -207,20 +208,16 @@ public class AuthService {
 
             /* Bước 7: Kiểm tra giới hạn số thiết bị được đăng nhập trên 1 tài khoản */
             // Tạo userSessionKey các deviceId vào danh sách user đã đăng nhập
-            String userSessionsKey = "auth:user_sessions:" + userId;
+            String userSessionsKey = USER_SESSIONS_KEY_PREFIX + userId;
 
-            // Lấy danh sách thiết bị đã đăng nhập của user đó từ Redis
-            Set<Object> devices = redisTemplate.opsForSet().members(userSessionsKey);
+            // Lấy số lượng thiết bị đã đăng nhập và xoá các lần đăng nhập hết hạn của user đó từ Redis
+            int deviceCount = sessionUtil.countActiveDevices(userId);
 
             // Kiểm tra nếu số thiết bị đã đăng nhập vượt quá 5 thì từ chối đăng nhập trên thiết bị mới
             // !!! Khi truy cập đồng thời có thể vượt qua điều kiện, nên dùng Lua script hoặc Redis transaction
-            if (devices != null && devices.size() >= 5) {
+            if (deviceCount >= 5) {
                 throw new CustomException(403, "Bạn đã đăng nhập quá nhiều thiết bị");
             }
-
-            // Lưu thiết bị đăng nhập mới vào danh sách thiết bị đăng nhập trong Redis
-            redisTemplate.opsForSet().add(userSessionsKey, deviceId);
-            redisTemplate.expire(userSessionsKey, Duration.ofMillis(jwtRefreshTokenExpirationMs));
 
             /* Bước 8: Tạo ra access-token và refresh-token */
             // Lấy thông tin user-agent từ header
@@ -228,18 +225,8 @@ public class AuthService {
             // Thực hiện tạo cặp token
             TokenPair tokenPair = jwtUtil.generateTokenPair(userId, roles, deviceId, userAgent);
 
-            /* Bước 9: Tạo phiên mới để phân biệt thiệt bị user trong Redis phục vụ cho chức năng logout, logout-all, revoke */
-            // Tạo sessionKey
-            String sessionKey = "auth:refresh:" + userId + ":" + deviceId;
-
-            // Băm refresh token trước khi lưu vào Redis để bảo mật
-            String refreshHash = jwtUtil.hashRefreshToken(tokenPair.getRefreshToken());
-
-            // Tạo sessionValue
-            UserSession sessionValue = new UserSession(refreshHash, clientIp, userAgent, Instant.now());
-
-            // Lưu session của user vào Redis
-            redisTemplate.opsForValue().set(sessionKey, sessionValue, Duration.ofMillis(jwtRefreshTokenExpirationMs));
+            /* Bước 9: Lưu session mới và thêm device vào user_sessions */
+            sessionUtil.saveSession(userId, deviceId, tokenPair.getRefreshToken(), clientIp, userAgent);
 
             /* Bước 10: Gắn cặp token và lưu vào HttptOnly Cookie */
             cookieUtil.setTokenCookies(response, tokenPair.getAccessToken(), tokenPair.getRefreshToken());
@@ -255,5 +242,157 @@ public class AuthService {
             // Ném lỗi cả 2 email hoặc mật khẩu vì bảo mật
             throw new CustomException(401, "Email hoặc mật khẩu không đúng!");
         }
+    }
+
+    // Làm mới access-token bằng refresh-token
+    public void refreshToken(HttpServletRequest request, HttpServletResponse response) {
+        // Lấy refresh-token từ Cookie
+        String refreshToken = cookieUtil.getCookieValue(request, "refresh_token");
+
+        if (refreshToken == null) {
+            throw new CustomException(401, "Refresh token không tồn tại!");
+        }
+
+        // Xác thực và truy xuất thông tin từ refresh-token
+        Claims claims = jwtUtil.getClaims(refreshToken);
+        String userId = claims.getSubject();
+        String deviceId = claims.get("deviceId", String.class);
+
+        // Tạo sessionKey
+        String sessionKey = REFRESH_TOKEN_KEY_PREFIX + userId + ":" + deviceId;
+
+        // Kiểm tra refresh-token hợp lệ hay không so với refresh-token được lưu trong Redis
+        if (!jwtUtil.compareToRefreshTokenHash(refreshToken, sessionKey)) {
+            throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        // Truy xuất thông tin từ refresh-token
+        String userAgent = request.getHeader("User-Agent");
+        List<String> roles = claims.get("role", List.class);
+
+        // Tạo cặp token mới
+        TokenPair tokenPair = jwtUtil.generateTokenPair(userId, roles, deviceId, userAgent);
+
+        // Lưu session mới (hash refresh-token) và cập nhật expiry
+        sessionUtil.saveSession(userId, deviceId, tokenPair.getRefreshToken(), IpUtil.getClientIp(request), userAgent);
+
+        // Cập nhật lại HttptOnly Cookie với cặp token mới
+        cookieUtil.setTokenCookies(response, tokenPair.getAccessToken(), tokenPair.getRefreshToken());
+    }
+
+    // Đăng xuất tài khoản
+    public void logout(HttpServletRequest request, HttpServletResponse response) {
+        // Lấy refresh-token từ Cookie
+        String refreshToken = cookieUtil.getCookieValue(request, "refresh_token");
+
+        if (refreshToken != null) {
+            // Xác thực và truy xuất thông tin từ refresh-token
+            Claims claims = jwtUtil.getClaims(refreshToken);
+            String userId = claims.getSubject();
+            String deviceId = claims.get("deviceId", String.class);
+
+            // Xóa session của thiết bị người dùng
+            sessionUtil.deleteSession(userId, deviceId);
+
+            // Xóa cookie chứa token khỏi trình duyệt
+            cookieUtil.clearTokenCookies(response);
+        }
+        else {
+            throw new CustomException(401, "Refresh token không tồn tại!");
+        }
+    }
+
+    // Đăng xuất tất cả tài khoản trừ thiết bị hiện tại
+    public void logoutAll(HttpServletRequest request, HttpServletResponse response) {
+        // Lấy refresh-token từ Cookie
+        String refreshToken = cookieUtil.getCookieValue(request, "refresh_token");
+
+        if (refreshToken != null) {
+            // Xác thực và truy xuất thông tin từ refresh-token
+            Claims claims = jwtUtil.getClaims(refreshToken);
+            String userId = claims.getSubject();
+            String deviceId = claims.get("deviceId", String.class);
+
+            // Xóa session của thiết bị người dùng
+            sessionUtil.deleteAllSessions(userId);
+
+            // Thêm thiết bị đang sử dụng hiện tại
+            sessionUtil.saveSession(userId, deviceId, refreshToken, IpUtil.getClientIp(request), request.getHeader("User-Agent"));
+
+            // Xóa cookie chứa token khỏi trình duyệt
+            cookieUtil.clearTokenCookies(response);
+        }
+        else {
+            throw new CustomException(401, "Refresh token không tồn tại!");
+        }
+    }
+
+     // Lấy danh sách thiết bị đã đăng nhập của một người dùng
+     public List<DeviceResponseDTO> getDevices(String userId) {
+         // Lấy userId của user hiện tại
+         String currentUserId = SecurityUtil.getCurrentUserId();
+
+         // Nếu người dùng xem thiết bị của chính mình thì cho phép trực tiếp
+         if (currentUserId.equals(userId)) {
+             return sessionUtil.getUserDevices(userId);
+         }
+
+         // Lấy role của user hiện tại từ SecurityContext
+         String currentUserRole = SecurityUtil.getCurrentUserRole();
+
+          // Lấy user mục tiêu từ database để kiểm tra role
+          Optional<User> targetUser = userRepository.findById(UUID.fromString(userId));
+
+         // Kiểm tra quyền user hiện tại có thể xem thiết bị của user mục tiêu không
+         if (targetUser.isEmpty() || ROLE_HIERARCHY_MAP.get(currentUserRole) <= ROLE_HIERARCHY_MAP.get("ROLE_" + targetUser.get().getRole().name())) {
+             throw new CustomException(403, "Bạn không có quyền xem danh sách thiết bị của người dùng này");
+         }
+
+         // Lấy danh sách thiết bị đã đăng nhập của user
+         return sessionUtil.getUserDevices(userId);
+     }
+
+    // Thu hồi quyền truy cập của một thiết bị theo deviceId
+    public void revokeDevice(String userId, String deviceId, HttpServletRequest request) {
+        // Lấy userId của user hiện tại từ SecurityContext
+        String currentUserId = SecurityUtil.getCurrentUserId();
+
+        // Nếu user đang thao tác là chủ tài khoản thì không được thu hồi thiết bị đang sử dụng hiện tại
+        if (currentUserId.equals(userId)) {
+            // Lấy deviceId hiện tại từ refresh_token cookie được gửi lên sau khi giải mã
+            String currentRefreshToken = cookieUtil.getCookieValue(request, "refresh_token");
+
+            if (currentRefreshToken != null) {
+                // Lấy claims trực tiếp từ jwtUtil (jwtUtil sẽ ném ExpiredJwtException / JwtException nếu có vấn đề)
+                Claims currentClaims = jwtUtil.getClaims(currentRefreshToken);
+                String currentDeviceId = currentClaims.get("deviceId", String.class);
+                if (currentDeviceId != null && currentDeviceId.equals(deviceId)) {
+                    // Không cho phép thu hồi chính thiết bị đang sử dụng
+                    throw new CustomException(403, "Không thể thu hồi thiết bị đang sử dụng");
+                }
+            }
+        }
+
+        else {
+            // Lấy role của user hiện tại từ SecurityContext
+            String currentUserRole = SecurityUtil.getCurrentUserRole();
+
+            // Lấy user mục tiêu để so sánh phân cấp role
+            Optional<User> targetUser = userRepository.findById(UUID.fromString(userId));
+
+            // Kiểm tra quyền user hiện tại có thể thu hồi thiết bị của user mục tiêu không
+            if (targetUser.isEmpty() || ROLE_HIERARCHY_MAP.get(currentUserRole) <= ROLE_HIERARCHY_MAP.get("ROLE_" + targetUser.get().getRole().name())) {
+                throw new CustomException(403, "Bạn không có quyền thu hồi thiết bị của người dùng này");
+            }
+        }
+
+        // Kiểm tra thiết bị tồn tại trong Redis
+        String sessionKey = REFRESH_TOKEN_KEY_PREFIX + userId + ":" + deviceId;
+        if (!redisTemplate.hasKey(sessionKey)) {
+            throw new CustomException(404, "Thiết bị không được tìm thấy");
+        }
+
+        // Xoá session của deviceId
+        sessionUtil.deleteSession(userId, deviceId);
     }
 }

@@ -44,6 +44,9 @@ public class SecurityAutoConfiguration {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // Phân quyền các đường dẫn, vì đã lọc từ API-Gateway nên trong các Services sẽ cho phép tất cả
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                // Cấu hình đường dẫn logout,
+                .logout(logout -> logout
+                        .logoutUrl("/user/logout"))
                 // Spring sẽ chạy HeaderAuthenticationFilter trước để lấy thông tin từ Header
                 .addFilterBefore(headerAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

@@ -3,6 +3,7 @@ package com.tayota.userservice.service;
 import com.tayota.commoncore.dto.ErrorCode;
 import com.tayota.commoncore.util.SecurityUtil;
 import com.tayota.userservice.dto.Request.LoginRequestDTO;
+import com.tayota.userservice.dto.Response.AccessTokenResponseDTO;
 import com.tayota.userservice.dto.Response.DeviceResponseDTO;
 import com.tayota.userservice.object.RegisterCacheData;
 import com.tayota.userservice.object.TokenPair;
@@ -18,8 +19,6 @@ import com.tayota.userservice.util.IpUtil;
 import com.tayota.userservice.util.JwtUtil;
 import com.tayota.userservice.util.SessionUtil;
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -144,7 +143,7 @@ public class AuthService {
     }
 
     // Đăng nhập tài khoản
-    public void login(LoginRequestDTO loginRequestDTO, HttpServletRequest request, HttpServletResponse response) {
+    public AccessTokenResponseDTO login(LoginRequestDTO loginRequestDTO, HttpServletRequest request, HttpServletResponse response) {
         /* Bước 1: Kiểm tra số lần đăng nhập thất bại để tránh spam trên 1 IP */
         // Lấy thông tin IP người dùng để ngăn spam đăng nhập
         String clientIp = IpUtil.getClientIp(request);
@@ -228,8 +227,9 @@ public class AuthService {
             /* Bước 9: Lưu session mới và thêm device vào user_sessions */
             sessionUtil.saveSession(userId, deviceId, tokenPair.getRefreshToken(), clientIp, userAgent);
 
-            /* Bước 10: Gắn cặp token và lưu vào HttptOnly Cookie */
-            cookieUtil.setTokenCookies(response, tokenPair.getAccessToken(), tokenPair.getRefreshToken());
+            /* Bước 10: Chỉ lưu refresh-token vào HttpOnly Cookie, access-token trả về body để client gửi qua Authorization header */
+            cookieUtil.setRefreshTokenCookie(response, tokenPair.getRefreshToken());
+            return new AccessTokenResponseDTO(tokenPair.getAccessToken());
         }
         // Bắt lỗi khi sai mật khẩu
         catch (BadCredentialsException e) {
@@ -245,7 +245,7 @@ public class AuthService {
     }
 
     // Làm mới access-token bằng refresh-token
-    public void refreshToken(HttpServletRequest request, HttpServletResponse response) {
+    public AccessTokenResponseDTO refreshToken(HttpServletRequest request, HttpServletResponse response) {
         // Lấy refresh-token từ Cookie
         String refreshToken = cookieUtil.getCookieValue(request, "refresh_token");
 
@@ -276,8 +276,9 @@ public class AuthService {
         // Lưu session mới (hash refresh-token) và cập nhật expiry
         sessionUtil.saveSession(userId, deviceId, tokenPair.getRefreshToken(), IpUtil.getClientIp(request), userAgent);
 
-        // Cập nhật lại HttptOnly Cookie với cặp token mới
-        cookieUtil.setTokenCookies(response, tokenPair.getAccessToken(), tokenPair.getRefreshToken());
+        // Cập nhật refresh-token trong HttpOnly Cookie, access-token mới trả về body
+        cookieUtil.setRefreshTokenCookie(response, tokenPair.getRefreshToken());
+        return new AccessTokenResponseDTO(tokenPair.getAccessToken());
     }
 
     // Đăng xuất tài khoản
@@ -295,7 +296,7 @@ public class AuthService {
             sessionUtil.deleteSession(userId, deviceId);
 
             // Xóa cookie chứa token khỏi trình duyệt
-            cookieUtil.clearTokenCookies(response);
+            cookieUtil.clearRefreshTokenCookie(response);
         }
         else {
             throw new CustomException(401, "Refresh token không tồn tại!");
@@ -303,7 +304,7 @@ public class AuthService {
     }
 
     // Đăng xuất tất cả tài khoản trừ thiết bị hiện tại
-    public void logoutAll(HttpServletRequest request, HttpServletResponse response) {
+    public AccessTokenResponseDTO logoutAll(HttpServletRequest request, HttpServletResponse response) {
         // Lấy refresh-token từ Cookie
         String refreshToken = cookieUtil.getCookieValue(request, "refresh_token");
 
@@ -313,14 +314,20 @@ public class AuthService {
             String userId = claims.getSubject();
             String deviceId = claims.get("deviceId", String.class);
 
-            // Xóa session của thiết bị người dùng
+            // Xóa tất cả session của thiết bị người dùng
             sessionUtil.deleteAllSessions(userId);
 
-            // Thêm thiết bị đang sử dụng hiện tại
-            sessionUtil.saveSession(userId, deviceId, refreshToken, IpUtil.getClientIp(request), request.getHeader("User-Agent"));
+            // Tạo lại token pair mới cho thiết bị hiện tại
+            List<String> roles = claims.get("role", List.class);
+            String userAgent = request.getHeader("User-Agent");
+            TokenPair newTokenPair = jwtUtil.generateTokenPair(userId, roles, deviceId, userAgent);
 
-            // Xóa cookie chứa token khỏi trình duyệt
-            cookieUtil.clearTokenCookies(response);
+            // Lưu thiết bị hiện tại với session mới
+            sessionUtil.saveSession(userId, deviceId, newTokenPair.getRefreshToken(), IpUtil.getClientIp(request), userAgent);
+
+            // Cập nhật refresh-token trong Cookie và trả access-token mới về body cho thiết bị hiện tại
+            cookieUtil.setRefreshTokenCookie(response, newTokenPair.getRefreshToken());
+            return new AccessTokenResponseDTO(newTokenPair.getAccessToken());
         }
         else {
             throw new CustomException(401, "Refresh token không tồn tại!");

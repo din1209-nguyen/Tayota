@@ -1,11 +1,13 @@
 package com.tayota.userservice.controller;
 
-import com.tayota.commoncore.dto.ErrorCode;
+import com.tayota.userservice.dto.Request.GoogleLoginRequestDTO;
 import com.tayota.userservice.dto.Request.LoginRequestDTO;
 import com.tayota.userservice.dto.Request.RegisterRequestDTO;
+import com.tayota.userservice.dto.Response.AccessTokenResponseDTO;
 import com.tayota.userservice.dto.Response.DeviceResponseDTO;
 import com.tayota.userservice.service.AuthService;
 import com.tayota.commoncore.dto.ApiResponse;
+import com.tayota.userservice.service.GoogleAuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -23,6 +25,7 @@ import java.util.List;
 public class AuthController {
     private static final Logger log = LogManager.getLogger(AuthController.class);
     private final AuthService authService;
+    private final GoogleAuthService googleAuthService;
 
     // Đăng ký tài khoản
     @PostMapping("/register")
@@ -31,7 +34,7 @@ public class AuthController {
         return ApiResponse.success(200, "Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.", null);
     }
 
-    // Xác thực tài khoản qua  token
+    // Xác thực tài khoản qua email
     @GetMapping("/verify")
     public ApiResponse<Void> verifyEmail(
             @RequestParam(name = "email") @Email(message = "Email không đúng định dạng") String email,
@@ -44,16 +47,27 @@ public class AuthController {
 
     // Đăng nhập tài khoản
     @PostMapping("login")
-    public ApiResponse<Void> login(@Valid @RequestBody LoginRequestDTO loginRequestDTO, HttpServletRequest request, HttpServletResponse response) {
-        authService.login(loginRequestDTO, request, response);
-        return ApiResponse.success(200, "Đăng nhập thành công!", null);
+    public ApiResponse<AccessTokenResponseDTO> login(@Valid @RequestBody LoginRequestDTO loginRequestDTO, HttpServletRequest request, HttpServletResponse response) {
+        AccessTokenResponseDTO tokenResponse = authService.login(loginRequestDTO, request, response);
+        return ApiResponse.success(200, "Đăng nhập thành công!", tokenResponse);
+    }
+
+    // Đăng nhập tài khoản bằng Google
+    @PostMapping("google-login")
+    public ApiResponse<AccessTokenResponseDTO> googleLogin(
+            @Valid @RequestBody GoogleLoginRequestDTO googleLoginRequestDTO,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        AccessTokenResponseDTO tokenResponse = googleAuthService.login(googleLoginRequestDTO, request, response);
+        return ApiResponse.success(200, "Đăng nhập Google thành công!", tokenResponse);
     }
 
     // Làm mới access-token
     @PostMapping("refresh-token")
-    public ApiResponse<Void> refreshToken(HttpServletRequest request, HttpServletResponse response) {
-        authService.refreshToken(request, response);
-        return ApiResponse.success(200, "Làm mới token thành công!", null);
+    public ApiResponse<AccessTokenResponseDTO> refreshToken(HttpServletRequest request, HttpServletResponse response) {
+        AccessTokenResponseDTO tokenResponse = authService.refreshToken(request, response);
+        return ApiResponse.success(200, "Làm mới token thành công!", tokenResponse);
     }
 
     // Đăng xuất tài khoản
@@ -65,9 +79,9 @@ public class AuthController {
 
     // Đăng xuất tất cả tài khoản trừ thiết bị hiện tại
     @PostMapping("logout-all")
-    public ApiResponse<Void> logoutAll(HttpServletRequest request, HttpServletResponse response) {
-        authService.logoutAll(request, response);
-        return ApiResponse.success(200, "Đăng xuất tất cả các thiết bị thành công!", null);
+    public ApiResponse<AccessTokenResponseDTO> logoutAll(HttpServletRequest request, HttpServletResponse response) {
+        AccessTokenResponseDTO tokenResponse = authService.logoutAll(request, response);
+        return ApiResponse.success(200, "Đăng xuất tất cả các thiết bị thành công!", tokenResponse);
     }
 
     // Lấy danh sách thiết bị đã đăng nhập của một tài khoản

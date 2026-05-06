@@ -5,7 +5,6 @@ import com.tayota.commoncore.enums.RoleType;
 import com.tayota.userservice.enums.StatusType;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -47,18 +46,18 @@ public class User {
     private String passwordHash;
 
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "login_provider", nullable = false, columnDefinition = "provider_type DEFAULT 'LOCAL'")
+    @Column(name = "login_provider", nullable = false, columnDefinition = "providertype DEFAULT 'LOCAL'")
     private ProviderType loginProvider = ProviderType.LOCAL;
 
     @Column(name = "provider_user_id", unique = true, length = 120)
     private String providerUserId;
 
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(nullable = false, columnDefinition = "role_type DEFAULT 'USER'")
+    @Column(nullable = false, columnDefinition = "roletype DEFAULT 'USER'")
     private RoleType role = RoleType.USER;
 
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(nullable = false, columnDefinition = "status_type DEFAULT 'ACTIVE'")
+    @Column(nullable = false, columnDefinition = "statustype DEFAULT 'ACTIVE'")
     private StatusType status = StatusType.ACTIVE;
 
     @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP")

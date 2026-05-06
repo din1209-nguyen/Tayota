@@ -38,7 +38,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
     // Danh sách các đường dẫn không cần xác thực
     private final List<String> whitelistUrls = List.of(
-            "/user/register", "/user/verify", "/user/login", "/user/refresh-token"
+            "/user/register", "/user/verify", "/user/login", "/user/refresh-token", "/user/login-with-google"
     );
 
     // Đây là hàm cốt lõi, mọi request đi qua Gateway đều phải chạy qua hàm này

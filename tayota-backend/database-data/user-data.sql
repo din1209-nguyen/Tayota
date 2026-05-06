@@ -1,4 +1,4 @@
-INSERT INTO users (id, created_at, email, auth_provider, password_hash, provider_id, role, status) VALUES
+INSERT INTO "USER" (id, created_at, email, login_provider, password_hash, provider_user_id, role, status) VALUES
 ('be15194d-2862-4cf9-adaf-18afeda6f586', '2026-04-26 08:04:11.052640+00', 'admin@tayota.com', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'ADMIN', 'ACTIVE'),
 ('c57e3781-c3cb-4a1a-b58a-84049d99cf15', '2026-04-26 08:04:11.052640+00', 'manager@tayota.com', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'MANAGER', 'ACTIVE'),
 ('d59b9f21-2236-402f-9c6f-6c37c5b51500', '2026-04-26 08:04:11.052640+00', 'assistant@tayota.com', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'ASSISTANT', 'ACTIVE'),

@@ -7,7 +7,6 @@ import com.tayota.userservice.dto.Response.AccessTokenResponseDTO;
 import com.tayota.userservice.dto.Response.DeviceResponseDTO;
 import com.tayota.userservice.service.AuthService;
 import com.tayota.commoncore.dto.ApiResponse;
-import com.tayota.userservice.service.GoogleAuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -23,9 +22,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 public class AuthController {
-    private static final Logger log = LogManager.getLogger(AuthController.class);
     private final AuthService authService;
-    private final GoogleAuthService googleAuthService;
 
     // Đăng ký tài khoản
     @PostMapping("/register")
@@ -53,13 +50,13 @@ public class AuthController {
     }
 
     // Đăng nhập tài khoản bằng Google
-    @PostMapping("google-login")
+    @PostMapping("login-with-google")
     public ApiResponse<AccessTokenResponseDTO> googleLogin(
             @Valid @RequestBody GoogleLoginRequestDTO googleLoginRequestDTO,
             HttpServletRequest request,
             HttpServletResponse response
     ) {
-        AccessTokenResponseDTO tokenResponse = googleAuthService.login(googleLoginRequestDTO, request, response);
+        AccessTokenResponseDTO tokenResponse = authService.loginWithGoogle(googleLoginRequestDTO, request, response);
         return ApiResponse.success(200, "Đăng nhập Google thành công!", tokenResponse);
     }
 

@@ -2,6 +2,7 @@ package com.tayota.userservice.service;
 
 import com.tayota.commoncore.dto.ErrorCode;
 import com.tayota.commoncore.exception.CustomException;
+import com.tayota.userservice.enums.ProviderType;
 import com.tayota.userservice.object.CustomUserDetails;
 import com.tayota.userservice.entity.User;
 import com.tayota.userservice.enums.StatusType;
@@ -27,6 +28,11 @@ public class CustomUserDetailsService implements UserDetailsService {
         // Kiểm tra trạng thái người dùng
         if (user.getStatus() == StatusType.BANNED) {
             throw new CustomException(403, "Tài khoản đã bị khóa!");
+        }
+
+        // Kiểm tra người dùng đăng nhập bằng Google nhưng lại dùng email/password để đăng nhập
+        if (user.getLoginProvider() == ProviderType.GOOGLE) {
+            throw new CustomException(400, "Tài khoản này được đăng nhập qua Google, vui lòng sử dụng Google để đăng nhập!");
         }
 
         return new CustomUserDetails(user);

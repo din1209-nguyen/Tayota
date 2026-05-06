@@ -132,8 +132,8 @@ public class AuthService {
             // Tạo Object chứa thông tin user và token để lưu vào Redis
              RegisterCacheData registeredUser = new RegisterCacheData(pendingUser, token);
 
-            // Lưu token vào Redis với thời gian hết hạn 15 phút
-            redisTemplate.opsForValue().set(key, registeredUser, 1, TimeUnit.MINUTES);
+            // Lưu token vào Redis với thời gian hết hạn 1 tiếng
+            redisTemplate.opsForValue().set(key, registeredUser, 1, TimeUnit.HOURS);
 
             // Tạo link xác thực
             String verificationLink = String.format("%s/verify?email=%s&token=%s", frontendUrl, email, token);
@@ -148,6 +148,9 @@ public class AuthService {
 
     // Xác thực tài khoản qua email và token
     public void verify(String email, String token) {
+        if (!StringUtils.hasText(email) || !StringUtils.hasText(token)) {
+            throw new CustomException(400, "Link xác thực không hợp lệ!");
+        }
         // Tạo key cho token trong Redis
         String key = VERIFICATION_TOKEN_KEY_PREFIX + email;
 

@@ -103,7 +103,7 @@ public class AuthService {
         }
     }
 
-    // Đăng ký tài khoản người dùng
+    // Đăng ký tài khoản
     public void register(RegisterRequestDTO registerRequestDTO) {
         String email = registerRequestDTO.getEmail();
 
@@ -139,7 +139,11 @@ public class AuthService {
             String verificationLink = String.format("%s/verify?email=%s&token=%s", frontendUrl, email, token);
 
             // Gửi email xác thực qua gRPC
-            notificationGrpcClient.sendVerificationEmail(email, verificationLink);
+            notificationGrpcClient.sendEmailAsync(
+                    email,
+                    "Xác thực địa chỉ Email - Tayota",
+                    "Vui lòng nhấn vào đường dẫn dưới đây để xác thực tài khoản của bạn:\n\n" + verificationLink
+            );
         }
         catch (Exception e) {
             throw new CustomException(500, "Đăng ký thất bại: " + e.getMessage());
@@ -179,7 +183,12 @@ public class AuthService {
         redisTemplate.delete(key);
 
         // Gửi thông báo xác thực thành công
-        notificationGrpcClient.sendRegistrationSuccessEmail(user.getEmail());
+        // Gửi email xác thực qua gRPC
+        notificationGrpcClient.sendEmailAsync(
+                email,
+                "Chào mừng bạn đến với Tayota - Đăng ký thành công",
+                "Tài khoản của bạn đã được khởi tạo thành công trên hệ thống Tayota. Bây giờ bạn có thể trải nghiệm các dịch vụ của chúng tôi."
+        );
     }
 
     // Đăng nhập tài khoản
@@ -455,7 +464,20 @@ public class AuthService {
         }
     }
 
-     // Lấy danh sách thiết bị đã đăng nhập của một người dùng
+    // Quên mật khẩu
+    public void forgotPassword(String email) {
+        // Kiểm tra email đã tồn tại
+        Optional<User> existedUser = userRepository.findByEmail(email);
+
+        // Nếu email không tồn tại thì không làm gì cả để tránh lộ thông tin người dùng
+        if (existedUser.isEmpty()) {
+            return;
+        }
+
+        // Gửi mã OTP đặt lại mật khẩu qua gRPC
+    }
+
+    // Lấy danh sách thiết bị đã đăng nhập của một tài khoản
      public List<DeviceResponseDTO> getDevices(String userId) {
          // Lấy userId của user hiện tại
          String currentUserId = SecurityUtil.getCurrentUserId();
@@ -480,7 +502,7 @@ public class AuthService {
          return sessionUtil.getUserDevices(userId);
      }
 
-    // Thu hồi quyền truy cập của một thiết bị theo deviceId
+    // Thu hồi quyền truy cập của một thiết bị
     public void revokeDevice(String userId, String deviceId, HttpServletRequest request) {
         // Lấy userId của user hiện tại từ SecurityContext
         String currentUserId = SecurityUtil.getCurrentUserId();

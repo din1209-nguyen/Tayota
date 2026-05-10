@@ -8,11 +8,11 @@ import lombok.Getter;
 
 @Getter
 public class ForgotPasswordResetRequestDTO {
-    @NotBlank(message = "Email không được để trống!")
-    @Email(message = "Email không hợp lệ!")
+    @NotBlank(message = "Email không được để trống")
+    @Email(message = "Email không hợp lệ")
     private String email;
 
-    @NotBlank(message = "Token không được để trống!")
+    @NotBlank(message = "Token không được để trống")
     private String token;
 
     @Size(min = 8, max = 20, message = "Mật khẩu phải từ 8 đến 20 ký tự")

@@ -29,7 +29,7 @@ public class OtpUtil {
         return otp.toString();
     }
 
-    // Kiểm tra số lần và tạo mã OTP
+    // Kiểm tra số lần và tạo mã OTP theo IP
     public String checkAndGenerateOtp(String subject, String clientIp, String otpKeyPrefix, int maxRequest, int otpLength, Duration cooldownDuration, Duration otpExpiry) {
         /* Kiểm tra thời gian cooldown cho lần gửi OTP tiếp theo theo IP */
         // Key để lưu thời gian cooldown theo IP
@@ -73,7 +73,7 @@ public class OtpUtil {
         return otp;
     }
 
-    // Xác thực mã OTP
+    // Xác thực mã OTP theo IP
     public void verifyOtp(String subject, String otp, String clientIp, String otpKeyPrefix, int maxFailures) {
         // Key để lưu mã OTP theo IP
         String otpKey = otpKeyPrefix + subject + ":" + clientIp;
@@ -111,6 +111,7 @@ public class OtpUtil {
                 }
             }
 
+            // Nếu mã OTP không hợp lệ, trả về lỗi
             throw new CustomException(400, "Mã OTP không hợp lệ");
         }
 

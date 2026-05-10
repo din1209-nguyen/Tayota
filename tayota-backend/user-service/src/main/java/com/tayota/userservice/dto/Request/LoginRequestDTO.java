@@ -10,6 +10,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class LoginRequestDTO {
+    @NotBlank(message = "Email không được để trống")
     @Email(message = "Email không đúng định dạng")
     private String email;
 

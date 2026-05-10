@@ -5,6 +5,6 @@ import lombok.Getter;
 
 @Getter
 public class VerifyChangePasswordOTPRequestDTO {
-    @NotBlank(message = "Vui lòng nhập mã OTP!")
+    @NotBlank(message = "Vui lòng nhập mã OTP")
     String otp;
 }

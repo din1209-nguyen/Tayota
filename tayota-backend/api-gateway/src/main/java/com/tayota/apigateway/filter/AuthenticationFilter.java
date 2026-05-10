@@ -58,7 +58,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
         // Nếu header không tồn tại hoặc không đúng chuẩn Bearer thì báo lỗi 401
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return unAuthorizedResponse(exchange.getResponse(), "Vui lòng đăng nhập");
+            return unAuthorizedResponse(exchange.getResponse(), "Vui lòng đăng nhập để có thể truy cập!");
         }
 
         // Cắt bỏ 7 ký tự đầu ("Bearer ") để lấy access-token

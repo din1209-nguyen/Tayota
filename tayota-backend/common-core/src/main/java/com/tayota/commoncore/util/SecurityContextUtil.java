@@ -44,4 +44,27 @@ public final class SecurityContextUtil {
                 .map(org.springframework.security.core.GrantedAuthority::getAuthority)
                 .orElseThrow(() -> new IllegalStateException("Không tìm thấy role của người dùng"));
     }
+
+    // Kiểm tra xem role của user hiện tại có cao hơn role của user mục tiêu
+    public static boolean validateRoleSuperiority(String currentUserRole, String targetUserRole) {
+        // Chuẩn hóa chuỗi Role (Kiểm tra và thêm "ROLE_" nếu chưa có)
+        String normalizedCurrent = normalizeRolePrefix(currentUserRole);
+        String normalizedTarget = normalizeRolePrefix(targetUserRole);
+
+        // Lấy level của từng role từ map
+        Integer currentLevel = ROLE_HIERARCHY_MAP.get(normalizedCurrent);
+        Integer targetLevel = ROLE_HIERARCHY_MAP.get(normalizedTarget);
+
+        // So sánh quyền của 2 role
+        return currentLevel != null && targetLevel != null && currentLevel > targetLevel;
+    }
+
+    // Chuẩn hóa tiền tố ROLE_ cho role
+    public static String normalizeRolePrefix(String role) {
+        if (role == null || role.trim().isEmpty()) {
+            return "";
+        }
+        // Nếu đã có chữ ROLE_ ở đầu thì giữ nguyên, nếu chưa có thì nối thêm
+        return role.startsWith("ROLE_") ? role : "ROLE_" + role;
+    }
 }

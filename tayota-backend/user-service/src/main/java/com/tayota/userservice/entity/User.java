@@ -5,6 +5,7 @@ import com.tayota.commoncore.enums.RoleType;
 import com.tayota.userservice.enums.StatusType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -16,6 +17,12 @@ import java.util.UUID;
 @Entity
 @Table(name = "\"USER\"")
 public class User {
+    // Tạo tài khoản mới bởi Admin
+    public static User createUserByAdmin(String email, String passwordHash, RoleType role) {
+        User user = createLocalUser(email, passwordHash);
+        user.setRole(role);
+        return user;
+    }
 
     // Đăng nhập truyền thống
     public static User createLocalUser(String email, String passwordHash) {

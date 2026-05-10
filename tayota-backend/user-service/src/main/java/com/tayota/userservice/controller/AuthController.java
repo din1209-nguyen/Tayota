@@ -16,6 +16,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +29,14 @@ public class AuthController {
     private final AuthService authService;
     private final CookieUtil cookieUtil;
 
+    // Tạo tài khoản
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/create-account")
+    public ApiResponse<Void> createAccount(@Valid @RequestBody CreateAccountRequestDTO createAccountRequestDTO, HttpServletRequest request) {
+        authService.createAccount(createAccountRequestDTO);
+        return ApiResponse.success(200, "Tạo tài khoản thành công!", null);
+    }
+
     // Đăng ký tài khoản
     @PostMapping("/register")
     public ApiResponse<Void> register(@Valid @RequestBody RegisterRequestDTO registerRequestDTO, HttpServletRequest request) {
@@ -37,7 +46,7 @@ public class AuthController {
 
     // Xác thực tài khoản qua email và token
     @PostMapping("/verify-account")
-    public ApiResponse<Void> verifyEmail(@Valid @RequestBody VerifyAccountRequestDTO verifyEmailRequestDTO) {
+    public ApiResponse<Void> verifyAccount(@Valid @RequestBody VerifyAccountRequestDTO verifyEmailRequestDTO) {
         authService.verifyAccount(verifyEmailRequestDTO);
         return ApiResponse.success(200, "Email đã xác thực thành công!", null);
     }
@@ -191,8 +200,8 @@ public class AuthController {
 
     // Thu hồi quyền truy cập của một thiết bị
     @DeleteMapping("/revoke/{userId}/{deviceId}")
-    public ApiResponse<Void> revokeDevice(@PathVariable String userId, @PathVariable String deviceId, HttpServletRequest request) {
-        authService.revokeDevice(userId, deviceId, cookieUtil.getCookieValue(request, "refresh_token"));
+    public ApiResponse<Void> revoke(@PathVariable String userId, @PathVariable String deviceId, HttpServletRequest request) {
+        authService.revoke(userId, deviceId, cookieUtil.getCookieValue(request, "refresh_token"));
         return ApiResponse.success(200, "Thiết bị đã được thu hồi thành công!", null);
     }
 }

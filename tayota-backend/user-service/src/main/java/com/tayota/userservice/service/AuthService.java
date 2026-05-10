@@ -5,13 +5,12 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.tayota.commoncore.dto.ErrorCode;
+import com.tayota.commoncore.enums.RoleType;
 import com.tayota.commoncore.util.OtpUtil;
 import com.tayota.commoncore.util.SecurityContextUtil;
 import com.tayota.userservice.dto.Request.*;
-import com.tayota.userservice.dto.Response.AccessTokenResponseDTO;
 import com.tayota.userservice.dto.Response.DeviceResponseDTO;
 import com.tayota.userservice.dto.Request.ForgotPasswordResetRequestDTO;
-import com.tayota.userservice.dto.Response.TokenForResetPasswordResponseDTO;
 import com.tayota.userservice.enums.ProviderType;
 import com.tayota.userservice.enums.StatusType;
 import com.tayota.userservice.object.RegisterCacheData;
@@ -46,8 +45,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-import static com.tayota.commoncore.util.SecurityContextUtil.ROLE_HIERARCHY_MAP;
-
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -58,7 +55,6 @@ public class AuthService {
     private final SessionUtil sessionUtil;
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
-    private final CookieUtil cookieUtil;
     private final OtpUtil otpUtil;
     private final ObjectMapper objectMapper;
 
@@ -99,6 +95,47 @@ public class AuthService {
         }
         catch (GeneralSecurityException | IOException e) {
             throw new IllegalStateException("Không thể khởi tạo Google ID token verifier", e);
+        }
+    }
+
+    // Tạo tài khoản
+    public void createAccount(CreateAccountRequestDTO createAccountRequestDTO) {
+        // Kiểm tra email được gửi lên đã tồn tại trong csdl
+        String email = createAccountRequestDTO.getEmail();
+        if (userRepository.existsByEmail(email)) {
+            throw new CustomException(ErrorCode.EMAIL_ALREADY_EXISTS);
+        }
+
+        // Kiểm tra role được gửi lên có hợp lệ
+        String requestedRole = createAccountRequestDTO.getRole().toUpperCase();
+        RoleType roleType = null;
+
+        try {
+            // Chuyển đổi chuỗi role được gửi lên thành enum RoleType, nếu không hợp lệ sẽ ném lỗi IllegalArgumentException
+            roleType = RoleType.valueOf(requestedRole);
+        }
+        catch (IllegalArgumentException e) {
+            throw new CustomException(400, "Vai trò không hợp lệ!");
+        }
+
+        // Lấy role người dùng hiện tại từ Security Context
+        String currentUserRole = SecurityContextUtil.getCurrentUserRole();
+
+        // So sánh role được yêu cầu với role của người dùng hiện tại
+        if (!SecurityContextUtil.validateRoleSuperiority(currentUserRole, roleType.name())) {
+            throw new CustomException(403, "Bạn không có quyền tạo tài khoản với vai trò này!");
+        }
+
+        try {
+            // Băm password bằng Bcrypt trước khi lưu vào csdl
+            String passwordHash = passwordEncoder.encode(createAccountRequestDTO.getPassword());
+
+            // Tạo user mới và lưu vào database
+            User user = User.createUserByAdmin(email, passwordHash, roleType);
+            userRepository.save(user);
+        }
+        catch (Exception e) {
+            throw new CustomException(500, "Tạo tài khoản thất bại: " + e.getMessage());
         }
     }
 
@@ -607,8 +644,7 @@ public class AuthService {
 
         // Cập nhật mật khẩu mới sau khi băm và lưu vào csdl
         User user = existingUser.get();
-        user.setPasswordHash(passwordEncoder.encode(newPassword));
-        userRepository.save(user);
+        userRepository.updatePasswordHashById(user.getId(), passwordEncoder.encode(newPassword));
 
         // Xoá token đặt lại mật khẩu khỏi Redis
         String tokenKey = KEY_PREFIX + "reset_password:" + subject + ":" + clientIP;
@@ -635,7 +671,7 @@ public class AuthService {
         Optional<User> targetUser = userRepository.findById(UUID.fromString(userId));
 
         // Kiểm tra quyền user hiện tại có thể xem thiết bị của user mục tiêu không
-        if (targetUser.isEmpty() || ROLE_HIERARCHY_MAP.get(currentUserRole) <= ROLE_HIERARCHY_MAP.get("ROLE_" + targetUser.get().getRole().name())) {
+        if (targetUser.isEmpty() || !SecurityContextUtil.validateRoleSuperiority(currentUserRole, targetUser.get().getRole().name())) {
              throw new CustomException(403, "Bạn không có quyền xem danh sách thiết bị của người dùng này");
          }
 
@@ -644,7 +680,7 @@ public class AuthService {
     }
 
     // Thu hồi quyền truy cập của một thiết bị
-    public void revokeDevice(String userId, String deviceId, String refreshToken) {
+    public void revoke(String userId, String deviceId, String refreshToken) {
         // Lấy userId của user hiện tại từ SecurityContext
         String currentUserId = SecurityContextUtil.getCurrentUserId();
 
@@ -671,8 +707,8 @@ public class AuthService {
             Optional<User> targetUser = userRepository.findById(UUID.fromString(userId));
 
             // Kiểm tra quyền user hiện tại có thể thu hồi thiết bị của user mục tiêu không
-            if (targetUser.isEmpty() || ROLE_HIERARCHY_MAP.get(currentUserRole) <= ROLE_HIERARCHY_MAP.get("ROLE_" + targetUser.get().getRole().name())) {
-                throw new CustomException(403, "Bạn không có quyền thu hồi thiết bị của người dùng này");
+            if (targetUser.isEmpty() || !SecurityContextUtil.validateRoleSuperiority(currentUserRole, targetUser.get().getRole().name())) {
+                throw new CustomException(403, "Không thể thực hiện thao tác trên tài khoản này.");
             }
         }
 

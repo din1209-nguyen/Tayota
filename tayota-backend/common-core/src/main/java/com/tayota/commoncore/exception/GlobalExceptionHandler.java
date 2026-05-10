@@ -25,7 +25,7 @@ public class GlobalExceptionHandler {
                 // Thêm vào danh sách lỗi để trả về cho client
                 errors.put(error.getField(), error.getDefaultMessage())
         );
-        return ApiResponse.error(400, "Dữ liệu không hợp lệ: ", errors);
+        return ApiResponse.error(400, "Dữ liệu không hợp lệ", errors);
     }
 
     // Xử lý các lỗi ràng buộc dữ liệu cho các tham số đơn lẻ (@RequestParam, @PathVariable) trong Controller
@@ -43,7 +43,7 @@ public class GlobalExceptionHandler {
             // Thêm vào danh sách lỗi để trả về cho client
             errors.put(paramName, message);
         });
-        return ApiResponse.error(400, "Dữ liệu không hợp lệ: ", errors);
+        return ApiResponse.error(400, "Dữ liệu không hợp lệ", errors);
     }
 
     // Xử lý các lỗi CustomException tự định nghĩa trong ứng dụng

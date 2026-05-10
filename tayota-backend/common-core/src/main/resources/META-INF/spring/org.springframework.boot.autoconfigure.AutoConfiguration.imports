@@ -1,4 +1,5 @@
 com.tayota.commoncore.config.SecurityAutoConfiguration
-com.tayota.commoncore.exception.GlobalExceptionHandler
 com.tayota.commoncore.config.RedisConfig
+com.tayota.commoncore.exception.GlobalExceptionHandler
+com.tayota.commoncore.config.CommonCoreAutoConfiguration
 

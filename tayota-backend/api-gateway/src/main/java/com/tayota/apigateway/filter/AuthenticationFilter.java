@@ -3,6 +3,7 @@ package com.tayota.apigateway.filter;
 import com.tayota.apigateway.util.JwtUtil;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.jspecify.annotations.NullMarked;
@@ -23,22 +24,17 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+@RequiredArgsConstructor
 @Component
 public class AuthenticationFilter implements GlobalFilter, Ordered {
-    private static final Logger log = LoggerFactory.getLogger(AuthenticationFilter.class);
-
     private final JwtUtil jwtUtil;
-
-    public AuthenticationFilter(JwtUtil jwtUtil) {
-        this.jwtUtil = jwtUtil;
-    }
 
     // AntPathMatcher là công cụ của Spring giúp so sánh chuỗi URI có chứa dấu * (wildcard)
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     // Danh sách các đường dẫn không cần xác thực
     private final List<String> whitelistUrls = List.of(
-            "/user/register", "/user/verify", "/user/login", "/user/refresh-token", "/user/login-with-google"
+            "/user/register", "/user/verify", "/user/login", "/user/oauth/google", "/user/refresh-token", "/user/forgot-password/*"
     );
 
     // Đây là hàm cốt lõi, mọi request đi qua Gateway đều phải chạy qua hàm này
@@ -62,7 +58,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
         // Nếu header không tồn tại hoặc không đúng chuẩn Bearer thì báo lỗi 401
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return unAuthorizedResponse(exchange.getResponse(), "Không tìm thấy token hoặc sai định dạng Authorization Bearer");
+            return unAuthorizedResponse(exchange.getResponse(), "Vui lòng đăng nhập");
         }
 
         // Cắt bỏ 7 ký tự đầu ("Bearer ") để lấy access-token
@@ -101,7 +97,6 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             return unAuthorizedResponse(exchange.getResponse(), "Access-token đã hết hạn");
         }
         catch (Exception e) {
-            log.error("Error validating access token: {}", e.getMessage());
             // Bắt lỗi trong quá trình giải mã (sai chữ ký, token bị can thiệp, sai thuật toán...)
             return unAuthorizedResponse(exchange.getResponse(), "Access-token không hợp lệ");
         }

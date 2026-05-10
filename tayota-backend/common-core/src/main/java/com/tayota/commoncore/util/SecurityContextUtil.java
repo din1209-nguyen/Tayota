@@ -1,12 +1,11 @@
 package com.tayota.commoncore.util;
 
-import com.tayota.commoncore.enums.RoleType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Map;
 
-public final class SecurityUtil {
+public final class SecurityContextUtil {
     // Map lưu level của từng role trong hệ thống phân cấp
     public static final Map<String, Integer> ROLE_HIERARCHY_MAP =
             Map.of(

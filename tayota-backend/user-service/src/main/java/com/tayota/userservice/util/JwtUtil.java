@@ -50,7 +50,7 @@ public class JwtUtil {
     }
 
     // Tạo access-token và refresh-token
-    public TokenPair generateTokenPair(String userId, List<String> roles, String deviceId, String userAgentString) {
+    public TokenPair generateTokenPair(String userId, List<String> roles, String deviceId) {
         // Đặt thông tin vào access-token
         Map<String, Object> accessClaims = new HashMap<>();
         accessClaims.put("role", roles);
@@ -62,7 +62,7 @@ public class JwtUtil {
         Map<String, Object> refreshClaims = new HashMap<>();
         refreshClaims.put("role", roles);
         refreshClaims.put("deviceId", deviceId);
-        refreshClaims.put("userAgentString", userAgentString);
+
         // Tạo refresh-token
         String refreshToken = generateToken(userId, jwtRefreshTokenExpirationMs, refreshClaims, "refresh");
 
@@ -97,7 +97,8 @@ public class JwtUtil {
                     .parseSignedClaims(token)
                     // Trích xuất các thông tin người dùng (Claims) đã được mã hóa trong phần thân của token
                     .getPayload();
-        } catch (ExpiredJwtException e) {
+        }
+        catch (ExpiredJwtException e) {
             throw new RuntimeException("Token đã hết hạn: " + e.getMessage());
 
         } catch (SignatureException e) {

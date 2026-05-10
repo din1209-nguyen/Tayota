@@ -23,7 +23,6 @@ public class IpUtil {
         String remoteAddr = request.getRemoteAddr();
 
         // Chuẩn hóa IPv6 localhost về IPv4 localhost
-        // Giúp so sánh dễ dàng với TRUSTED_PROXIES
         if ("0:0:0:0:0:0:0:1".equals(remoteAddr) || "::1".equals(remoteAddr)) {
             remoteAddr = "127.0.0.1";
         }
@@ -46,7 +45,6 @@ public class IpUtil {
         }
 
         // Nếu có nhiều IP:
-        // Ví dụ:
         // X-Forwarded-For: clientIP, proxy1, proxy2
         // Thì chỉ lấy IP đầu tiên (IP thật của client)
         return xForwardedFor.split(",")[0].trim();

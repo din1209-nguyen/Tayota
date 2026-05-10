@@ -5,31 +5,26 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.tayota.commoncore.dto.ErrorCode;
-import com.tayota.commoncore.util.SecurityUtil;
-import com.tayota.userservice.dto.Request.GoogleLoginRequestDTO;
-import com.tayota.userservice.dto.Request.LoginRequestDTO;
+import com.tayota.commoncore.util.OtpUtil;
+import com.tayota.commoncore.util.SecurityContextUtil;
+import com.tayota.userservice.dto.Request.*;
 import com.tayota.userservice.dto.Response.AccessTokenResponseDTO;
 import com.tayota.userservice.dto.Response.DeviceResponseDTO;
+import com.tayota.userservice.dto.Request.ForgotPasswordResetRequestDTO;
+import com.tayota.userservice.dto.Response.TokenForResetPasswordResponseDTO;
 import com.tayota.userservice.enums.ProviderType;
 import com.tayota.userservice.enums.StatusType;
 import com.tayota.userservice.object.RegisterCacheData;
 import com.tayota.userservice.object.TokenPair;
 import com.tayota.userservice.object.CustomUserDetails;
 import com.tayota.userservice.grpc.NotificationGrpcClient;
-import com.tayota.userservice.dto.Request.RegisterRequestDTO;
 import com.tayota.userservice.entity.User;
 import com.tayota.userservice.repository.UserRepository;
 import com.tayota.commoncore.exception.CustomException;
-import com.tayota.userservice.util.CookieUtil;
-import com.tayota.userservice.util.IpUtil;
-import com.tayota.userservice.util.JwtUtil;
-import com.tayota.userservice.util.SessionUtil;
+import com.tayota.userservice.util.*;
 import io.jsonwebtoken.Claims;
 import jakarta.annotation.PostConstruct;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -51,11 +46,10 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-import static com.tayota.commoncore.util.SecurityUtil.ROLE_HIERARCHY_MAP;
+import static com.tayota.commoncore.util.SecurityContextUtil.ROLE_HIERARCHY_MAP;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
@@ -65,6 +59,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final CookieUtil cookieUtil;
+    private final OtpUtil otpUtil;
     private final ObjectMapper objectMapper;
 
     // Đối tượng của Google cung cấp để xác minh tính hợp lệ của token
@@ -77,8 +72,12 @@ public class AuthService {
     @Value("${app.frontend.url:http://localhost:3000}")
     private String frontendUrl;
 
-    private static final String VERIFICATION_TOKEN_KEY_PREFIX = "auth:verification_token:";
-    private static final String REFRESH_TOKEN_KEY_PREFIX = "auth:refresh:";
+    // Các key Redis
+    private static final String VERIFICATION_TOKEN_KEY = "auth:verification_token:";
+    private static final String REFRESH_TOKEN_KEY = "auth:refresh:";
+    private static final String FORGOT_PASSWORD_KEY = "auth:forgot_password:";
+    private static final String CHANGE_PASSWORD_KEY = "auth:change_password:";
+
 
     @PostConstruct
     public void init() {
@@ -104,15 +103,24 @@ public class AuthService {
     }
 
     // Đăng ký tài khoản
-    public void register(RegisterRequestDTO registerRequestDTO) {
+    public void register(RegisterRequestDTO registerRequestDTO, String clientIp) {
+        /* Kiểm tra giới hạn số lần đăng ký tài khoản trên ngày với mỗi IP */
+        String ipLimitKey = "auth:register:limit:ip:" + clientIp;
+
+        Integer registerCount = (Integer) redisTemplate.opsForValue().get(ipLimitKey);
+
+        if (registerCount != null && registerCount >= 3) {
+            throw new CustomException(429, "Bạn đã đăng ký quá nhiều tài khoản. Vui lòng thử lại sau!");
+        }
+
         String email = registerRequestDTO.getEmail();
 
-        // Kiểm tra email đã tồn tại trong database
+        // Kiểm tra email đã tồn tại trong csdl
         if (userRepository.existsByEmail(email)) {
             throw new CustomException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
         // Kiêm tra nếu đã tồn tại token đăng ký chưa xác thực trong Redis để tránh spam đăng ký nhiều lần trên cùng 1 email
-        if (redisTemplate.opsForValue().get(VERIFICATION_TOKEN_KEY_PREFIX + email) != null) {
+        if (redisTemplate.opsForValue().get(VERIFICATION_TOKEN_KEY + email) != null) {
             throw new CustomException(400, "Bạn đã đăng ký tài khoản. Vui lòng kiểm tra email để xác thực tài khoản!");
         }
 
@@ -127,7 +135,7 @@ public class AuthService {
             String token = UUID.randomUUID().toString();
 
             // Tạo key cho token trong Redis
-            String key = VERIFICATION_TOKEN_KEY_PREFIX + email;
+            String key = VERIFICATION_TOKEN_KEY + email;
 
             // Tạo Object chứa thông tin user và token để lưu vào Redis
              RegisterCacheData registeredUser = new RegisterCacheData(pendingUser, token);
@@ -136,14 +144,19 @@ public class AuthService {
             redisTemplate.opsForValue().set(key, registeredUser, 1, TimeUnit.HOURS);
 
             // Tạo link xác thực
-            String verificationLink = String.format("%s/verify?email=%s&token=%s", frontendUrl, email, token);
+            String verificationLink = String.format("%s/verify-account?email=%s&token=%s", frontendUrl, email, token);
 
             // Gửi email xác thực qua gRPC
             notificationGrpcClient.sendEmailAsync(
                     email,
                     "Xác thực địa chỉ Email - Tayota",
-                    "Vui lòng nhấn vào đường dẫn dưới đây để xác thực tài khoản của bạn:\n\n" + verificationLink
+                    "Vui lòng nhấn vào đường dẫn dưới đây để xác thực tài khoản của bạn:\n\n" +
+                            verificationLink + "\n\n" +
+                            "Đường dẫn này sẽ hết hạn sau 1 tiếng. Vui lòng không chia sẻ mã này với bất kỳ ai."
             );
+
+            // Lưu số lần đăng ký lên 1 theo IP vào Redis để giới hạn
+            redisTemplate.opsForValue().set(ipLimitKey, registerCount == null ? 1 : registerCount + 1, Duration.ofHours(1));
         }
         catch (Exception e) {
             throw new CustomException(500, "Đăng ký thất bại: " + e.getMessage());
@@ -151,12 +164,15 @@ public class AuthService {
     }
 
     // Xác thực tài khoản qua email và token
-    public void verify(String email, String token) {
+    public void verifyAccount(VerifyAccountRequestDTO verifyEmailRequestDTO) {
+        String email = verifyEmailRequestDTO.getEmail();
+        String token = verifyEmailRequestDTO.getToken();
+
         if (!StringUtils.hasText(email) || !StringUtils.hasText(token)) {
             throw new CustomException(400, "Link xác thực không hợp lệ!");
         }
         // Tạo key cho token trong Redis
-        String key = VERIFICATION_TOKEN_KEY_PREFIX + email;
+        String key = VERIFICATION_TOKEN_KEY + email;
 
         // Lấy dữ liệu người dùng đăng ký từ Redis
         Object registeredUserObject = redisTemplate.opsForValue().get(key);
@@ -192,18 +208,15 @@ public class AuthService {
     }
 
     // Đăng nhập tài khoản
-    public AccessTokenResponseDTO login(LoginRequestDTO loginRequestDTO, HttpServletRequest request, HttpServletResponse response) {
+    public TokenPair login(LoginRequestDTO loginRequestDTO, String clientIp, String userAgent, String oldRefreshToken) {
         /* Bước 1: Kiểm tra số lần đăng nhập thất bại để tránh spam trên 1 IP */
-        // Lấy thông tin IP người dùng để ngăn spam đăng nhập
-        String clientIp = IpUtil.getClientIp(request);
-
         // Tạo key cho mỗi email để đếm số lần đăng nhập thất bại
-        String redisKey = "auth:login:failed:" + loginRequestDTO.getEmail() + ":" + clientIp;
+        String loginLimitKey = "auth:login:limit:fail:" + loginRequestDTO.getEmail() + ":" + clientIp;
         // Truy xuất số lần nhập sai
-        Integer failedCountStr = (Integer) redisTemplate.opsForValue().get(redisKey);
+        Integer failedCount = (Integer) redisTemplate.opsForValue().get(loginLimitKey);
 
         // Kiểm tra số lần nhập sai vượt quá giới hạn
-        if (failedCountStr != null && failedCountStr >= 5) {
+        if (failedCount != null && failedCount >= 5) {
             throw new CustomException(403, "Bạn đã nhập sai quá nhiều lần. Vui lòng thử lại sau!");
         }
 
@@ -218,7 +231,7 @@ public class AuthService {
             );
 
             /* Bước 3: Xoá số lần nhập sai mật khẩu */
-            redisTemplate.delete(redisKey);
+            redisTemplate.delete(loginLimitKey);
 
             /* Bước 4: Lấy thông tin user sau khi đăng nhập thành công từ Spring Security */
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
@@ -230,15 +243,12 @@ public class AuthService {
                     .toList();
 
             // Tạo session đăng nhập mới và trả về access-token cho client
-            return createLoginSession(userId, roles, request, response);
+            return createLoginSession(userId, roles, clientIp, userAgent, oldRefreshToken);
         }
         // Bắt lỗi khi sai mật khẩu
         catch (BadCredentialsException e) {
-            // Tăng số lần nhập sai
-            Integer failedCount = failedCountStr == null ? 1 : failedCountStr + 1;
-
-            // Lưu số lần nhập sai email theo IP vào Redis
-            redisTemplate.opsForValue().set(redisKey, failedCount, Duration.ofMinutes(5));
+            // Lưu số lần nhập sai email lên 1 theo IP vào Redis
+            redisTemplate.opsForValue().set(loginLimitKey, failedCount == null ? 1 : failedCount + 1, Duration.ofMinutes(5));
 
             // Ném lỗi cả 2 email hoặc mật khẩu vì bảo mật
             throw new CustomException(401, "Email hoặc mật khẩu không đúng!");
@@ -246,7 +256,7 @@ public class AuthService {
     }
 
     // Đăng nhập tài khoản bằng Google
-    public AccessTokenResponseDTO loginWithGoogle(GoogleLoginRequestDTO requestDTO, HttpServletRequest request, HttpServletResponse response) {
+    public TokenPair loginWithGoogle(GoogleLoginRequestDTO requestDTO, String clientIp, String userAgent, String oldRefreshToken ) {
         try {
             /* Bước 1: Xác thực token và lấy payload chứa thông tin người dùng */
             GoogleIdToken verifiedToken = verifier.verify(requestDTO.getToken());
@@ -282,16 +292,16 @@ public class AuthService {
             /* Bước 2: Truy xuất và kiểm tra user có tồn tại với providerUserId */
             // Truy xuất bằng providerUserId thay vì email sẽ đảm bảo duy nhất vì email có thể tái sử dụng lại cho người sauví dụ email công ty, học sinh,... dùng cho 1 người
             // sau đó người đó nghỉ và tạo lại email đó cho người sau (Google sẽ tạo lại email nhưng khác provideId */
-            Optional<User> existedUserByProvider = userRepository.findByLoginProviderAndProviderUserId(ProviderType.GOOGLE, providerUserId);
+            Optional<User> existingUserByProvider = userRepository.findByLoginProviderAndProviderUserId(ProviderType.GOOGLE, providerUserId);
 
             // Nếu chưa tồn tại user với providerUserId
-            if (existedUserByProvider.isEmpty()) {
+            if (existingUserByProvider.isEmpty()) {
                 /* Bước 3: Truy xuất và kiểm tra user có tồn tại với email */
-                Optional<User> existedUserByEmail = userRepository.findByEmail(email);
+                Optional<User> existingUserByEmail = userRepository.findByEmail(email);
 
                 // Nếu đã tồn tại user với email này, xử lý theo luồng đặc biệt để tránh tạo trùng lặp tài khoản
-                if (existedUserByEmail.isPresent()) {
-                    user = existedUserByEmail.get();
+                if (existingUserByEmail.isPresent()) {
+                    user = existingUserByEmail.get();
 
                     // Trường hợp 1: Tài khoản đã đăng nhập bằng hệ thống truyền thống, nghĩa là email trùng với email Google đang đăng nhập
                     if (user.getLoginProvider() == ProviderType.LOCAL) {
@@ -311,7 +321,7 @@ public class AuthService {
             }
             // Nếu đã tồn tại user với providerUserId này => người dùng đã đăng nhập bằng Google trước đó thì cho đăng nhập bình thường
             else {
-                user = existedUserByProvider.get();
+                user = existingUserByProvider.get();
 
                 // Kiểm tra trạng thái người dùng có bị ban không
                 if (user.getStatus() == StatusType.BANNED) {
@@ -319,7 +329,7 @@ public class AuthService {
                 }
             }
             // Tạo session đăng nhập mới và trả về access-token cho client
-            return createLoginSession(user.getId().toString(), List.of("ROLE_" + user.getRole().name()), request, response);
+            return createLoginSession(user.getId().toString(), List.of("ROLE_" + user.getRole().name()), clientIp, userAgent, oldRefreshToken);
         }
         // Lỗi mạng (không thể kết nối tới server Google để lấy Public Key), lỗi đọc dữ liệu, lỗi về thuật toán mã hóa (máy chủ của bạn thiếu thư viện bảo mật, lỗi cấu hình JRE...)
         catch (GeneralSecurityException | IOException e) {
@@ -328,20 +338,17 @@ public class AuthService {
     }
 
     // Tạo session đăng nhập mới sau khi xác thực thành công
-    public AccessTokenResponseDTO createLoginSession(String userId, List<String> roles, HttpServletRequest request, HttpServletResponse response) {
+    public TokenPair createLoginSession(String userId, List<String> roles, String clientIp, String userAgent, String oldRefreshToken) {
 
          /* Bước 5: Trường hợp tồn tại refresh-token cũ trong Cookie người dùng khi đăng nhập trước đó
          * Xoá phiên cũ của user đó trên thiết bị hiện tại (refresh-token, deviceId) để đảm bảo mỗi thiết bị chỉ có 1 refresh-token hợp lệ */
-        // Lấy refresh-token cũ từ Cookie
-        String oldRefreshToken = cookieUtil.getCookieValue(request, "refresh_token");
-
         // Nếu tồn tại refresh-token cũ (đã đăng nhập trước đó)
         if (StringUtils.hasText(oldRefreshToken)) {
             // Xác thực và truy xuất deviceId từ refresh-token cũ
             String oldDeviceId = jwtUtil.getClaims(oldRefreshToken).get("deviceId", String.class);
 
             // Tạo sessionKey để truy xuất hash refresh-token cũ trong Redis
-            String oldSessionKey = REFRESH_TOKEN_KEY_PREFIX + userId + ":" + oldDeviceId;
+            String oldSessionKey = REFRESH_TOKEN_KEY + userId + ":" + oldDeviceId;
 
             // Kiểm tra nếu hash trong Redis khớp với refresh token cũ thì xóa session cũ
             if (jwtUtil.compareToRefreshTokenHash(oldRefreshToken, oldSessionKey)) {
@@ -360,26 +367,57 @@ public class AuthService {
         /* Bước 7: Tạo ra access-token và refresh-token mới */
         // Tạo thông tin người dùng để lưu vào claim của token
         String deviceId = UUID.randomUUID().toString();
-        String userAgent = request.getHeader("User-Agent");
-        String clientIp = IpUtil.getClientIp(request);
 
         // Tạo cặp token từ các thông tin trên
-        TokenPair tokenPair = jwtUtil.generateTokenPair(userId, roles, deviceId, userAgent);
+        TokenPair tokenPair = jwtUtil.generateTokenPair(userId, roles, deviceId);
 
-        /* Bước 8: Lưu session mới và thêm device vào danh sách user_sessions  trong Redis*/
+        /* Bước 8: Lưu session mới và thêm device vào danh sách user_sessions trong Redis*/
         sessionUtil.saveSession(userId, deviceId, tokenPair.getRefreshToken(), clientIp, userAgent);
 
-        /* Bước 9: Chỉ lưu refresh-token vào HttpOnly Cookie, access-token trả về body để client gửi qua Authorization header */
-        cookieUtil.setRefreshTokenCookie(response, tokenPair.getRefreshToken());
-        return new AccessTokenResponseDTO(tokenPair.getAccessToken());
+        // Trả cặp token về tầng Controller xử lý
+        return tokenPair;
     }
 
     // Làm mới access-token bằng refresh-token
-    public AccessTokenResponseDTO refreshToken(HttpServletRequest request, HttpServletResponse response) {
-        // Lấy refresh-token từ Cookie
-        String refreshToken = cookieUtil.getCookieValue(request, "refresh_token");
+    public TokenPair refreshToken(String clientIp, String userAgent, String oldRefreshToken) {
+        // Kiểm tra refresh-token không tồn tại thì ném lỗi
+        if (!StringUtils.hasText(oldRefreshToken)) {
+            throw new CustomException(401, "Refresh token không tồn tại!");
+        }
 
-        if (refreshToken == null) {
+        // Xác thực và truy xuất thông tin từ refresh-token
+        Claims claims = jwtUtil.getClaims(oldRefreshToken);
+        String userId = claims.getSubject();
+        String deviceId = claims.get("deviceId", String.class);
+
+        // Xoá session nếu refresh-token cũ hợp lệ để đảm bảo mỗi refresh-token chỉ được sử dụng 1 lần
+        sessionUtil.deleteSession(userId, deviceId);
+
+        // Tạo sessionKey
+        String sessionKey = REFRESH_TOKEN_KEY + userId + ":" + deviceId;
+
+        // Kiểm tra refresh-token hợp lệ hay không so với refresh-token được lưu trong Redis
+        if (!jwtUtil.compareToRefreshTokenHash(oldRefreshToken, sessionKey)) {
+            throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        // Truy xuất role từ refresh-token
+        List<String> roles = claims.get("role", List.class);
+
+        // Tạo cặp token mới
+        TokenPair newTokenPair = jwtUtil.generateTokenPair(userId, roles, deviceId);
+
+        // Lưu session mới
+        sessionUtil.saveSession(userId, deviceId, newTokenPair.getRefreshToken(), clientIp, userAgent);
+
+        // Trả cặp token về tầng Controller xử lý
+        return newTokenPair;
+    }
+
+    // Đăng xuất tài khoản
+    public void logout(String refreshToken) {
+        // Kiểm tra refresh-token không tồn tại thì ném lỗi
+        if (!StringUtils.hasText(refreshToken)) {
             throw new CustomException(401, "Refresh token không tồn tại!");
         }
 
@@ -388,144 +426,246 @@ public class AuthService {
         String userId = claims.getSubject();
         String deviceId = claims.get("deviceId", String.class);
 
-        // Tạo sessionKey
-        String sessionKey = REFRESH_TOKEN_KEY_PREFIX + userId + ":" + deviceId;
-
-        // Kiểm tra refresh-token hợp lệ hay không so với refresh-token được lưu trong Redis
-        if (!jwtUtil.compareToRefreshTokenHash(refreshToken, sessionKey)) {
-            throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
-        }
-
-        // Truy xuất thông tin từ refresh-token
-        String userAgent = request.getHeader("User-Agent");
-        List<String> roles = claims.get("role", List.class);
-
-        // Tạo cặp token mới
-        TokenPair tokenPair = jwtUtil.generateTokenPair(userId, roles, deviceId, userAgent);
-
-        // Lưu session mới (hash refresh-token) và cập nhật expiry
-        sessionUtil.saveSession(userId, deviceId, tokenPair.getRefreshToken(), IpUtil.getClientIp(request), userAgent);
-
-        // Cập nhật refresh-token trong HttpOnly Cookie, access-token mới trả về body
-        cookieUtil.setRefreshTokenCookie(response, tokenPair.getRefreshToken());
-        return new AccessTokenResponseDTO(tokenPair.getAccessToken());
-    }
-
-    // Đăng xuất tài khoản
-    public void logout(HttpServletRequest request, HttpServletResponse response) {
-        // Lấy refresh-token từ Cookie
-        String refreshToken = cookieUtil.getCookieValue(request, "refresh_token");
-
-        if (refreshToken != null) {
-            // Xác thực và truy xuất thông tin từ refresh-token
-            Claims claims = jwtUtil.getClaims(refreshToken);
-            String userId = claims.getSubject();
-            String deviceId = claims.get("deviceId", String.class);
-
-            // Xóa session của thiết bị người dùng
-            sessionUtil.deleteSession(userId, deviceId);
-
-            // Xóa cookie chứa token khỏi trình duyệt
-            cookieUtil.clearRefreshTokenCookie(response);
-        }
-        else {
-            throw new CustomException(401, "Refresh token không tồn tại!");
-        }
+        // Xóa session của thiết bị người dùng
+        sessionUtil.deleteSession(userId, deviceId);
     }
 
     // Đăng xuất tất cả tài khoản trừ thiết bị hiện tại
-    public AccessTokenResponseDTO logoutAll(HttpServletRequest request, HttpServletResponse response) {
-        // Lấy refresh-token từ Cookie
-        String refreshToken = cookieUtil.getCookieValue(request, "refresh_token");
-
-        if (refreshToken != null) {
-            // Xác thực và truy xuất thông tin từ refresh-token
-            Claims claims = jwtUtil.getClaims(refreshToken);
-            String userId = claims.getSubject();
-            String deviceId = claims.get("deviceId", String.class);
-
-            // Xóa tất cả session của thiết bị người dùng
-            sessionUtil.deleteAllSessions(userId);
-
-            // Tạo lại token pair mới cho thiết bị hiện tại
-            List<String> roles = claims.get("role", List.class);
-            String userAgent = request.getHeader("User-Agent");
-            TokenPair newTokenPair = jwtUtil.generateTokenPair(userId, roles, deviceId, userAgent);
-
-            // Lưu thiết bị hiện tại với session mới
-            sessionUtil.saveSession(userId, deviceId, newTokenPair.getRefreshToken(), IpUtil.getClientIp(request), userAgent);
-
-            // Cập nhật refresh-token trong Cookie và trả access-token mới về body cho thiết bị hiện tại
-            cookieUtil.setRefreshTokenCookie(response, newTokenPair.getRefreshToken());
-            return new AccessTokenResponseDTO(newTokenPair.getAccessToken());
-        }
-        else {
+    public TokenPair logoutAll(String clientIp, String userAgent, String refreshToken) {
+        // Kiểm tra refresh-token không tồn tại thì ném lỗi
+        if (!StringUtils.hasText(refreshToken)) {
             throw new CustomException(401, "Refresh token không tồn tại!");
         }
+
+        // Xác thực và truy xuất thông tin từ refresh-token
+        Claims claims = jwtUtil.getClaims(refreshToken);
+        String userId = claims.getSubject();
+        String deviceId = claims.get("deviceId", String.class);
+
+        // Xóa tất cả session của thiết bị người dùng
+        sessionUtil.deleteAllSessions(userId);
+
+        // Tạo lại token pair mới cho thiết bị hiện tại
+        List<String> roles = claims.get("role", List.class);
+        TokenPair newTokenPair = jwtUtil.generateTokenPair(userId, roles, deviceId);
+
+        // Lưu thiết bị hiện tại với session mới
+        sessionUtil.saveSession(userId, deviceId, newTokenPair.getRefreshToken(), clientIp, userAgent);
+
+        // Trả cặp token về tầng Controller xử lý
+        return newTokenPair;
     }
 
-    // Quên mật khẩu
-    public void forgotPassword(String email) {
+    // Quên mật khẩu và gửi mã OTP
+    public void sendForgotPasswordOTP(String email, String clientIp) {
         // Kiểm tra email đã tồn tại
-        Optional<User> existedUser = userRepository.findByEmail(email);
+        Optional<User> existingUser = userRepository.findByEmail(email);
 
-        // Nếu email không tồn tại thì không làm gì cả để tránh lộ thông tin người dùng
-        if (existedUser.isEmpty()) {
+        // Kiểm tra email không tồn tại thì không làm gì cả để tránh lộ thông tin người dùng
+        if (existingUser.isEmpty()) {
             return;
         }
 
+        // Kiểm tra tài khoản đã đăng nhập bằng Google thì không được đặt lại mật khẩu vì không có
+        if (existingUser.get().getLoginProvider() != ProviderType.LOCAL) {
+            throw new CustomException(400, "Tài khoản này đã đăng nhập bằng Google!");
+        }
+
+        // Kiểm tra số lần và tạo mã OTP
+        String otp = otpUtil.checkAndGenerateOtp(email, clientIp, FORGOT_PASSWORD_KEY, 5, 6, Duration.ofHours(1), Duration.ofMinutes(5));
+
         // Gửi mã OTP đặt lại mật khẩu qua gRPC
+        notificationGrpcClient.sendEmailAsync(
+                email,
+                "Mã OTP đặt lại mật khẩu - Tayota",
+                "Mã xác thực (OTP) để đặt lại mật khẩu của bạn là: " + otp + "\n" +
+                        "Mã này sẽ hết hạn sau 5 phút. Vui lòng không chia sẻ mã này với bất kỳ ai."
+
+        );
+    }
+
+    // Xác thực mã OTP khi quên mật khẩu
+    public String verifyForgotPasswordOTP(VerifyForgotPasswordOTPRequestDTO verifyForgotPasswordOTPRequestDTO, String clientIP) {
+        String email = verifyForgotPasswordOTPRequestDTO.getEmail();
+        String otp = verifyForgotPasswordOTPRequestDTO.getOtp();
+
+        // Xác thực OTP, tạo token xác thực đổi mật khẩu và trả về cho người dùng
+        return verifyOTPAndCreateToken(email, otp, clientIP, FORGOT_PASSWORD_KEY, 5, Duration.ofMinutes(15));
+    }
+
+    // Đặt lại mật khẩu khi xác thực OTP cho quên mật khẩu
+    public void resetPasswordByForgotPassword(ForgotPasswordResetRequestDTO resetPasswordRequestDTO, String clientIP) {
+        String email = resetPasswordRequestDTO.getEmail();
+        String token = resetPasswordRequestDTO.getToken();
+        String newPassword = resetPasswordRequestDTO.getNewPassword();
+
+        // Kiểm tra token hợp lệ trước khi đặt lại mật khẩu
+        checkTokenForResetPassword(email, token, clientIP, FORGOT_PASSWORD_KEY);
+
+        // Lấy user từ csdl
+        Optional<User> existingUser = userRepository.findByEmail(email);
+
+        // Đổi mật khẩu khi đã xác thực OTP
+        resetPassword(existingUser, email, newPassword, clientIP, FORGOT_PASSWORD_KEY);
+    }
+
+    // Gửi mã OTP để xác nhận thay đổi mật khẩu
+    public void sendChangePasswordOTP(String clientIp) {
+        String userId = SecurityContextUtil.getCurrentUserId();
+
+        // Lấy thông tin user từ csdl
+        Optional<User>  existingUser = userRepository.findById(UUID.fromString(userId));
+
+        if (existingUser.isEmpty()) {
+            throw new CustomException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // Kiểm tra tài khoản đăng nhập bằng Google thì không được đặt lại mật khẩu vì không có
+        if (existingUser.get().getLoginProvider() != ProviderType.LOCAL) {
+            throw new CustomException(400, "Tài khoản này đã đăng nhập bằng Google!");
+        }
+
+        User user = existingUser.get();
+
+        // Kiểm tra số lần và tạo mã OTP
+        String otp = otpUtil.checkAndGenerateOtp(
+                userId,
+                clientIp,
+                CHANGE_PASSWORD_KEY,
+                5,
+                6,
+                Duration.ofHours(1),
+                Duration.ofMinutes(5)
+        );
+
+        // Gửi mã OTP xác nhận thay đổi mật khẩu qua gRPC
+        notificationGrpcClient.sendEmailAsync(
+                user.getEmail(),
+                "Mã OTP xác nhận thay đổi mật khẩu - Tayota",
+                "Mã xác thực (OTP) để thay đổi mật khẩu của bạn là: " + otp + "\n" +
+                        "Mã này sẽ hết hạn sau 5 phút. Vui lòng không chia sẻ mã này với bất kỳ ai."
+        );
+    }
+
+    // Xác thực mã OTP khi thay đổi mật khẩu
+    public String verifyChangePasswordOTP(VerifyChangePasswordOTPRequestDTO verifyChangePasswordOTPRequestDTO, String clientIP) {
+        String userId = SecurityContextUtil.getCurrentUserId();
+        String otp = verifyChangePasswordOTPRequestDTO.getOtp();
+
+        // Xác thực OTP, tạo token xác thực đổi mật khẩu và trả về cho người dùng
+        return verifyOTPAndCreateToken(userId, otp, clientIP, CHANGE_PASSWORD_KEY, 5, Duration.ofMinutes(15));
+    }
+
+    // Đặt lại mật khẩu khi xác thực OTP cho thay đổi mật khẩu
+    public void resetPasswordByChangePassword(ChangePasswordResetRequestDTO changePasswordResetRequestDTO, String clientIP) {
+        String userId = SecurityContextUtil.getCurrentUserId();
+        String token = changePasswordResetRequestDTO.getToken();
+        String newPassword = changePasswordResetRequestDTO.getNewPassword();
+
+        // Kiểm tra token hợp lệ trước khi đặt lại mật khẩu
+        checkTokenForResetPassword(userId, token, clientIP, CHANGE_PASSWORD_KEY);
+
+        // Lấy user từ csdl
+        Optional<User> existingUser = userRepository.findById(UUID.fromString(userId));
+
+        // Đổi mật khẩu khi đã xác thực OTP
+        resetPassword(existingUser, userId, newPassword, clientIP, CHANGE_PASSWORD_KEY);
+    }
+
+    // Xác thực mã OTP và tạo token xác thực lưu vào Redis
+    private String verifyOTPAndCreateToken(String subject, String otp, String clientIP, String KEY_PREFIX, int maxFailures, Duration tokenExpiry) {
+        // Kiểm tra OTP hợp lệ
+        otpUtil.verifyOtp(subject, otp, clientIP, KEY_PREFIX, maxFailures);
+
+        // Tạo token để xác thực đổi mật khẩu sau khi kiểm tra OTP hợp lệ
+        String token = UUID.randomUUID().toString();
+
+        // Lưu token vào Redis để xác thực đổi mật khẩu và trả về cho người dùng
+        String tokenKey = KEY_PREFIX + "reset_password:" + subject + ":" + clientIP;
+        redisTemplate.opsForValue().set(tokenKey, token, tokenExpiry);
+        return token;
+    }
+
+    // Kiểm tra token hợp lệ trước khi đặt lại mật khẩu
+    private void checkTokenForResetPassword(String subject, String token, String clientIP, String KEY_PREFIX) {
+        // Lấy token đặt lại mật khẩu đã lưu trước đó trong Redis
+        String tokenKey = KEY_PREFIX + "reset_password:" + subject + ":" + clientIP;
+        String storedToken = (String) redisTemplate.opsForValue().get(tokenKey);
+
+        // Kiểm tra token hợp lệ
+        if (storedToken == null || !storedToken.equals(token)) {
+            throw new CustomException(400, "Token đặt lại mật khẩu không hợp lệ!");
+        }
+    }
+
+    // Đổi mật khẩu khi đã xác thực OTP
+    private void resetPassword(Optional<User> existingUser, String subject, String newPassword, String clientIP, String KEY_PREFIX) {
+        // Kiểm tra user tồn tại và đăng nhập bằng LOCAL
+        if (existingUser.isEmpty() || existingUser.get().getLoginProvider() != ProviderType.LOCAL) {
+            throw new CustomException(400, "Tài khoản không hợp lệ!");
+        }
+
+        // Cập nhật mật khẩu mới sau khi băm và lưu vào csdl
+        User user = existingUser.get();
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        // Xoá token đặt lại mật khẩu khỏi Redis
+        String tokenKey = KEY_PREFIX + "reset_password:" + subject + ":" + clientIP;
+        redisTemplate.delete(tokenKey);
+
+        // Đăng xuất tất cả các thiết bị đã đăng nhập của user sau khi đổi mật khẩu để đảm bảo an toàn
+        sessionUtil.deleteAllSessions(user.getId().toString());
     }
 
     // Lấy danh sách thiết bị đã đăng nhập của một tài khoản
-     public List<DeviceResponseDTO> getDevices(String userId) {
-         // Lấy userId của user hiện tại
-         String currentUserId = SecurityUtil.getCurrentUserId();
+    public List<DeviceResponseDTO> getDevices(String userId) {
+        // Lấy userId của user hiện tại
+        String currentUserId = SecurityContextUtil.getCurrentUserId();
 
-         // Nếu người dùng xem thiết bị của chính mình thì cho phép trực tiếp
-         if (currentUserId.equals(userId)) {
+        // Nếu người dùng xem thiết bị của chính mình thì cho phép trực tiếp
+        if (currentUserId.equals(userId)) {
              return sessionUtil.getUserDevices(userId);
          }
 
-         // Lấy role của user hiện tại từ SecurityContext
-         String currentUserRole = SecurityUtil.getCurrentUserRole();
+        // Lấy role của user hiện tại từ SecurityContext
+        String currentUserRole = SecurityContextUtil.getCurrentUserRole();
 
-          // Lấy user mục tiêu từ database để kiểm tra role
-          Optional<User> targetUser = userRepository.findById(UUID.fromString(userId));
+        // Lấy user mục tiêu từ database để kiểm tra role
+        Optional<User> targetUser = userRepository.findById(UUID.fromString(userId));
 
-         // Kiểm tra quyền user hiện tại có thể xem thiết bị của user mục tiêu không
-         if (targetUser.isEmpty() || ROLE_HIERARCHY_MAP.get(currentUserRole) <= ROLE_HIERARCHY_MAP.get("ROLE_" + targetUser.get().getRole().name())) {
+        // Kiểm tra quyền user hiện tại có thể xem thiết bị của user mục tiêu không
+        if (targetUser.isEmpty() || ROLE_HIERARCHY_MAP.get(currentUserRole) <= ROLE_HIERARCHY_MAP.get("ROLE_" + targetUser.get().getRole().name())) {
              throw new CustomException(403, "Bạn không có quyền xem danh sách thiết bị của người dùng này");
          }
 
-         // Lấy danh sách thiết bị đã đăng nhập của user
-         return sessionUtil.getUserDevices(userId);
-     }
+        // Lấy danh sách thiết bị đã đăng nhập của user
+        return sessionUtil.getUserDevices(userId);
+    }
 
     // Thu hồi quyền truy cập của một thiết bị
-    public void revokeDevice(String userId, String deviceId, HttpServletRequest request) {
+    public void revokeDevice(String userId, String deviceId, String refreshToken) {
         // Lấy userId của user hiện tại từ SecurityContext
-        String currentUserId = SecurityUtil.getCurrentUserId();
+        String currentUserId = SecurityContextUtil.getCurrentUserId();
 
         // Nếu user đang thao tác là chủ tài khoản thì không được thu hồi thiết bị đang sử dụng hiện tại
         if (currentUserId.equals(userId)) {
-            // Lấy deviceId hiện tại từ refresh_token cookie được gửi lên sau khi giải mã
-            String currentRefreshToken = cookieUtil.getCookieValue(request, "refresh_token");
-
-            if (currentRefreshToken != null) {
-                // Lấy claims trực tiếp từ jwtUtil (jwtUtil sẽ ném ExpiredJwtException / JwtException nếu có vấn đề)
-                Claims currentClaims = jwtUtil.getClaims(currentRefreshToken);
+            // Kiểm tra deviceId trong token có trùng với deviceId đang bị thu hồi
+            if (refreshToken != null) {
+                // Truy xuất deviceId từ refresh-token để so sánh với deviceId của thiết bị đang bị thu hồi
+                Claims currentClaims = jwtUtil.getClaims(refreshToken);
                 String currentDeviceId = currentClaims.get("deviceId", String.class);
-                if (currentDeviceId != null && currentDeviceId.equals(deviceId)) {
+
+                // Nếu trùng thì ném lỗi không cho phép thu hồi
+                if (currentDeviceId.equals(deviceId)) {
                     // Không cho phép thu hồi chính thiết bị đang sử dụng
                     throw new CustomException(403, "Không thể thu hồi thiết bị đang sử dụng");
                 }
             }
         }
-
         else {
             // Lấy role của user hiện tại từ SecurityContext
-            String currentUserRole = SecurityUtil.getCurrentUserRole();
+            String currentUserRole = SecurityContextUtil.getCurrentUserRole();
 
             // Lấy user mục tiêu để so sánh phân cấp role
             Optional<User> targetUser = userRepository.findById(UUID.fromString(userId));
@@ -536,8 +676,8 @@ public class AuthService {
             }
         }
 
-        // Kiểm tra thiết bị tồn tại trong Redis
-        String sessionKey = REFRESH_TOKEN_KEY_PREFIX + userId + ":" + deviceId;
+        // Kiểm tra thiết bị không tồn tại trong Redis
+        String sessionKey = REFRESH_TOKEN_KEY + userId + ":" + deviceId;
         if (!redisTemplate.hasKey(sessionKey)) {
             throw new CustomException(404, "Thiết bị không được tìm thấy");
         }

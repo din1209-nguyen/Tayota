@@ -26,15 +26,15 @@ public class SessionUtil {
     @Value("${jwt.refresh-token-expiration}")
     private long jwtRefreshTokenExpirationMs;
 
-    private static final String USER_SESSIONS_KEY_PREFIX = "auth:user_sessions:";
-    private static final String SESSION_KEY_PREFIX = "auth:refresh:";
+    private static final String REFRESH_TOKEN_KEY = "auth:refresh:";
+    private static final String USER_SESSIONS_KEY = "auth:user_sessions:";
 
     // Lấy danh sách các thiết bị người dùng
     public List<DeviceResponseDTO> getUserDevices(String userId) {
         List<DeviceResponseDTO> deviceList = new ArrayList<>();
 
         // Lấy danh sách các thiết bị
-        String userSessionsKey = USER_SESSIONS_KEY_PREFIX + userId;
+        String userSessionsKey = USER_SESSIONS_KEY + userId;
         Set<Object> devices = redisTemplate.opsForSet().members(userSessionsKey);
 
         if (devices != null) {
@@ -42,7 +42,7 @@ public class SessionUtil {
             for (Object d : devices) {
                 if (d == null) continue;
                 String deviceId = d.toString();
-                String sessionKey = SESSION_KEY_PREFIX + userId + ":" + deviceId;
+                String sessionKey = REFRESH_TOKEN_KEY + userId + ":" + deviceId;
 
                 // Lấy session người dùng từ Redis
                 Object sessionData = redisTemplate.opsForValue().get(sessionKey);
@@ -58,6 +58,7 @@ public class SessionUtil {
                             .userAgent(userSession.getUserAgent())
                             .loginAt(userSession.getLoginAt())
                             .build();
+
                     deviceList.add(deviceDTO);
                 }
             }
@@ -70,7 +71,7 @@ public class SessionUtil {
     // Lưu session của thiết bị người dùng
     public void saveSession(String userId, String deviceId, String refreshToken, String clientIp, String userAgent) {
         // Tạo session key
-        String sessionKey = SESSION_KEY_PREFIX + userId + ":" + deviceId;
+        String sessionKey = REFRESH_TOKEN_KEY + userId + ":" + deviceId;
 
         // Băm refresh token trước khi lưu
         String refreshHash = jwtUtil.hashRefreshToken(refreshToken);
@@ -82,7 +83,7 @@ public class SessionUtil {
         redisTemplate.opsForValue().set(sessionKey, sessionValue, Duration.ofMillis(jwtRefreshTokenExpirationMs));
 
         // Thêm deviceId vào danh sách user_sessions và đặt thời gian sống bằng refresh-token
-        String userSessionsKey = USER_SESSIONS_KEY_PREFIX + userId;
+        String userSessionsKey = USER_SESSIONS_KEY + userId;
         redisTemplate.opsForSet().add(userSessionsKey, deviceId);
         redisTemplate.expire(userSessionsKey, Duration.ofMillis(jwtRefreshTokenExpirationMs));
     }
@@ -90,11 +91,11 @@ public class SessionUtil {
     // Xóa session của thiết bị người dùng
     public void deleteSession(String userId, String deviceId) {
         // Xoá session của deviceId
-        String sessionKey = SESSION_KEY_PREFIX + userId + ":" + deviceId;
+        String sessionKey = REFRESH_TOKEN_KEY + userId + ":" + deviceId;
         redisTemplate.delete(sessionKey);
 
         // Xoá deviceId khỏi danh sách user_sessions
-        String userSessionsKey = USER_SESSIONS_KEY_PREFIX + userId;
+        String userSessionsKey = USER_SESSIONS_KEY + userId;
         redisTemplate.opsForSet().remove(userSessionsKey, deviceId);
     }
 
@@ -106,7 +107,7 @@ public class SessionUtil {
         */
 
         // Tạo key danh sách deviceId của người dùng
-        String userSessionsKey = USER_SESSIONS_KEY_PREFIX + userId;
+        String userSessionsKey = USER_SESSIONS_KEY + userId;
 
         // Lấy danh sách các thiết bị người dùng
         Set<Object> devices = redisTemplate.opsForSet().members(userSessionsKey);
@@ -116,7 +117,7 @@ public class SessionUtil {
             for (Object d : devices) {
                 if (d == null) continue;
                 String deviceId = d.toString();
-                String sessionKey = SESSION_KEY_PREFIX + userId + ":" + deviceId;
+                String sessionKey = REFRESH_TOKEN_KEY + userId + ":" + deviceId;
 
                 // Xóa session của từng deviceId
                 redisTemplate.delete(sessionKey);
@@ -129,7 +130,7 @@ public class SessionUtil {
 
     public int countActiveDevices(String userId) {
         // Tạo key danh sách deviceId của người dùng
-        String userSessionsKey = USER_SESSIONS_KEY_PREFIX + userId;
+        String userSessionsKey = USER_SESSIONS_KEY + userId;
 
         // Lấy danh sách các thiết bị người dùng
         Set<Object> devices = redisTemplate.opsForSet().members(userSessionsKey);
@@ -144,7 +145,7 @@ public class SessionUtil {
         for (Object d : devices) {
             if (d == null) continue;
             String deviceId = d.toString();
-            String sessionKey = SESSION_KEY_PREFIX + userId + ":" + deviceId;
+            String sessionKey = REFRESH_TOKEN_KEY + userId + ":" + deviceId;
 
             // Kiểm tra nếu session của thiết bị này còn tồn tại trong Redis
             if (redisTemplate.hasKey(sessionKey)) {

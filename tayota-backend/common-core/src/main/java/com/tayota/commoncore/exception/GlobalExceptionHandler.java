@@ -4,6 +4,8 @@ import com.tayota.commoncore.dto.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
 import org.hibernate.validator.internal.engine.path.PathImpl;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -44,6 +46,27 @@ public class GlobalExceptionHandler {
             errors.put(paramName, message);
         });
         return ApiResponse.error(400, "Dữ liệu không hợp lệ", errors);
+    }
+
+    // Xử lý lỗi phân quyền (Khi @PreAuthorize thất bại)
+    @ExceptionHandler(AccessDeniedException.class)
+    public ApiResponse<Void> handleAccessDeniedException(AccessDeniedException exception) {
+        return ApiResponse.error(403, "Bạn không có quyền thực hiện chức năng này!");
+    }
+
+    // Xử lý lỗi DaoAuthenticationProvider khi hàm loadUserByUsername() của văng ra bất kỳ một RuntimeException nào không phải là lỗi xác thực chuẩn của Spring
+    @ExceptionHandler(InternalAuthenticationServiceException.class)
+    public ApiResponse<Void> handleInternalAuthException(InternalAuthenticationServiceException exception) {
+        // Lấy nguyên nhân chính
+        Throwable cause = exception.getCause();
+
+        // Nếu là CustomException thì ép kiểu và lấy đúng Code
+        if (cause instanceof CustomException customException) {
+            return ApiResponse.error(customException.getCode(), customException.getMessage());
+        }
+
+        // Nếu không phải, trả về lỗi 500 mặc định
+        return ApiResponse.error(500, "Lỗi xác thực hệ thống: " + exception.getMessage());
     }
 
     // Xử lý các lỗi CustomException tự định nghĩa trong ứng dụng

@@ -5,9 +5,6 @@ import com.tayota.commoncore.enums.RoleType;
 import com.tayota.userservice.enums.StatusType;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.DynamicUpdate;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -17,13 +14,6 @@ import java.util.UUID;
 @Entity
 @Table(name = "\"USER\"")
 public class User {
-    // Tạo tài khoản mới bởi Admin
-    public static User createUserByAdmin(String email, String passwordHash, RoleType role) {
-        User user = createLocalUser(email, passwordHash);
-        user.setRole(role);
-        return user;
-    }
-
     // Đăng nhập truyền thống
     public static User createLocalUser(String email, String passwordHash) {
         User user = new User();
@@ -52,21 +42,21 @@ public class User {
     @Column(name = "password_hash", length = 255)
     private String passwordHash;
 
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(name = "login_provider", nullable = false, columnDefinition = "providertype DEFAULT 'LOCAL'")
+    @Enumerated(EnumType.STRING)
+    @Column(name = "login_provider", nullable = false)
     private ProviderType loginProvider = ProviderType.LOCAL;
 
     @Column(name = "provider_user_id", unique = true, length = 120)
     private String providerUserId;
 
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(nullable = false, columnDefinition = "roletype DEFAULT 'USER'")
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private RoleType role = RoleType.USER;
 
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    @Column(nullable = false, columnDefinition = "statustype DEFAULT 'ACTIVE'")
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private StatusType status = StatusType.ACTIVE;
 
-    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP")
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 }

@@ -5,6 +5,7 @@ import com.tayota.userservice.dto.Response.AccessTokenResponseDTO;
 import com.tayota.userservice.dto.Response.DeviceResponseDTO;
 import com.tayota.userservice.dto.Request.ForgotPasswordResetRequestDTO;
 import com.tayota.userservice.dto.Response.TokenForResetPasswordResponseDTO;
+import com.tayota.userservice.enums.StatusType;
 import com.tayota.userservice.object.TokenPair;
 import com.tayota.userservice.service.AuthService;
 import com.tayota.commoncore.dto.ApiResponse;
@@ -203,5 +204,21 @@ public class AuthController {
     public ApiResponse<Void> revoke(@PathVariable String userId, @PathVariable String deviceId, HttpServletRequest request) {
         authService.revoke(userId, deviceId, cookieUtil.getCookieValue(request, "refresh_token"));
         return ApiResponse.success(200, "Thiết bị đã được thu hồi thành công!", null);
+    }
+
+    // Khoá tài khoản
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    @PatchMapping("/ban/{userId}")
+    public ApiResponse<Void> banAccount(@PathVariable String userId) {
+        authService.changeUserStatus(userId, StatusType.BANNED);
+        return ApiResponse.success(200, "Tài khoản đã bị khoá thành công!", null);
+    }
+
+    // Mở khoá tài khoản
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
+    @PatchMapping("/unban/{userId}")
+    public ApiResponse<Void> unbanAccount(@PathVariable String userId) {
+        authService.changeUserStatus(userId, StatusType.ACTIVE);
+        return ApiResponse.success(200, "Tài khoản đã được mở khoá thành công!", null);
     }
 }

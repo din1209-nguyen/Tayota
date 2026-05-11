@@ -10,11 +10,11 @@
 --  ENUMS
 -- ============================================================
 
-CREATE TYPE status_type AS ENUM ('UNVERIFIED', 'ACTIVE', 'BANNED');
+CREATE TYPE statustype AS ENUM ('UNVERIFIED', 'ACTIVE', 'BANNED');
 
-CREATE TYPE role_type AS ENUM ('ADMIN', 'MANAGER', 'ASSISTANT', 'MECHANIC', 'USER');
+CREATE TYPE roletype AS ENUM ('ADMIN', 'MANAGER', 'ASSISTANT', 'MECHANIC', 'USER');
 
-CREATE TYPE provider_type AS ENUM ('LOCAL', 'GOOGLE');
+CREATE TYPE providertype AS ENUM ('LOCAL', 'GOOGLE');
 
 CREATE TYPE appointment_type AS ENUM (
   'TEST_DRIVE',

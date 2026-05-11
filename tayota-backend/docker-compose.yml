@@ -126,9 +126,8 @@ services:
       - SERVER_PORT=${USER_SERVICE_PORT:-8091}
       - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update # Tự động đồng bộ database với Entity
-      - SPRING_SQL_INIT_MODE=always # Luôn chạy schema.sql khi khởi động dự án
-      - SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION=false # Chạy các file .sql trước Hibernate
-      - SPRING_SQL_INIT_SEPARATOR=//
+      - SPRING_SQL_INIT_MODE=always # Không chạy schema.sql khi khởi động dự án
+      - SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION=true # Chạy các file .sql sau Hibernate
       # --- Postgres ---
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-user-service:5432/${POSTGRES_USER_DB:-tayota_user_db}
       - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}

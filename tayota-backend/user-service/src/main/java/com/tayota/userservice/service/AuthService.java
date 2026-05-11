@@ -33,6 +33,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import tools.jackson.databind.ObjectMapper;
 
@@ -98,7 +99,7 @@ public class AuthService {
         }
     }
 
-    // Tạo tài khoản
+    // Tạo tài khoản bởi Admin
     public void createAccount(CreateAccountRequestDTO createAccountRequestDTO) {
         // Kiểm tra email được gửi lên đã tồn tại trong csdl
         String email = createAccountRequestDTO.getEmail();
@@ -131,7 +132,8 @@ public class AuthService {
             String passwordHash = passwordEncoder.encode(createAccountRequestDTO.getPassword());
 
             // Tạo user mới và lưu vào database
-            User user = User.createUserByAdmin(email, passwordHash, roleType);
+            User user = User.createLocalUser(email, passwordHash);
+            user.setRole(roleType);
             userRepository.save(user);
         }
         catch (Exception e) {
@@ -201,6 +203,7 @@ public class AuthService {
     }
 
     // Xác thực tài khoản qua email và token
+    @Transactional
     public void verifyAccount(VerifyAccountRequestDTO verifyEmailRequestDTO) {
         String email = verifyEmailRequestDTO.getEmail();
         String token = verifyEmailRequestDTO.getToken();
@@ -293,6 +296,7 @@ public class AuthService {
     }
 
     // Đăng nhập tài khoản bằng Google
+    @Transactional
     public TokenPair loginWithGoogle(GoogleLoginRequestDTO requestDTO, String clientIp, String userAgent, String oldRefreshToken ) {
         try {
             /* Bước 1: Xác thực token và lấy payload chứa thông tin người dùng */
@@ -531,6 +535,7 @@ public class AuthService {
     }
 
     // Đặt lại mật khẩu khi xác thực OTP cho quên mật khẩu
+    @Transactional
     public void resetPasswordByForgotPassword(ForgotPasswordResetRequestDTO resetPasswordRequestDTO, String clientIP) {
         String email = resetPasswordRequestDTO.getEmail();
         String token = resetPasswordRequestDTO.getToken();
@@ -594,6 +599,7 @@ public class AuthService {
     }
 
     // Đặt lại mật khẩu khi xác thực OTP cho thay đổi mật khẩu
+    @Transactional
     public void resetPasswordByChangePassword(ChangePasswordResetRequestDTO changePasswordResetRequestDTO, String clientIP) {
         String userId = SecurityContextUtil.getCurrentUserId();
         String token = changePasswordResetRequestDTO.getToken();
@@ -720,5 +726,37 @@ public class AuthService {
 
         // Xoá session của deviceId
         sessionUtil.deleteSession(userId, deviceId);
+    }
+
+    // Thay đổi trạng thái người dùng
+    @Transactional
+    public void changeUserStatus(String userId, StatusType newStatus) {
+        // Lấy userId của user hiện tại từ SecurityContext
+        String currentUserId = SecurityContextUtil.getCurrentUserId();
+
+        // Kiểm tra không được tự thao tác trên chính mình
+        if (currentUserId.equals(userId)) {
+            String action = (newStatus == StatusType.BANNED) ? "khoá" : "mở khoá";
+            throw new CustomException(403, "Không thể " + action + " chính tài khoản của bạn!");
+        }
+
+        // Lấy role của user hiện tại từ SecurityContext
+        String currentUserRole = SecurityContextUtil.getCurrentUserRole();
+
+        // Lấy user mục tiêu để so sánh phân cấp role từ csdl
+        Optional<User> targetUser = userRepository.findById(UUID.fromString(userId));
+
+        // Kiểm tra tồn tại, trạng thái phải khác với trạng thái trước đó và phân cấp Role
+        if (targetUser.isEmpty() || targetUser.get().getStatus() == newStatus || !SecurityContextUtil.validateRoleSuperiority(currentUserRole, targetUser.get().getRole().name())) {
+            throw new CustomException(403, "Không thể thực hiện thao tác trên tài khoản này.");
+        }
+
+        // Cập nhật trạng thái
+        userRepository.updateStatusById(UUID.fromString(userId), newStatus);
+
+        // Nếu là BAN thì mới cần xóa session (Unban không cần xóa vì chưa có session)
+        if (newStatus == StatusType.BANNED) {
+            sessionUtil.deleteAllSessions(userId);
+        }
     }
 }

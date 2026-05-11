@@ -32,6 +32,6 @@ INSERT INTO "USER" (id, created_at, email, login_provider, password_hash, provid
 ('87ce7bfc-1ba7-4322-a247-c3e7c163c57b', '2026-04-26 09:00:43.478499+00', 'customer11@outlook.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'USER', 'ACTIVE'),
 ('23822b63-b94e-41df-9cc7-575002287ae7', '2026-04-26 09:00:43.478499+00', 'customer12@gmail.com', 'GOOGLE', NULL, '100123456789012345681', 'USER', 'ACTIVE'),
 ('0918921d-6935-4e51-b101-fd856df0d6a0', '2026-04-26 09:00:43.478499+00', 'customer13@gmail.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'USER', 'ACTIVE'),
-('bb7add4f-7975-4a14-9e95-4436145d0cf0', '2026-04-26 09:00:43.478499+00', 'customer14@gmail.com', 'GOOGLE', NULL, '100123456789012345682', 'USER', 'ACTIVE'),
-('a86222bb-169e-44d3-af14-255ecff9b823', '2026-04-26 09:00:43.478499+00', 'customer15@gmail.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'USER', 'ACTIVE')
+('bb7add4f-7975-4a14-9e95-4436145d0cf0', '2026-04-26 09:00:43.478499+00', 'cusstomer14@gmail.com', 'GOOGLE', NULL, '100123456789012345682', 'MANAGER', 'ACTIVE'),
+('a86222bb-169e-44d3-af14-255ecff9b823', '2026-04-26 09:00:43.478499+00', 'cusstomer15@gmail.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'USER', 'ACTIVE')
 ON CONFLICT (id) DO NOTHING;

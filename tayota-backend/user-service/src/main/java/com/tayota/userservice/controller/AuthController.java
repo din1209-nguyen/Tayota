@@ -33,7 +33,7 @@ public class AuthController {
     // Tạo tài khoản
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/create-account")
-    public ApiResponse<Void> createAccount(@Valid @RequestBody CreateAccountRequestDTO createAccountRequestDTO, HttpServletRequest request) {
+    public ApiResponse<Void> createAccount(@Valid @RequestBody CreateAccountRequestDTO createAccountRequestDTO) {
         authService.createAccount(createAccountRequestDTO);
         return ApiResponse.success(200, "Tạo tài khoản thành công!", null);
     }

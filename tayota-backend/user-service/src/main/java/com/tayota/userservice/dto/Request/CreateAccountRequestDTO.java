@@ -10,6 +10,7 @@ public class CreateAccountRequestDTO {
     @Email(message = "Email không đúng định dạng")
     String email;
 
+    @NotBlank(message = "Mật khẩu không được để trống")
     @Size(min = 8, max = 20, message = "Mật khẩu phải từ 8 đến 20 ký tự")
     @Pattern(
             regexp = "^(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,20}$",

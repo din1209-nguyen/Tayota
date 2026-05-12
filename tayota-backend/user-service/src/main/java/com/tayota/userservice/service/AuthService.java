@@ -11,6 +11,7 @@ import com.tayota.commoncore.util.SecurityContextUtil;
 import com.tayota.userservice.dto.Request.*;
 import com.tayota.userservice.dto.Response.DeviceResponseDTO;
 import com.tayota.userservice.dto.Request.ForgotPasswordResetRequestDTO;
+import com.tayota.userservice.entity.UserProfile;
 import com.tayota.userservice.enums.ProviderType;
 import com.tayota.userservice.enums.StatusType;
 import com.tayota.userservice.object.RegisterCacheData;
@@ -18,6 +19,7 @@ import com.tayota.userservice.object.TokenPair;
 import com.tayota.userservice.object.CustomUserDetails;
 import com.tayota.userservice.grpc.NotificationGrpcClient;
 import com.tayota.userservice.entity.User;
+import com.tayota.userservice.repository.UserProfileRepository;
 import com.tayota.userservice.repository.UserRepository;
 import com.tayota.commoncore.exception.CustomException;
 import com.tayota.userservice.util.*;
@@ -74,6 +76,7 @@ public class AuthService {
     private static final String REFRESH_TOKEN_KEY = "auth:refresh:";
     private static final String FORGOT_PASSWORD_KEY = "auth:forgot_password:";
     private static final String CHANGE_PASSWORD_KEY = "auth:change_password:";
+    private final UserProfileRepository userProfileRepository;
 
 
     @PostConstruct
@@ -132,9 +135,8 @@ public class AuthService {
             String passwordHash = passwordEncoder.encode(createAccountRequestDTO.getPassword());
 
             // Tạo user mới và lưu vào database
-            User user = User.createLocalUser(email, passwordHash);
-            user.setRole(roleType);
-            userRepository.save(user);
+            UserProfile user = new UserProfile(email, passwordHash, roleType);
+            userProfileRepository.save(user);
         }
         catch (Exception e) {
             throw new CustomException(500, "Tạo tài khoản thất bại: " + e.getMessage());
@@ -148,7 +150,7 @@ public class AuthService {
 
         Integer registerCount = (Integer) redisTemplate.opsForValue().get(ipLimitKey);
 
-        if (registerCount != null && registerCount >= 3) {
+        if (registerCount != null && registerCount > 5) {
             throw new CustomException(429, "Bạn đã đăng ký quá nhiều tài khoản. Vui lòng thử lại sau!");
         }
 
@@ -158,6 +160,7 @@ public class AuthService {
         if (userRepository.existsByEmail(email)) {
             throw new CustomException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
+
         // Kiêm tra nếu đã tồn tại token đăng ký chưa xác thực trong Redis để tránh spam đăng ký nhiều lần trên cùng 1 email
         if (redisTemplate.opsForValue().get(VERIFICATION_TOKEN_KEY + email) != null) {
             throw new CustomException(400, "Bạn đã đăng ký tài khoản. Vui lòng kiểm tra email để xác thực tài khoản!");
@@ -168,7 +171,7 @@ public class AuthService {
             String newPasswordHash = passwordEncoder.encode(registerRequestDTO.getPassword());
 
             // Tạo user mới nhưng không lưu vào database
-            User pendingUser = User.createLocalUser(email, newPasswordHash);
+            UserProfile pendingUser = new UserProfile(email, newPasswordHash);
 
             // Tạo token ngẫu nhiên
             String token = UUID.randomUUID().toString();
@@ -195,7 +198,12 @@ public class AuthService {
             );
 
             // Lưu số lần đăng ký lên 1 theo IP vào Redis để giới hạn
-            redisTemplate.opsForValue().set(ipLimitKey, registerCount == null ? 1 : registerCount + 1, Duration.ofHours(1));
+            Long newRegisterCount = redisTemplate.opsForValue().increment(ipLimitKey);
+
+            // Chỉ set expire cho lần đầu, các lần sau increment() giữ nguyên thời gian đếm ngược
+            if (newRegisterCount != null && newRegisterCount == 1) {
+                redisTemplate.expire(ipLimitKey, Duration.ofHours(12));
+            }
         }
         catch (Exception e) {
             throw new CustomException(500, "Đăng ký thất bại: " + e.getMessage());
@@ -231,9 +239,9 @@ public class AuthService {
             throw new CustomException(401, "Link xác thực không hợp lệ!");
         }
 
-        // Lưu tài khoản người dùng vào database
-        User user = registeredUser.getUser();
-        userRepository.save(user);
+        // Lưu tài khoản người dùng vào csld
+        UserProfile userProfile = registeredUser.getUserProfile();
+        userProfileRepository.save(userProfile);
 
         // Xoá token khỏi Redis
         redisTemplate.delete(key);
@@ -254,9 +262,9 @@ public class AuthService {
         String loginLimitKey = "auth:login:limit:fail:" + loginRequestDTO.getEmail() + ":" + clientIp;
         // Truy xuất số lần nhập sai
         Integer failedCount = (Integer) redisTemplate.opsForValue().get(loginLimitKey);
-
+        
         // Kiểm tra số lần nhập sai vượt quá giới hạn
-        if (failedCount != null && failedCount >= 5) {
+        if (failedCount != null && failedCount > 5) {
             throw new CustomException(403, "Bạn đã nhập sai quá nhiều lần. Vui lòng thử lại sau!");
         }
 
@@ -288,7 +296,12 @@ public class AuthService {
         // Bắt lỗi khi sai mật khẩu
         catch (BadCredentialsException e) {
             // Lưu số lần nhập sai email lên 1 theo IP vào Redis
-            redisTemplate.opsForValue().set(loginLimitKey, failedCount == null ? 1 : failedCount + 1, Duration.ofMinutes(5));
+            Long newFailedCount = redisTemplate.opsForValue().increment(loginLimitKey);
+
+            // Chỉ set expire cho lần đầu, các lần sau increment() giữ nguyên thời gian đếm ngược
+            if (newFailedCount != null && newFailedCount == 1) {
+                redisTemplate.expire(loginLimitKey, Duration.ofHours(2));
+            }
 
             // Ném lỗi cả 2 email hoặc mật khẩu vì bảo mật
             throw new CustomException(401, "Email hoặc mật khẩu không đúng!");
@@ -315,8 +328,6 @@ public class AuthService {
             String email = payload.getEmail();
             // Lấy thông tin xem email đã được Google xác minh chưa
             boolean emailVerified = Boolean.TRUE.equals(payload.getEmailVerified());
-            // Lấy tên đầy đủ của người dùng
-            String fullName = (String) payload.get("name");
 
             // Kiểm tra ID và Email phải có dữ liệu
             if (!StringUtils.hasText(providerUserId) || !StringUtils.hasText(email)) {
@@ -345,7 +356,8 @@ public class AuthService {
                     user = existingUserByEmail.get();
 
                     // Trường hợp 1: Tài khoản đã đăng nhập bằng hệ thống truyền thống, nghĩa là email trùng với email Google đang đăng nhập
-                    if (user.getLoginProvider() == ProviderType.LOCAL) {
+                    if (user.getLoginProvider() == ProviderType.LOCAL)
+                    {
                         throw new CustomException(409, "Tài khoản đã tồn tại. Vui lòng đăng nhập bằng mật khẩu!");
                     }
 
@@ -357,7 +369,9 @@ public class AuthService {
                 }
                 // Nếu chưa tồn tại user nào với email này thì tạo tài khoản mới
                 else {
-                    user = userRepository.save(User.createGoogleUser(email, providerUserId));
+                    String fullname = payload.get("name").toString();
+                    String avatarUrl = payload.get("picture").toString();
+                    user = userProfileRepository.save(new UserProfile(fullname, avatarUrl, email, providerUserId)).getUser();
                 }
             }
             // Nếu đã tồn tại user với providerUserId này => người dùng đã đăng nhập bằng Google trước đó thì cho đăng nhập bình thường

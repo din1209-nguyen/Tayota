@@ -4,6 +4,7 @@ import com.tayota.commoncore.dto.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
 import org.hibernate.validator.internal.engine.path.PathImpl;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -16,6 +17,13 @@ import java.util.Map;
 @RestControllerAdvice
 @ConditionalOnProperty(prefix = "common.exception", name = "handler-enabled", havingValue = "true", matchIfMissing = true)
 public class GlobalExceptionHandler {
+
+    // Xử lý lỗi khi gửi Request thiếu Body hoặc Body không đúng định dạng JSON
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ApiResponse<Void> handleHttpMessageNotReadableException(HttpMessageNotReadableException exception) {
+        return ApiResponse.error(400, "Dữ liệu yêu cầu không được để trống hoặc sai định dạng JSON");
+    }
+
     // Xử lý các lỗi Validation
     @ExceptionHandler(value = MethodArgumentNotValidException.class)
     public ApiResponse<Map<String, String>> handleValidationException(MethodArgumentNotValidException exception) {

@@ -14,49 +14,55 @@ import java.util.UUID;
 @Entity
 @Table(name = "\"USER\"")
 public class User {
+
+    public User() {}
+
+    // Tạo tài khoản bởi Admin
+    public User(String email, String passwordHash, RoleType role) {
+        this.email = email;
+        this.passwordHash = passwordHash;
+        this.role = role;
+    }
+
     // Đăng nhập truyền thống
-    public static User createLocalUser(String email, String passwordHash) {
-        User user = new User();
-        user.setEmail(email);
-        user.setPasswordHash(passwordHash);
-        return user;
+    public User(String email, String passwordHash) {
+        this.email = email;
+        this.passwordHash = passwordHash;
     }
 
     // Đăng nhập qua Google
-    public static User createGoogleUser(String email, String providerUserId) {
-        User user = new User();
-        user.setEmail(email);
-        user.setProviderUserId(providerUserId);
-        user.setLoginProvider(ProviderType.GOOGLE);
-        return user;
+    public User(String email, String providerUserId, ProviderType providerType) {
+        this.email = email;
+        this.providerUserId = providerUserId;
+        this.loginProvider = providerType;
     }
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(nullable = false, updatable = false)
+    @Column(updatable = false)
     private UUID id;
 
-    @Column(nullable = false, unique = true, length = 255)
+    @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(name = "password_hash", length = 255)
+    @Column(length = 60)
     private String passwordHash;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "login_provider", nullable = false)
+    @Column(length = 20, nullable = false)
     private ProviderType loginProvider = ProviderType.LOCAL;
 
-    @Column(name = "provider_user_id", unique = true, length = 120)
+    @Column(unique = true, length = 120)
     private String providerUserId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(length = 20, nullable = false)
     private RoleType role = RoleType.USER;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(length = 20, nullable = false)
     private StatusType status = StatusType.ACTIVE;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 }

@@ -9,7 +9,6 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -29,7 +28,7 @@ public class Car {
     @JoinColumn(name = "car_version_id", nullable = false)
     private CarVersion carVersion;
 
-    @NotNull
+    @org.jetbrains.annotations.NotNull
     @Size(max = 50)
     private String engineNumber;
 

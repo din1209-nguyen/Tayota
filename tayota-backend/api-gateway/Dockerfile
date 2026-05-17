@@ -19,6 +19,7 @@ WORKDIR /app
 #Chép file .jar vừa được tạo ra từ giai đoạn builder sang giai đoạn runner và đổi tên thành app.jar cho gọn
 COPY --from=builder ./app/target/api-gateway-0.0.1-SNAPSHOT.jar ./app.jar
 #Ứng dụng chạy trên cổng 8081
-EXPOSE 8079
+# Document the runtime port used by api-gateway in docker-compose (gpt)
+EXPOSE 8090
 #khởi động ứng dụng Java
 ENTRYPOINT ["java", "-jar", "app.jar"]

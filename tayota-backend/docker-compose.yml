@@ -23,6 +23,9 @@ services:
     depends_on:
       user-service:
         condition: service_started
+      # Ensure the public car versions route has an upstream container when gateway starts (gpt)
+      car-service:
+        condition: service_started
     networks:
       - tayota-network
 
@@ -45,24 +48,28 @@ services:
       timeout: 5s
       retries: 10
 
-#  # --- Postgres Car Service ---
-#  postgres-car-service:
-#    image: postgres:17
-#    environment:
-#      POSTGRES_USER: ${POSTGRES_USER}
-#      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-#      POSTGRES_DB: ${POSTGRES_CAR_DB:-tayota_car_db}
-#    ports:
-#      - "5434:5432"
-#    volumes:
-#      - ./docker-data/postgres-car-service:/var/lib/postgresql/data
-#    networks:
-#      - tayota-network
-#    healthcheck:
-#      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_CAR_DB:-tayota_car_db}" ]
-#      interval: 5s
-#      timeout: 5s
-#      retries: 10
+  # PostgreSQL database used by car-service for CAR_VERSION/CAR_PRICE queries (gpt)
+  postgres-car-service:
+    image: postgres:17
+    environment:
+      # Create the database that car-service connects to at startup (gpt)
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_CAR_DB:-tayota_car_db}
+    ports:
+      # Expose car database on host port 5434 to avoid conflicting with user DB on 5432 (gpt)
+      - "5434:5432"
+    volumes:
+      # Persist car database data between container restarts (gpt)
+      - ./docker-data/postgres-car-service:/var/lib/postgresql/data
+    networks:
+      - tayota-network
+    healthcheck:
+      # Wait until PostgreSQL accepts connections before starting car-service (gpt)
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_CAR_DB:-tayota_car_db}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   # --- Postgres Operation Service ---
   postgres-operation-service:
@@ -153,32 +160,38 @@ services:
     networks:
       - tayota-network
 
-#  # --- Car Service ---
-#  car-service:
-#    build:
-#      context: .
-#      dockerfile: car-service/Dockerfile
-#    environment:
-#      - SERVER_PORT=${CAR_SERVICE_PORT:-8092}
-#      - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
-#      - SPRING_JPA_HIBERNATE_DDL_AUTO=update # Tự động đồng bộ database với Entity
-#      - SPRING_SQL_INIT_MODE=always # Luôn chạy schema.sql khi khởi động dự án
-#      - SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION=false # Chạy các file .sql trước Hibernate
-#      - SPRING_SQL_INIT_SEPARATOR=//
-#      # --- Postgres ---
-#      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-car-service:5432/${POSTGRES_CAR_DB:-tayota_car_db}
-#      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
-#      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
-#      # --- Redis ---
-#      - SPRING_DATA_REDIS_HOST=${REDIS_HOST:-redis}
-#      - SPRING_DATA_REDIS_PORT=${REDIS_PORT:-6379}
-#    depends_on:
-#      postgres-car-service:
-#        condition: service_healthy
-#      redis:
-#        condition: service_healthy
-#    networks:
-#      - tayota-network
+  # Spring Boot service that serves GET /cars/versions and uses Redis cache (gpt)
+  car-service:
+    build:
+      # Build from backend root because car-service Dockerfile needs common-core too (gpt)
+      context: .
+      dockerfile: car-service/Dockerfile
+    environment:
+      # Run car-service on the same port used by the gateway route (gpt)
+      - SERVER_PORT=${CAR_SERVICE_PORT:-8092}
+      - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update # Auto-sync database tables from JPA entities (gpt)
+      - SPRING_SQL_INIT_MODE=always # Run SQL initialization files when present (gpt)
+      - SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION=false # Run SQL init before Hibernate when applicable (gpt)
+      - SPRING_SQL_INIT_SEPARATOR=//
+      # PostgreSQL connection for car catalog data (gpt)
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-car-service:5432/${POSTGRES_CAR_DB:-tayota_car_db}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      # Redis connection for 10-minute cars/versions cache (gpt)
+      - SPRING_DATA_REDIS_HOST=${REDIS_HOST:-redis}
+      - SPRING_DATA_REDIS_PORT=${REDIS_PORT:-6379}
+      # Kafka producer for async view history and behavior log events
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+    depends_on:
+      # Wait for car database healthcheck before booting JPA (gpt)
+      postgres-car-service:
+        condition: service_healthy
+      # Wait for Redis because the endpoint uses RedisTemplate cache (gpt)
+      redis:
+        condition: service_healthy
+    networks:
+      - tayota-network
 
   # --- Operation Service ---
   operation-service:

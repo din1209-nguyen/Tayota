@@ -96,4 +96,7 @@ COPY --from=builder /build/service/target/car-service-0.0.1-SNAPSHOT.jar ./app.j
 
 # Khởi chạy app trong môi trường java, tìm tệp nén (-jar) từ app.jar
 # Tìm META-INF/MANIFEST.MF (-jar), đọc dòng Main-Class để lấy ra tên class chính ví dụ AuthServiceApplication, rồi đi tìm file class tương ứng để chạy hàm Main
+# Document the runtime port used by car-service in docker-compose (gpt)
+EXPOSE 8092
+
 ENTRYPOINT ["java", "-jar", "app.jar"]

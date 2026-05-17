@@ -11,6 +11,7 @@ import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -38,7 +39,8 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
     // Danh sách các đường dẫn không cần xác thực
     private final List<String> whitelistUrls = List.of(
-            "/user/register", "/user/verify", "/user/login", "/user/refresh-token"
+            "/user/register", "/user/verify", "/user/login", "/user/google-login", "/user/refresh-token",
+            "/car/cars/versions", "/car/cars/versions/**"
     );
 
     // Đây là hàm cốt lõi, mọi request đi qua Gateway đều phải chạy qua hàm này
@@ -51,15 +53,15 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
         // Lấy đường dẫn API người dùng đang muốn gọi (VD: /api/users/profile)
         String path = request.getURI().getPath();
+        boolean isWhitelisted = isWhitelisted(request);
+        String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
 
         // Duyệt qua danh sách whitelist, nếu đường dẫn hiện tại khớp với bất kỳ pattern nào thì trả về true
-        if (whitelistUrls.stream().anyMatch(pattern -> pathMatcher.match(pattern, path))) {
+        if (isWhitelisted && (authHeader == null || !authHeader.startsWith("Bearer "))) {
             return chain.filter(exchange);
         }
         /* access-token từ header chuẩn Authorization: Bearer <token> */
         // Tìm header có tên là "Authorization" (chứa access-token)
-        String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-
         // Nếu header không tồn tại hoặc không đúng chuẩn Bearer thì báo lỗi 401
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return unAuthorizedResponse(exchange.getResponse(), "Không tìm thấy token hoặc sai định dạng Authorization Bearer");
@@ -125,6 +127,20 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
         // Viết dữ liệu vào Response và trả về cho người dùng
         return response.writeWith(Mono.just(buffer));
+    }
+
+    private boolean isWhitelisted(ServerHttpRequest request) {
+        String path = request.getURI().getPath();
+
+        if (request.getMethod() == HttpMethod.GET
+                && (pathMatcher.match("/car/cars/versions", path)
+                || pathMatcher.match("/car/cars/versions/**", path))) {
+            return true;
+        }
+
+        return whitelistUrls.stream()
+                .filter(pattern -> !pattern.startsWith("/car/cars/versions"))
+                .anyMatch(pattern -> pathMatcher.match(pattern, path));
     }
 
     // Xác định thứ tự chạy của Filter này

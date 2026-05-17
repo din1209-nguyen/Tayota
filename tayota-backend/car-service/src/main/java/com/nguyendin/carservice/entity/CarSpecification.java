@@ -3,6 +3,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 import java.util.UUID;
 
@@ -10,57 +11,58 @@ import java.util.UUID;
 @Table(name = "\"CAR_SPECIFICATION\"")
 @EqualsAndHashCode(of = "carVersionId")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class CarSpecification {
 
     @Id
     @Column(name = "car_version_id")
-    private UUID carVersionId;
+    UUID carVersionId;
 
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
     @JoinColumn(name = "car_version_id")
-    private CarVersion carVersion;
+    CarVersion carVersion;
 
     @NotNull
     @Size(max = 100)
-    private String origin;
+    String origin;
 
     @NotNull
     @Size(max = 50)
-    private String fuel;
+    String fuel;
 
     @NotNull
-    private Integer numberOfSeats;
+    Integer numberOfSeats;
 
     @NotNull
-    private Integer length;
+    Integer length;
 
     @NotNull
-    private Integer width;
+    Integer width;
 
     @NotNull
-    private Integer height;
+    Integer height;
 
-    private Integer capacity;
+    Integer capacity;
 
     @Size(max = 50)
-    private String cylinderCapacity;
+    String cylinderCapacity;
 
-    private Integer cylinder;
-
-    @Size(max = 50)
-    private String gearbox;
-
-    private Integer maximumSpeed;
+    Integer cylinder;
 
     @Size(max = 50)
-    private String acceleration;
+    String gearbox;
+
+    Integer maximumSpeed;
+
+    @Size(max = 50)
+    String acceleration;
 
     @Size(max = 100)
-    private String torque;
+    String torque;
 
-    private Integer grossWeightAllowance;
+    Integer grossWeightAllowance;
 
     @Size(max = 100)
-    private String trademarks;
+    String trademarks;
 }

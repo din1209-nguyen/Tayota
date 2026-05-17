@@ -5,6 +5,7 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
@@ -20,31 +21,32 @@ import java.util.UUID;
 @EqualsAndHashCode(of = "id")
 @Table(name = "\"CAR_VERSION\"")
 @Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class CarVersion {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "car_series_id", nullable = false)
-    private CarSeries carSeries;
+    CarSeries carSeries;
 
     @NotNull
     @Size(max = 50)
-    private String version;
+    String version;
 
     @Column(name = "sale_percent", precision = 5, scale = 2)
-    private BigDecimal salePercent = BigDecimal.ZERO;
+    BigDecimal salePercent = BigDecimal.ZERO;
 
     @Size(max = 255)
-    private String imageUrl;
+    String imageUrl;
 
     @Size(max = 255)
-    private String videoUrl;
+    String videoUrl;
 
     @CreationTimestamp
-    private LocalDateTime createdAt;
+    LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "carVersion")
-    private List<Car> carList;
+    List<Car> carList;
 }

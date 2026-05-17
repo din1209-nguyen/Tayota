@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
@@ -18,26 +19,27 @@ import java.util.UUID;
 @EqualsAndHashCode(of = "id")
 @Table(name = "\"CAR_SERIES\"")
 @Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class CarSeries {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "car_style_id", nullable = false)
-    private CarStyle carStyle;
+    CarStyle carStyle;
 
     @NotNull
     @Size(max = 100)
-    private String name;
+    String name;
 
     @NotNull
     @Size(max = 250)
-    private String description;
+    String description;
 
     @CreationTimestamp
-    private LocalDateTime createdAt;
+    LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "carSeries")
-    private List<CarVersion> carVersionList;
+    List<CarVersion> carVersionList;
 }

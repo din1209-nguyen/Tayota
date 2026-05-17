@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 import java.util.UUID;
 
@@ -11,28 +12,29 @@ import java.util.UUID;
 @Table(name = "\"CAR_ARTICLE\"")
 @EqualsAndHashCode(of = "id")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class CarArticle {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "car_version_id", nullable = false)
-    private CarVersion carVersion;
+    CarVersion carVersion;
 
     @NotNull
     @Size(max = 50)
-    private String type;
+    String type;
 
     @NotNull
     @Size(max = 255)
-    private String title;
+    String title;
 
     @NotNull
     @Column(columnDefinition = "TEXT")
-    private String content;
+    String content;
 
     @Size(max = 255)
-    private String imageUrl;
+    String imageUrl;
 }

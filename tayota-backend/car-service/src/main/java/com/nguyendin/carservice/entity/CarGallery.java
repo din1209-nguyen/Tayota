@@ -2,6 +2,7 @@ package com.nguyendin.carservice.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 import java.util.UUID;
 
@@ -9,16 +10,17 @@ import java.util.UUID;
 @Table(name = "\"CAR_GALLERY\"")
 @EqualsAndHashCode(of = "id")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class CarGallery {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "car_version_id", nullable = false)
-    private CarVersion carVersion;
+    CarVersion carVersion;
 
     @Column(name = "image_url", nullable = false, length = 255)
-    private String imageUrl;
+    String imageUrl;
 }

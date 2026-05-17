@@ -3,6 +3,7 @@ package com.nguyendin.carservice.entity;
 import jakarta.persistence.Embeddable;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+
 import java.io.Serializable;
 import java.util.UUID;
 
@@ -10,7 +11,8 @@ import java.util.UUID;
 @EqualsAndHashCode
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class CarAccessoryId implements Serializable {
-    UUID carVersionId;
+public class AccessoryInventoryId implements Serializable {
+
+    UUID dealershipId;
     UUID accessoryId;
 }

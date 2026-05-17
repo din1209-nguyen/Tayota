@@ -2,6 +2,7 @@ package com.nguyendin.carservice.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 import java.util.UUID;
 
@@ -13,12 +14,13 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class InteriorColor {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    UUID id;
 
     @Column(name = "color_name", nullable = false, unique = true, length = 50)
-    private String colorName;
+    String colorName;
 }

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -12,33 +13,34 @@ import java.util.UUID;
 @Table(name = "\"ACCESSORY\"")
 @EqualsAndHashCode(of = "id")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class Accessory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    UUID id;
 
     @NotNull
     @Size(max = 100)
-    private String model;
+    String model;
 
     @NotNull
     @Size(max = 100)
-    private String brand;
+    String brand;
 
     @Column(nullable = false, precision = 15, scale = 2)
-    private BigDecimal price;
+    BigDecimal price;
 
     @Column(columnDefinition = "TEXT")
-    private String description;
+    String description;
 
     @Column(columnDefinition = "TEXT")
-    private String useContent;
+    String useContent;
 
     @Column(columnDefinition = "TEXT")
-    private String reminderContent;
+    String reminderContent;
 
     @NotNull
     @Size(max = 100)
-    private String type;
+    String type;
 }

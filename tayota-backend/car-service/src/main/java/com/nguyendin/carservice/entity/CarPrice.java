@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 import java.math.BigDecimal;
 
@@ -12,34 +13,35 @@ import java.math.BigDecimal;
 @Table(name = "\"CAR_PRICE\"")
 @EqualsAndHashCode(of = "id")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class CarPrice {
 
     @EmbeddedId
-    private CarPriceId id;
+    CarPriceId id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("carVersionId")
     @JoinColumn(name = "car_version_id")
-    private CarVersion carVersion;
+    CarVersion carVersion;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("exteriorColorId")
     @JoinColumn(name = "exterior_color_id")
-    private ExteriorColor exteriorColor;
+    ExteriorColor exteriorColor;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("interiorColorId")
     @JoinColumn(name = "interior_color_id")
-    private InteriorColor interiorColor;
+    InteriorColor interiorColor;
 
     @NotNull
     @Positive
     @Column(nullable = false, precision = 15, scale = 2)
-    private BigDecimal price;
+    BigDecimal price;
 
     @Size(max = 255)
-    private String exImageUrl;
+    String exImageUrl;
 
     @Size(max = 255)
-    private String inImageUrl;
+    String inImageUrl;
 }

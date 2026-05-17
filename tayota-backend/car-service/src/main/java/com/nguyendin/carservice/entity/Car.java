@@ -5,6 +5,9 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDate;
@@ -19,32 +22,38 @@ import java.util.UUID;
 @EqualsAndHashCode(of = "id")
 @Table(name = "\"CAR\"")
 @Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class Car {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "car_version_id", nullable = false)
-    private CarVersion carVersion;
+    CarVersion carVersion;
 
-    @org.jetbrains.annotations.NotNull
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "dealership_id")
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    Dealership dealership;
+
+    @NotNull
     @Size(max = 50)
-    private String engineNumber;
+    String engineNumber;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private CarStatusType status = CarStatusType.IN_STOCK;
+    CarStatusType status = CarStatusType.IN_STOCK;
 
-    private int mileage;
+    int mileage;
 
     @NotNull
-    private int productionYear;
+    int productionYear;
 
-    private LocalDate entryDate;
+    LocalDate entryDate;
 
     @CreationTimestamp
-    private LocalDateTime createdAt;
+    LocalDateTime createdAt;
 
 
 }

@@ -3,15 +3,13 @@ package com.tayota.apigateway.filter;
 import com.tayota.apigateway.util.JwtUtil;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
-import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -24,7 +22,6 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-@RequiredArgsConstructor
 @Component
 public class AuthenticationFilter implements GlobalFilter, Ordered {
     private final JwtUtil jwtUtil;
@@ -32,9 +29,30 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     // AntPathMatcher là công cụ của Spring giúp so sánh chuỗi URI có chứa dấu * (wildcard)
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
+    public AuthenticationFilter(JwtUtil jwtUtil) {
+        this.jwtUtil = jwtUtil;
+    }
+
     // Danh sách các đường dẫn không cần xác thực
-    private final List<String> whitelistUrls = List.of(
-            "/user/register", "/user/verify-account", "/user/login", "/user/oauth/google", "/user/refresh-token", "/user/forgot-password/*"
+    private final List<PublicEndpoint> whitelistUrls = List.of(
+            PublicEndpoint.of(HttpMethod.POST, "/user/register"),
+            PublicEndpoint.of(HttpMethod.POST, "/user/verify-account"),
+            PublicEndpoint.of(HttpMethod.POST, "/user/login"),
+            PublicEndpoint.of(HttpMethod.POST, "/user/oauth/google"),
+            PublicEndpoint.of(HttpMethod.POST, "/user/refresh-token"),
+            PublicEndpoint.of(HttpMethod.POST, "/user/forgot-password/send-otp"),
+            PublicEndpoint.of(HttpMethod.POST, "/user/forgot-password/verify-otp"),
+            PublicEndpoint.of(HttpMethod.PATCH, "/user/forgot-password/reset-password"),
+
+            PublicEndpoint.of(HttpMethod.GET, "/car/catalog/**"),
+            PublicEndpoint.of(HttpMethod.GET, "/car/car-styles"),
+            PublicEndpoint.of(HttpMethod.GET, "/car/car-styles/**"),
+            PublicEndpoint.of(HttpMethod.GET, "/car/car-series"),
+            PublicEndpoint.of(HttpMethod.GET, "/car/car-series/**"),
+            PublicEndpoint.of(HttpMethod.GET, "/car/car-versions"),
+            PublicEndpoint.of(HttpMethod.GET, "/car/car-versions/**"),
+            PublicEndpoint.of(HttpMethod.GET, "/car/accessories"),
+            PublicEndpoint.of(HttpMethod.GET, "/car/accessories/**")
     );
 
     // Đây là hàm cốt lõi, mọi request đi qua Gateway đều phải chạy qua hàm này
@@ -49,9 +67,11 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         String path = request.getURI().getPath();
 
         // Duyệt qua danh sách whitelist, nếu đường dẫn hiện tại khớp với bất kỳ pattern nào thì trả về true
-        if (whitelistUrls.stream().anyMatch(pattern -> pathMatcher.match(pattern, path))) {
+        if (HttpMethod.OPTIONS.equals(request.getMethod())
+                || whitelistUrls.stream().anyMatch(endpoint -> isWhitelisted(endpoint, request.getMethod(), path))) {
             return chain.filter(exchange);
         }
+        
         /* access-token từ header chuẩn Authorization: Bearer <token> */
         // Tìm header có tên là "Authorization" (chứa access-token)
         String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
@@ -120,6 +140,16 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
         // Viết dữ liệu vào Response và trả về cho người dùng
         return response.writeWith(Mono.just(buffer));
+    }
+
+    private boolean isWhitelisted(PublicEndpoint endpoint, HttpMethod method, String path) {
+        return endpoint.method().equals(method) && pathMatcher.match(endpoint.pattern(), path);
+    }
+
+    private record PublicEndpoint(HttpMethod method, String pattern) {
+        private static PublicEndpoint of(HttpMethod method, String pattern) {
+            return new PublicEndpoint(method, pattern);
+        }
     }
 
     // Xác định thứ tự chạy của Filter này

@@ -23,7 +23,6 @@ services:
     depends_on:
       user-service:
         condition: service_started
-      # Ensure the public car versions route has an upstream container when gateway starts (gpt)
       car-service:
         condition: service_started
     networks:

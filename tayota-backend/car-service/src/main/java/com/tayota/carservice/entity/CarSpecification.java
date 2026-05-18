@@ -1,7 +1,6 @@
 package com.tayota.carservice.entity;
+
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -10,7 +9,11 @@ import java.util.UUID;
 @Entity
 @Table(name = "\"CAR_SPECIFICATION\"")
 @EqualsAndHashCode(of = "carVersionId")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CarSpecification {
 
@@ -23,46 +26,44 @@ public class CarSpecification {
     @JoinColumn(name = "car_version_id")
     CarVersion carVersion;
 
-    @NotNull
-    @Size(max = 100)
+    @Column(nullable = false, length = 100)
     String origin;
 
-    @NotNull
-    @Size(max = 50)
+    @Column(nullable = false, length = 50)
     String fuel;
 
-    @NotNull
+    @Column(nullable = false)
     Integer numberOfSeats;
 
-    @NotNull
+    @Column(nullable = false)
     Integer length;
 
-    @NotNull
+    @Column(nullable = false)
     Integer width;
 
-    @NotNull
+    @Column(nullable = false)
     Integer height;
 
     Integer capacity;
 
-    @Size(max = 50)
+    @Column(length = 50)
     String cylinderCapacity;
 
     Integer cylinder;
 
-    @Size(max = 50)
+    @Column(length = 50)
     String gearbox;
 
     Integer maximumSpeed;
 
-    @Size(max = 50)
+    @Column(length = 50)
     String acceleration;
 
-    @Size(max = 100)
+    @Column(length = 100)
     String torque;
 
     Integer grossWeightAllowance;
 
-    @Size(max = 100)
+    @Column(length = 100)
     String trademarks;
 }

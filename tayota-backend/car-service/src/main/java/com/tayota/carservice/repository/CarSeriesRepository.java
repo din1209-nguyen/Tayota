@@ -9,7 +9,12 @@ import java.util.UUID;
 
 @Repository
 public interface CarSeriesRepository extends JpaRepository<CarSeries, UUID> {
+    // Tìm dòng xe theo kiểu dáng
     List<CarSeries> findByCarStyleId(UUID carStyleId);
-    List<CarSeries> findByNameContainingIgnoreCase(String name);
-}
 
+    // Kiểm tra tên dòng xe đã tồn tại trong cùng kiểu dáng
+    boolean existsByNameAndCarStyleId(String name, UUID carStyleId);
+
+    // Kiểm tra tên dòng xe đã tồn tại trong cùng kiểu dáng ngoài bản ghi hiện tại
+    boolean existsByNameAndCarStyleIdAndIdNot(String name, UUID carStyleId, UUID id);
+}

@@ -1,16 +1,12 @@
 package com.tayota.carservice.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.List;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -25,28 +21,27 @@ import java.util.UUID;
 public class CarVersion {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(updatable = false)
     UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "car_series_id", nullable = false)
     CarSeries carSeries;
 
-    @NotNull
-    @Size(max = 50)
-    String version;
+    @Column(nullable = false, length = 50)
+    String name;
 
     @Column(name = "sale_percent", precision = 5, scale = 2)
+    @Builder.Default
     BigDecimal salePercent = BigDecimal.ZERO;
 
-    @Size(max = 255)
-    String imageUrl;
+    @Column(name = "model_year", nullable = false)
+    Integer modelYear;
 
-    @Size(max = 255)
+    @Column(length = 255)
     String videoUrl;
 
     @CreationTimestamp
-    LocalDateTime createdAt;
-
-    @OneToMany(mappedBy = "carVersion")
-    List<Car> carList;
+    @Column(name = "created_at", updatable = false)
+    Instant createdAt;
 }

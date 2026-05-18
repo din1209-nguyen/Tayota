@@ -9,7 +9,6 @@ import java.util.UUID;
 
 @Repository
 public interface CarGalleryRepository extends JpaRepository<CarGallery, UUID> {
+    // Tìm hình ảnh theo phiên bản xe
     List<CarGallery> findByCarVersionId(UUID carVersionId);
-    long countByCarVersionId(UUID carVersionId);
 }
-

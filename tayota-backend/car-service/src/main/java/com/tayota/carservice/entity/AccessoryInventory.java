@@ -1,18 +1,20 @@
 package com.tayota.carservice.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PositiveOrZero;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "\"ACCESSORY_INVENTORY\"")
 @EqualsAndHashCode(of = "id")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class AccessoryInventory {
 
@@ -30,11 +32,10 @@ public class AccessoryInventory {
     Accessory accessory;
 
     @Builder.Default
-    @NotNull
-    @PositiveOrZero
     @Column(nullable = false)
     Integer quantity = 0;
 
     @UpdateTimestamp
-    LocalDateTime lastUpdated;
+    @Column(name = "last_updated")
+    Instant lastUpdated;
 }

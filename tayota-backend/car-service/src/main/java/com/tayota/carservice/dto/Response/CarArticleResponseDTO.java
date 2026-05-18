@@ -1,6 +1,5 @@
 package com.tayota.carservice.dto.Response;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -13,7 +12,5 @@ public class CarArticleResponseDTO {
     private String type;
     private String title;
     private String content;
-
-    @JsonProperty("image_url")
     private String imageUrl;
 }

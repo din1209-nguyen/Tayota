@@ -1,14 +1,11 @@
 package com.tayota.carservice.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 
-import java.time.LocalDateTime;
-import java.util.List;
+import java.time.Instant;
 import java.util.UUID;
 
 @Getter
@@ -23,23 +20,20 @@ import java.util.UUID;
 public class CarSeries {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(updatable = false)
     UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "car_style_id", nullable = false)
     CarStyle carStyle;
 
-    @NotNull
-    @Size(max = 100)
+    @Column(nullable = false, length = 100)
     String name;
 
-    @NotNull
-    @Size(max = 250)
+    @Column(nullable = false, length = 250)
     String description;
 
     @CreationTimestamp
-    LocalDateTime createdAt;
-
-    @OneToMany(mappedBy = "carSeries")
-    List<CarVersion> carVersionList;
+    @Column(name = "created_at", updatable = false)
+    Instant createdAt;
 }

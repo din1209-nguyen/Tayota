@@ -2,16 +2,11 @@ package com.tayota.carservice.entity;
 
 import com.tayota.carservice.enums.CarStatusType;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.CreationTimestamp;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -19,41 +14,38 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(of = "id")
+@EqualsAndHashCode(of = "vinId")
 @Table(name = "\"CAR\"")
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Car {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    UUID id;
+    @Column(name = "vin_id", length = 17)
+    String vinId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "car_version_id", nullable = false)
     CarVersion carVersion;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "dealership_id")
-    @OnDelete(action = OnDeleteAction.SET_NULL)
+    @JoinColumn(name = "dealership_id", nullable = false)
     Dealership dealership;
 
-    @NotNull
-    @Size(max = 50)
+    @Column(name = "engine_number", nullable = false, unique = true, length = 50)
     String engineNumber;
 
+    @Column(name = "owner_user_id")
+    UUID ownerUserId;
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 30)
+    @Builder.Default
     CarStatusType status = CarStatusType.IN_STOCK;
 
-    int mileage;
-
-    @NotNull
-    int productionYear;
-
-    LocalDate entryDate;
+    @Column(name = "producted_year", nullable = false)
+    Instant productedYear;
 
     @CreationTimestamp
-    LocalDateTime createdAt;
-
-
+    @Column(name = "created_at", updatable = false)
+    Instant createdAt;
 }

@@ -10,10 +10,6 @@ import java.util.UUID;
 
 @Repository
 public interface CarPriceRepository extends JpaRepository<CarPrice, CarPriceId> {
-    List<CarPrice> findByIdCarVersionId(UUID carVersionId);
-    List<CarPrice> findByIdExteriorColorId(UUID exteriorColorId);
-    List<CarPrice> findByIdInteriorColorId(UUID interiorColorId);
-    List<CarPrice> findByIdCarVersionIdAndIdExteriorColorIdAndIdInteriorColorId(
-            UUID carVersionId, UUID exteriorColorId, UUID interiorColorId);
+    // Tìm giá xe theo phiên bản
+    List<CarPrice> findByCarVersionId(UUID carVersionId);
 }
-

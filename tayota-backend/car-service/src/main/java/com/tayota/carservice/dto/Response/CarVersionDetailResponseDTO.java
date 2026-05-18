@@ -1,6 +1,5 @@
 package com.tayota.carservice.dto.Response;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -12,13 +11,14 @@ import java.util.UUID;
 @AllArgsConstructor
 public class CarVersionDetailResponseDTO {
     private UUID id;
-    private String version;
-    private CarSeriesResponseDTO series;
+    private String name;
+    private Integer modelYear;
+    private BigDecimal salePercent;
+    private String videoUrl;
+    private CarSeriesResponseDTO carSeries;
     private CarSpecificationResponseDTO specification;
     private List<CarPriceResponseDTO> prices;
-    private List<CarGalleryResponseDTO> gallery;
+    private List<CarGalleryResponseDTO> galleries;
     private List<CarArticleResponseDTO> articles;
-
-    @JsonProperty("sale_percent")
-    private BigDecimal salePercent;
+    private List<AccessoryResponseDTO> accessories;
 }

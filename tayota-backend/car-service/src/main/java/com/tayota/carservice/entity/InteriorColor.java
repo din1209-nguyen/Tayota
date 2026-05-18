@@ -19,6 +19,7 @@ public class InteriorColor {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(updatable = false)
     UUID id;
 
     @Column(name = "color_name", nullable = false, unique = true, length = 50)

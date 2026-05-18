@@ -1,9 +1,6 @@
 package com.tayota.carservice.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -12,36 +9,38 @@ import java.math.BigDecimal;
 @Entity
 @Table(name = "\"CAR_PRICE\"")
 @EqualsAndHashCode(of = "id")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CarPrice {
 
     @EmbeddedId
     CarPriceId id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @MapsId("carVersionId")
-    @JoinColumn(name = "car_version_id")
+    @JoinColumn(name = "car_version_id", nullable = false)
     CarVersion carVersion;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @MapsId("exteriorColorId")
-    @JoinColumn(name = "exterior_color_id")
+    @JoinColumn(name = "exterior_color_id", nullable = false)
     ExteriorColor exteriorColor;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @MapsId("interiorColorId")
-    @JoinColumn(name = "interior_color_id")
+    @JoinColumn(name = "interior_color_id", nullable = false)
     InteriorColor interiorColor;
 
-    @NotNull
-    @Positive
     @Column(nullable = false, precision = 15, scale = 2)
     BigDecimal price;
 
-    @Size(max = 255)
+    @Column(name = "ex_image_url", length = 255)
     String exImageUrl;
 
-    @Size(max = 255)
+    @Column(name = "in_image_url", length = 255)
     String inImageUrl;
 }

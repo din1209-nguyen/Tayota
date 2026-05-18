@@ -9,8 +9,6 @@ import java.util.UUID;
 
 @Repository
 public interface CarArticleRepository extends JpaRepository<CarArticle, UUID> {
+    // Tìm bài viết theo phiên bản xe
     List<CarArticle> findByCarVersionId(UUID carVersionId);
-    List<CarArticle> findByType(String type);
-    List<CarArticle> findByCarVersionIdAndType(UUID carVersionId, String type);
 }
-

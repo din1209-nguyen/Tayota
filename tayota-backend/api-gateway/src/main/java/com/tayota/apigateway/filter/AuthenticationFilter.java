@@ -3,6 +3,7 @@ package com.tayota.apigateway.filter;
 import com.tayota.apigateway.util.JwtUtil;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.jspecify.annotations.NullMarked;
@@ -11,7 +12,6 @@ import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -24,23 +24,17 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+@RequiredArgsConstructor
 @Component
 public class AuthenticationFilter implements GlobalFilter, Ordered {
-    private static final Logger log = LoggerFactory.getLogger(AuthenticationFilter.class);
-
     private final JwtUtil jwtUtil;
-
-    public AuthenticationFilter(JwtUtil jwtUtil) {
-        this.jwtUtil = jwtUtil;
-    }
 
     // AntPathMatcher là công cụ của Spring giúp so sánh chuỗi URI có chứa dấu * (wildcard)
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     // Danh sách các đường dẫn không cần xác thực
     private final List<String> whitelistUrls = List.of(
-            "/user/register", "/user/verify", "/user/login", "/user/google-login", "/user/refresh-token",
-            "/car/cars/versions", "/car/cars/versions/**"
+            "/user/register", "/user/verify-account", "/user/login", "/user/oauth/google", "/user/refresh-token", "/user/forgot-password/*"
     );
 
     // Đây là hàm cốt lõi, mọi request đi qua Gateway đều phải chạy qua hàm này
@@ -53,18 +47,18 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
         // Lấy đường dẫn API người dùng đang muốn gọi (VD: /api/users/profile)
         String path = request.getURI().getPath();
-        boolean isWhitelisted = isWhitelisted(request);
-        String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
 
         // Duyệt qua danh sách whitelist, nếu đường dẫn hiện tại khớp với bất kỳ pattern nào thì trả về true
-        if (isWhitelisted && (authHeader == null || !authHeader.startsWith("Bearer "))) {
+        if (whitelistUrls.stream().anyMatch(pattern -> pathMatcher.match(pattern, path))) {
             return chain.filter(exchange);
         }
         /* access-token từ header chuẩn Authorization: Bearer <token> */
         // Tìm header có tên là "Authorization" (chứa access-token)
+        String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+
         // Nếu header không tồn tại hoặc không đúng chuẩn Bearer thì báo lỗi 401
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return unAuthorizedResponse(exchange.getResponse(), "Không tìm thấy token hoặc sai định dạng Authorization Bearer");
+            return unAuthorizedResponse(exchange.getResponse(), "Vui lòng đăng nhập để có thể truy cập!");
         }
 
         // Cắt bỏ 7 ký tự đầu ("Bearer ") để lấy access-token
@@ -103,7 +97,6 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             return unAuthorizedResponse(exchange.getResponse(), "Access-token đã hết hạn");
         }
         catch (Exception e) {
-            log.error("Error validating access token: {}", e.getMessage());
             // Bắt lỗi trong quá trình giải mã (sai chữ ký, token bị can thiệp, sai thuật toán...)
             return unAuthorizedResponse(exchange.getResponse(), "Access-token không hợp lệ");
         }
@@ -127,20 +120,6 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
         // Viết dữ liệu vào Response và trả về cho người dùng
         return response.writeWith(Mono.just(buffer));
-    }
-
-    private boolean isWhitelisted(ServerHttpRequest request) {
-        String path = request.getURI().getPath();
-
-        if (request.getMethod() == HttpMethod.GET
-                && (pathMatcher.match("/car/cars/versions", path)
-                || pathMatcher.match("/car/cars/versions/**", path))) {
-            return true;
-        }
-
-        return whitelistUrls.stream()
-                .filter(pattern -> !pattern.startsWith("/car/cars/versions"))
-                .anyMatch(pattern -> pathMatcher.match(pattern, path));
     }
 
     // Xác định thứ tự chạy của Filter này

@@ -135,7 +135,14 @@ public class AuthService {
             String passwordHash = passwordEncoder.encode(createAccountRequestDTO.getPassword());
 
             // Tạo user mới và lưu vào database
-            UserProfile user = new UserProfile(email, passwordHash, roleType);
+            UserProfile user = UserProfile.builder()
+                    .fullname(email.split("@")[0])
+                    .user(User.builder()
+                            .email(email)
+                            .passwordHash(passwordHash)
+                            .role(roleType)
+                            .build())
+                    .build();
             userProfileRepository.save(user);
         }
         catch (Exception e) {
@@ -171,7 +178,13 @@ public class AuthService {
             String newPasswordHash = passwordEncoder.encode(registerRequestDTO.getPassword());
 
             // Tạo user mới nhưng không lưu vào database
-            UserProfile pendingUser = new UserProfile(email, newPasswordHash);
+            UserProfile pendingUser = UserProfile.builder()
+                    .fullname(email.split("@")[0])
+                    .user(User.builder()
+                            .email(email)
+                            .passwordHash(newPasswordHash)
+                            .build())
+                    .build();
 
             // Tạo token ngẫu nhiên
             String token = UUID.randomUUID().toString();
@@ -371,7 +384,15 @@ public class AuthService {
                 else {
                     String fullname = payload.get("name").toString();
                     String avatarUrl = payload.get("picture").toString();
-                    user = userProfileRepository.save(new UserProfile(fullname, avatarUrl, email, providerUserId)).getUser();
+                    user = userProfileRepository.save(UserProfile.builder()
+                            .fullname(fullname)
+                            .avatarUrl(avatarUrl)
+                            .user(User.builder()
+                                    .email(email)
+                                    .providerUserId(providerUserId)
+                                    .loginProvider(ProviderType.GOOGLE)
+                                    .build())
+                            .build()).getUser();
                 }
             }
             // Nếu đã tồn tại user với providerUserId này => người dùng đã đăng nhập bằng Google trước đó thì cho đăng nhập bình thường

@@ -23,6 +23,8 @@ services:
     depends_on:
       user-service:
         condition: service_started
+      car-service:
+        condition: service_started
     networks:
       - tayota-network
 
@@ -45,24 +47,24 @@ services:
       timeout: 5s
       retries: 10
 
-#  # --- Postgres Car Service ---
-#  postgres-car-service:
-#    image: postgres:17
-#    environment:
-#      POSTGRES_USER: ${POSTGRES_USER}
-#      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-#      POSTGRES_DB: ${POSTGRES_CAR_DB:-tayota_car_db}
-#    ports:
-#      - "5434:5432"
-#    volumes:
-#      - ./docker-data/postgres-car-service:/var/lib/postgresql/data
-#    networks:
-#      - tayota-network
-#    healthcheck:
-#      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_CAR_DB:-tayota_car_db}" ]
-#      interval: 5s
-#      timeout: 5s
-#      retries: 10
+  # --- Postgres Car Service ---
+  postgres-car-service:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_CAR_DB:-tayota_car_db}
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./docker-data/postgres-car-service:/var/lib/postgresql/data
+    networks:
+      - tayota-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_CAR_DB:-tayota_car_db}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   # --- Postgres Operation Service ---
   postgres-operation-service:
@@ -155,32 +157,32 @@ services:
     networks:
       - tayota-network
 
-#  # --- Car Service ---
-#  car-service:
-#    build:
-#      context: .
-#      dockerfile: car-service/Dockerfile
-#    environment:
-#      - SERVER_PORT=${CAR_SERVICE_PORT:-8092}
-#      - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
-#      - SPRING_JPA_HIBERNATE_DDL_AUTO=update # Tự động đồng bộ database với Entity
-#      - SPRING_SQL_INIT_MODE=always # Luôn chạy schema.sql khi khởi động dự án
-#      - SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION=false # Chạy các file .sql trước Hibernate
-#      - SPRING_SQL_INIT_SEPARATOR=//
-#      # --- Postgres ---
-#      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-car-service:5432/${POSTGRES_CAR_DB:-tayota_car_db}
-#      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
-#      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
-#      # --- Redis ---
-#      - SPRING_DATA_REDIS_HOST=${REDIS_HOST:-redis}
-#      - SPRING_DATA_REDIS_PORT=${REDIS_PORT:-6379}
-#    depends_on:
-#      postgres-car-service:
-#        condition: service_healthy
-#      redis:
-#        condition: service_healthy
-#    networks:
-#      - tayota-network
+  # --- Car Service ---
+  car-service:
+    build:
+      context: .
+      dockerfile: car-service/Dockerfile
+    environment:
+      - SERVER_PORT=${CAR_SERVICE_PORT:-8092}
+      - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update # Tự động đồng bộ database với Entity
+      - SPRING_SQL_INIT_MODE=always # Luôn chạy schema.sql khi khởi động dự án
+      - SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION=false # Chạy các file .sql trước Hibernate
+      - SPRING_SQL_INIT_SEPARATOR=//
+      # --- Postgres ---
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-car-service:5432/${POSTGRES_CAR_DB:-tayota_car_db}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      # --- Redis ---
+      - SPRING_DATA_REDIS_HOST=${REDIS_HOST:-redis}
+      - SPRING_DATA_REDIS_PORT=${REDIS_PORT:-6379}
+    depends_on:
+      postgres-car-service:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - tayota-network
 
   # --- Operation Service ---
   operation-service:

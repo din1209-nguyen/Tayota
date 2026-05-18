@@ -1,4 +1,4 @@
-package com.nguyendin.carservice;
+package com.tayota.carservice;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

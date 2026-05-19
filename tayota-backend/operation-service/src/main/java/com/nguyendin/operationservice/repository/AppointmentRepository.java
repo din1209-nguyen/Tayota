@@ -28,12 +28,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
             Instant end
     );
 
-    List<Appointment> findByAssistantIdAndStatusInAndScheduledDateBetween(
-            UUID assistantId,
-            List<AppointmentStatus> statuses,
-            Instant start,
-            Instant end
-    );
 
     List<Appointment> findByDealershipIdAndTypeAndStatusInAndScheduledDateBetween(
             UUID dealershipId,

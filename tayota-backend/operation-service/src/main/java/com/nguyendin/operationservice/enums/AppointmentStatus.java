@@ -1,0 +1,12 @@
+package com.nguyendin.operationservice.enums;
+
+public enum AppointmentStatus {
+    // lưu trạng thái của tiến trình lịch hẹn
+    PENDING,
+    CONFIRMED,
+    CHECKED_IN,
+    IN_PROGRESS,
+    COMPLETED,
+    CANCELED,
+    EXPIRED
+}

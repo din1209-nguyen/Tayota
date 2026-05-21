@@ -2,6 +2,7 @@ package com.tayota.commoncore.util;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.util.StringUtils;
 
 import java.util.Map;
 
@@ -43,6 +44,22 @@ public final class SecurityContextUtil {
                 .findFirst()
                 .map(org.springframework.security.core.GrantedAuthority::getAuthority)
                 .orElseThrow(() -> new IllegalStateException("Không tìm thấy role của người dùng"));
+    }
+
+    public static String getCurrentUserEmail() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null) {
+            throw new IllegalStateException("Không tìm thấy thông tin người dùng trong SecurityContext");
+        }
+
+        Object details = authentication.getDetails();
+
+        if (!(details instanceof String email) || !StringUtils.hasText(email)) {
+            throw new IllegalStateException("Không tìm thấy email người dùng trong SecurityContext");
+        }
+
+        return email;
     }
 
     // Kiểm tra xem role của user hiện tại có cao hơn role của user mục tiêu

@@ -50,18 +50,40 @@ public class JwtUtil {
     }
 
     // Tạo access-token và refresh-token
-    public TokenPair generateTokenPair(String userId, List<String> roles, String deviceId) {
-        // Đặt thông tin vào access-token
+//    public TokenPair generateTokenPair(String userId, List<String> roles, String deviceId) {
+//        // Đặt thông tin vào access-token
+//        Map<String, Object> accessClaims = new HashMap<>();
+//        accessClaims.put("role", roles);
+//
+//        // Tạo access-token
+//        String accessToken = generateToken(userId, jwtAccessTokenExpirationMs, accessClaims, "access");
+//
+//        // Đặt thông tin vào refresh-token
+//        Map<String, Object> refreshClaims = new HashMap<>();
+//        refreshClaims.put("role", roles);
+//        refreshClaims.put("deviceId", deviceId);
+//
+//        // Tạo refresh-token
+//        String refreshToken = generateToken(userId, jwtRefreshTokenExpirationMs, refreshClaims, "refresh");
+//
+//        return new TokenPair(accessToken, refreshToken);
+//    }
+
+    // Overloaded: thêm email vào claim của cả access-token và refresh-token
+    public TokenPair generateTokenPair(String userId, String email, List<String> roles, String deviceId) {
+        // Đặt thông tin vào access-token (kèm email)
         Map<String, Object> accessClaims = new HashMap<>();
         accessClaims.put("role", roles);
+        accessClaims.put("email", email);
 
         // Tạo access-token
         String accessToken = generateToken(userId, jwtAccessTokenExpirationMs, accessClaims, "access");
 
-        // Đặt thông tin vào refresh-token
+        // Đặt thông tin vào refresh-token (kèm email)
         Map<String, Object> refreshClaims = new HashMap<>();
         refreshClaims.put("role", roles);
         refreshClaims.put("deviceId", deviceId);
+        refreshClaims.put("email", email);
 
         // Tạo refresh-token
         String refreshToken = generateToken(userId, jwtRefreshTokenExpirationMs, refreshClaims, "refresh");

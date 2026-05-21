@@ -17,7 +17,6 @@ import com.tayota.userservice.enums.StatusType;
 import com.tayota.userservice.object.RegisterCacheData;
 import com.tayota.userservice.object.TokenPair;
 import com.tayota.userservice.object.CustomUserDetails;
-import com.tayota.userservice.grpc.NotificationGrpcClient;
 import com.tayota.userservice.entity.User;
 import com.tayota.userservice.repository.UserProfileRepository;
 import com.tayota.userservice.repository.UserRepository;
@@ -53,13 +52,13 @@ import java.util.concurrent.TimeUnit;
 public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
-    private final NotificationGrpcClient notificationGrpcClient;
     private final RedisTemplate<String, Object> redisTemplate;
     private final SessionUtil sessionUtil;
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final OtpUtil otpUtil;
     private final ObjectMapper objectMapper;
+    private final EmailService emailService;
 
     // Đối tượng của Google cung cấp để xác minh tính hợp lệ của token
     private GoogleIdTokenVerifier verifier;
@@ -201,8 +200,8 @@ public class AuthService {
             // Tạo link xác thực
             String verificationLink = String.format("%s/verify-account?email=%s&token=%s", frontendUrl, email, token);
 
-            // Gửi email xác thực qua gRPC
-            notificationGrpcClient.sendEmailAsync(
+            // Gửi email xác thực
+            emailService.sendEmailAsync(
                     email,
                     "Xác thực địa chỉ Email - Tayota",
                     "Vui lòng nhấn vào đường dẫn dưới đây để xác thực tài khoản của bạn:\n\n" +
@@ -259,9 +258,8 @@ public class AuthService {
         // Xoá token khỏi Redis
         redisTemplate.delete(key);
 
-        // Gửi thông báo xác thực thành công
-        // Gửi email xác thực qua gRPC
-        notificationGrpcClient.sendEmailAsync(
+        // Gửi email thông báo xác thực thành công
+        emailService.sendEmailAsync(
                 email,
                 "Chào mừng bạn đến với Tayota - Đăng ký thành công",
                 "Tài khoản của bạn đã được khởi tạo thành công trên hệ thống Tayota. Bây giờ bạn có thể trải nghiệm các dịch vụ của chúng tôi."
@@ -298,13 +296,14 @@ public class AuthService {
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
             String userId = userDetails.getId().toString();
+            String email = userDetails.getEmail();
             List<String> roles = userDetails.getAuthorities()
                     .stream()
                     .map(GrantedAuthority::getAuthority)
                     .toList();
 
             // Tạo session đăng nhập mới và trả về access-token cho client
-            return createLoginSession(userId, roles, clientIp, userAgent, oldRefreshToken);
+            return createLoginSession(userId, email, roles, clientIp, userAgent, oldRefreshToken);
         }
         // Bắt lỗi khi sai mật khẩu
         catch (BadCredentialsException e) {
@@ -405,7 +404,7 @@ public class AuthService {
                 }
             }
             // Tạo session đăng nhập mới và trả về access-token cho client
-            return createLoginSession(user.getId().toString(), List.of("ROLE_" + user.getRole().name()), clientIp, userAgent, oldRefreshToken);
+            return createLoginSession(user.getId().toString(), user.getEmail(), List.of("ROLE_" + user.getRole().name()), clientIp, userAgent, oldRefreshToken);
         }
         // Lỗi mạng (không thể kết nối tới server Google để lấy Public Key), lỗi đọc dữ liệu, lỗi về thuật toán mã hóa (máy chủ của bạn thiếu thư viện bảo mật, lỗi cấu hình JRE...)
         catch (GeneralSecurityException | IOException e) {
@@ -414,7 +413,7 @@ public class AuthService {
     }
 
     // Tạo session đăng nhập mới sau khi xác thực thành công
-    public TokenPair createLoginSession(String userId, List<String> roles, String clientIp, String userAgent, String oldRefreshToken) {
+    public TokenPair createLoginSession(String userId, String email, List<String> roles, String clientIp, String userAgent, String oldRefreshToken) {
 
          /* Bước 5: Trường hợp tồn tại refresh-token cũ trong Cookie người dùng khi đăng nhập trước đó
          * Xoá phiên cũ của user đó trên thiết bị hiện tại (refresh-token, deviceId) để đảm bảo mỗi thiết bị chỉ có 1 refresh-token hợp lệ */
@@ -445,7 +444,7 @@ public class AuthService {
         String deviceId = UUID.randomUUID().toString();
 
         // Tạo cặp token từ các thông tin trên
-        TokenPair tokenPair = jwtUtil.generateTokenPair(userId, roles, deviceId);
+        TokenPair tokenPair = jwtUtil.generateTokenPair(userId, email, roles, deviceId);
 
         /* Bước 8: Lưu session mới và thêm device vào danh sách user_sessions trong Redis*/
         sessionUtil.saveSession(userId, deviceId, tokenPair.getRefreshToken(), clientIp, userAgent);
@@ -463,7 +462,8 @@ public class AuthService {
 
         // Xác thực và truy xuất thông tin từ refresh-token
         Claims claims = jwtUtil.getClaims(oldRefreshToken);
-        String userId = claims.getSubject();
+        String email = claims.getSubject();
+        String userId = claims.get("userId", String.class);
         String deviceId = claims.get("deviceId", String.class);
 
         // Xoá session nếu refresh-token cũ hợp lệ để đảm bảo mỗi refresh-token chỉ được sử dụng 1 lần
@@ -481,7 +481,7 @@ public class AuthService {
         List<String> roles = claims.get("role", List.class);
 
         // Tạo cặp token mới
-        TokenPair newTokenPair = jwtUtil.generateTokenPair(userId, roles, deviceId);
+        TokenPair newTokenPair = jwtUtil.generateTokenPair(userId, email, roles, deviceId);
 
         // Lưu session mới
         sessionUtil.saveSession(userId, deviceId, newTokenPair.getRefreshToken(), clientIp, userAgent);
@@ -499,7 +499,7 @@ public class AuthService {
 
         // Xác thực và truy xuất thông tin từ refresh-token
         Claims claims = jwtUtil.getClaims(refreshToken);
-        String userId = claims.getSubject();
+        String userId = claims.get("userId", String.class);
         String deviceId = claims.get("deviceId", String.class);
 
         // Xóa session của thiết bị người dùng
@@ -515,7 +515,8 @@ public class AuthService {
 
         // Xác thực và truy xuất thông tin từ refresh-token
         Claims claims = jwtUtil.getClaims(refreshToken);
-        String userId = claims.getSubject();
+        String email = claims.getSubject();
+        String userId = claims.get("userId", String.class);
         String deviceId = claims.get("deviceId", String.class);
 
         // Xóa tất cả session của thiết bị người dùng
@@ -523,7 +524,7 @@ public class AuthService {
 
         // Tạo lại token pair mới cho thiết bị hiện tại
         List<String> roles = claims.get("role", List.class);
-        TokenPair newTokenPair = jwtUtil.generateTokenPair(userId, roles, deviceId);
+        TokenPair newTokenPair = jwtUtil.generateTokenPair(userId, email, roles, deviceId);
 
         // Lưu thiết bị hiện tại với session mới
         sessionUtil.saveSession(userId, deviceId, newTokenPair.getRefreshToken(), clientIp, userAgent);
@@ -550,8 +551,8 @@ public class AuthService {
         // Kiểm tra số lần và tạo mã OTP
         String otp = otpUtil.checkAndGenerateOtp(email, clientIp, FORGOT_PASSWORD_KEY, 5, 6, Duration.ofHours(1), Duration.ofMinutes(5));
 
-        // Gửi mã OTP đặt lại mật khẩu qua gRPC
-        notificationGrpcClient.sendEmailAsync(
+        // Gửi mã OTP đặt lại mật khẩu
+        emailService.sendEmailAsync(
                 email,
                 "Mã OTP đặt lại mật khẩu - Tayota",
                 "Mã xác thực (OTP) để đặt lại mật khẩu của bạn là: " + otp + "\n" +
@@ -615,8 +616,8 @@ public class AuthService {
                 Duration.ofMinutes(5)
         );
 
-        // Gửi mã OTP xác nhận thay đổi mật khẩu qua gRPC
-        notificationGrpcClient.sendEmailAsync(
+        // Gửi mã OTP xác nhận thay đổi mật khẩu
+        emailService.sendEmailAsync(
                 user.getEmail(),
                 "Mã OTP xác nhận thay đổi mật khẩu - Tayota",
                 "Mã xác thực (OTP) để thay đổi mật khẩu của bạn là: " + otp + "\n" +

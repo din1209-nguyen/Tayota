@@ -23,12 +23,14 @@ public class HeaderAuthenticationFilter extends OncePerRequestFilter {
     // Tạo các key của Header mà Gateway sẽ gắn vào request
     private static final String USER_ID_HEADER = "X-User-Id";
     private static final String USER_ROLE_HEADER = "X-User-Role";
+    private static final String USER_EMAIL_HEADER = "X-User-Email";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
         // Lấy thông tin từ Header do API Gateway truyền xuống
         String userId = request.getHeader(USER_ID_HEADER);
         String roleHeader = request.getHeader(USER_ROLE_HEADER);
+        String email = request.getHeader(USER_EMAIL_HEADER);
 
         // Kiểm tra nếu có userId (nghĩa là đã qua Gateway) VÀ Context hiện tại chưa có ai đăng nhập
         if (StringUtils.hasText(userId) && SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -67,12 +69,13 @@ public class HeaderAuthenticationFilter extends OncePerRequestFilter {
                     authorities  // Danh sách quyền
             );
 
-            System.out.println("HeaderAuthenticationFilter - userId: " + userId + ", role: " + roleHeader);
-
             //// Thêm thông tin chi tiết của request vào Authentication, chứa địa chỉ IP của client, session ID dùng để log
             //authentication.setDetails(
             //        new WebAuthenticationDetailsSource().buildDetails(request)
             //);
+
+            // Lưu email vào details
+            authentication.setDetails(email);
 
             // Lưu thông tin Authentication vào SecurityContext và đánh dấu request hiện tại đã đăng nhập
             // Các file khác có thể gọi hàm để lấy userId, hoặc dùng @PreAuthorize để check quyền

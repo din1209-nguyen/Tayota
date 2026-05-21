@@ -94,6 +94,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             // Lấy userId và role từ Claim sau khi đuợc giải mã thành công
             String userId = claims.getSubject();
             List<String> roles = claims.get("role", List.class);
+            String email = claims.get("email", String.class);
 
             // Nối các role thành chuỗi cách nhau bởi dấu phẩy để gắn vào header
             String roleHeaderValue = (roles != null) ? String.join(",", roles) : "";
@@ -105,10 +106,12 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
                     .headers(httpHeaders -> {
                         httpHeaders.remove("X-User-Id");
                         httpHeaders.remove("X-User-Role");
+                        httpHeaders.remove("X-User-Email");
                     })
                     // Gắn lại header mới từ chính token đã được xác thực
                     .header("X-User-Id", userId)
                     .header("X-User-Role", roleHeaderValue)
+                    .header("X-User-Email", email)
                     .build(); // Hoàn tất tạo bản sao Request
 
             // Cho phép Request (đã được chỉnh sửa) đi qua Filter này để đến Filter tiếp theo hoặc các Service con

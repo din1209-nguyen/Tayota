@@ -27,41 +27,52 @@ public class Appointment {
     @Column(name = "user_id")
     private UUID userId;
 
+    // Thông tin về phiên bản xe, dành cho đơn đăng ký lái thử.
     @Column(name = "car_version_id")
     private UUID carVersionId;
 
+    // Thông tin về xe của khách hàng, dành cho đơn đăng ký dịch vụ.
     @Column(name = "vin_id", length = 17)
     private String vinId;
 
+    // Thông tin về đại lý, dành cho cả đơn đăng ký lái thử và dịch vụ.
     @Column(name = "dealership_id", nullable = false)
     private UUID dealershipId;
 
+    // Thông tin về kỹ thuật viên.
     @Column(name = "mechanic_id")
     private UUID mechanicId;
 
+    // Thông tin về khách hàng, dành cho khách vãng lai.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "guest_information_id")
     private GuestInformation guestInformation;
 
+    // Loại cuộc hẹn: lái thử, dịch vụ, bảo dưỡng, v.v. Có thể dùng để phân biệt các loại cuộc hẹn khác nhau và áp dụng logic xử lý phù hợp cho từng loại.
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 40)
     private AppointmentType type;
 
+    // Trạng thái cuộc hẹn: đã xác nhận, đã hủy, đã hoàn thành, v.v. Có thể dùng để theo dõi tiến trình của cuộc hẹn và áp dụng logic xử lý phù hợp dựa trên trạng thái hiện tại của cuộc hẹn.
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private AppointmentStatus status;
 
-    @Column(name = "scheduled_date", nullable = false)
-    private Instant scheduledDate;
+    // Thời điểm dự kiến bắt đầu cuộc hẹn
+    @Column(name = "scheduled_start_at", nullable = false)
+    private Instant scheduledStartAt;
 
+    // Thời điểm dự kiến kết thúc cuộc hẹn
+    @Column(name = "scheduled_end_at", nullable = false)
+    private Instant scheduledEndAt;
+
+    // Ghi chú về tình trạng xe hiện tại, dành cho đơn đăng ký dịch vụ. Có thể chứa thông tin về tình trạng xe.
     @Column(columnDefinition = "TEXT")
     private String notes; // Ghi chú thêm về cuộc hẹn.
 
+    // Thời điểm xác nhận cuộc hẹn
     @Column(name = "confirmed_at")
-    private Instant confirmedAt; // Thời điểm xác nhận cuộc hẹn
-
-    @Column(name = "checked_in_at")
-    private Instant checkedInAt; // Thời điểm khách hàng đến và check-in tại đại lý
+    private Instant confirmedAt;
 
     @Column(name = "completed_at")
     private Instant completedAt;  // Thời điểm hoàn thành dịch vụ
@@ -75,11 +86,13 @@ public class Appointment {
     @Column(name = "cancel_reason", length = 500)
     private String cancelReason; // Lý do hủy cuộc hẹn (nếu có)
 
+    // Thời điểm tạo cuộc hẹn, tự động được thiết lập bởi Hibernate và không thể cập nhật sau khi tạo
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt; // Thời điểm tạo cuộc hẹn, tự động được thiết lập bởi Hibernate và không thể cập nhật sau khi tạo
+    private Instant createdAt;
 
+    // Thời điểm cập nhật cuộc hẹn, tự động được thiết lập bởi Hibernate và được cập nhật mỗi khi bản ghi được thay đổi
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt; // Thời điểm cập nhật cuộc hẹn, tự động được thiết lập bởi Hibernate và được cập nhật mỗi khi bản ghi được thay đổi
+    private Instant updatedAt;
 }

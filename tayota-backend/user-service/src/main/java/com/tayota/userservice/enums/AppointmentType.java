@@ -1,8 +1,7 @@
 package com.tayota.userservice.enums;
 
 public enum AppointmentType {
-    // lưu loại đặt lch (lái thử, bảo dưỡng, sửa chữa)
+    // lưu loại đặt lịch (lái thử hoặc dịch vụ sửa chữa/bảo dưỡng)
     TEST_DRIVE,
-    REPAIR,
-    MAINTENANCE
+    SERVICE
 }

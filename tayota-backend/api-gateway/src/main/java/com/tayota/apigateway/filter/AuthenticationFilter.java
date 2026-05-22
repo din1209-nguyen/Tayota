@@ -54,8 +54,10 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             PublicEndpoint.of(HttpMethod.GET, "/car/accessories"),
             PublicEndpoint.of(HttpMethod.GET, "/car/accessories/**"),
 
-            // operation service
-            PublicEndpoint.of(HttpMethod.POST, "/operation/api/appointments/test-drive/guest")
+            // operation
+            PublicEndpoint.of(HttpMethod.POST, "/user/appointments/test-drive/guest"),
+            PublicEndpoint.of(HttpMethod.POST, "/user/appointments/service/guest")
+
     );
 
     // Đây là hàm cốt lõi, mọi request đi qua Gateway đều phải chạy qua hàm này

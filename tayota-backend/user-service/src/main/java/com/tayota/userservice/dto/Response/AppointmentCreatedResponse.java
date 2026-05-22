@@ -7,25 +7,16 @@ import lombok.Getter;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.Instant;
 import java.util.UUID;
 
-// Dùng để lưu thông tin phản hồi sau khi lấy chi tiết cuộc hẹn thành công
+// Dùng để lưu thông tin phản hồi sau khi tạo cuộc hẹn thành công
 @Getter
 @AllArgsConstructor
-public class AppointmentResponse {
+public class AppointmentCreatedResponse {
     private UUID id;
     private AppointmentType type;
     private AppointmentStatus status;
     private LocalDate appointmentDate;
     private LocalTime startTime;
     private LocalTime endTime;
-    private UUID dealershipId;
-    private UUID carVersionId;
-    private String vinId;
-    private String guestFullName;
-    private String guestEmail;
-    private String guestPhone;
-    private String notes;
-    private Instant createdAt;
 }

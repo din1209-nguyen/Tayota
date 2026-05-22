@@ -1,5 +1,6 @@
 package com.tayota.userservice.entity;
 
+import com.tayota.userservice.entity.workorder.ServiceTicket;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;

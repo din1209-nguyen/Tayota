@@ -47,6 +47,7 @@ public class AppointmentService {
     private final AppointmentBookingProperties bookingProperties;
     private final CarServiceProperties carServiceProperties;
     private final AppointmentScheduleService appointmentScheduleService;
+    private final AppointmentNotificationService appointmentNotificationService;
     private final AppointmentCreatedMapper appointmentCreatedMapper;
     private final MyAppointmentDetailMapper myAppointmentDetailMapper;
 
@@ -233,6 +234,7 @@ public class AppointmentService {
     public AppointmentManagementDetailResponse updateAppointmentForManagement(UUID appointmentId, UpdateAppointmentRequest request) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new CustomException(404, "Không tìm thấy lịch hẹn"));
+        AppointmentStatus oldStatus = appointment.getStatus();
 
         // Kiểm tra xem user hiện tại có quyền xử lý lịch hẹn này hay không (cố vấn dịch vụ chỉ được xử lý lịch của đại lý mình)
         validateCurrentUserCanHandleAppointment(appointment);
@@ -250,10 +252,17 @@ public class AppointmentService {
 
         Appointment saved = appointmentRepository.save(appointment);
 
+        // Nếu trạng thái thay đổi sang CONFIRMED thì gửi thông báo xác nhận lịch hẹn cho khách hàng
+        if (oldStatus != AppointmentStatus.CONFIRMED && saved.getStatus() == AppointmentStatus.CONFIRMED) {
+            appointmentNotificationService.notifyAppointmentConfirmed(saved);
+        }
+
         return toManagementDetailResponse(saved);
     }
 
     // ========================== CÁC HÀM TIỆN ÍCH CHUNG CHO SERVICE ==========================
+
+    // Hàm kiểm tra xem user hiện tại có quyền xử lý lịch hẹn này hay không (cố vấn dịch vụ chỉ được xử lý lịch của đại lý mình), nếu không có quyền thì ném lỗi 403 với thông điệp tùy chỉnh
     private void validateCurrentUserCanHandleAppointment(Appointment appointment) {
 
         UUID dealershipId = getCurrentServiceAdvisorDealershipId();
@@ -263,7 +272,7 @@ public class AppointmentService {
         }
     }
 
-
+    // Hàm lấy dealershipId của cố vấn dịch vụ hiện tại từ JWT, nếu không tìm thấy cố vấn dịch vụ hoặc cố vấn dịch vụ không có đại lý thì ném lỗi 403 với thông điệp tùy chỉnh
     private UUID getCurrentServiceAdvisorDealershipId() {
         UUID currentUserId = UUID.fromString(SecurityContextUtil.getCurrentUserId());
 
@@ -319,9 +328,13 @@ public class AppointmentService {
             return;
         }
 
+        // Kiểm tra luồng chuyển trạng thái hợp lệ của lịch hẹn để cố vấn không thể đưa lịch về trạng thái sai quy trình.
+        validateStatusTransition(appointment.getStatus(), newStatus);
+
         Instant now = Instant.now();
         appointment.setStatus(newStatus);
 
+        // Cập nhật các trường thời gian tương ứng với từng trạng thái
         switch (newStatus) {
             case CONFIRMED -> appointment.setConfirmedAt(now);
             case COMPLETED -> appointment.setCompletedAt(now);
@@ -334,6 +347,24 @@ public class AppointmentService {
             case EXPIRED -> appointment.setExpiredAt(now);
             default -> {
             }
+        }
+    }
+
+    // Kiểm tra luồng chuyển trạng thái hợp lệ của lịch hẹn để cố vấn không thể đưa lịch về trạng thái sai quy trình.
+    private void validateStatusTransition(AppointmentStatus currentStatus, AppointmentStatus newStatus) {
+        boolean valid = switch (currentStatus) {
+            case PENDING -> newStatus == AppointmentStatus.CONFIRMED;
+            case CONFIRMED -> newStatus == AppointmentStatus.CHECKED_IN
+                    || newStatus == AppointmentStatus.CANCELED
+                    || newStatus == AppointmentStatus.EXPIRED;
+            case CHECKED_IN -> newStatus == AppointmentStatus.COMPLETED
+                    || newStatus == AppointmentStatus.CANCELED;
+            case EXPIRED, COMPLETED, CANCELED -> false;
+        };
+
+        if (!valid) {
+            throw new CustomException(400, "Không thể chuyển trạng thái lịch hẹn từ "
+                    + currentStatus + " sang " + newStatus);
         }
     }
 

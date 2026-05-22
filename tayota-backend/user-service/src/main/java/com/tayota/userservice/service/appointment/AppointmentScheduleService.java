@@ -25,6 +25,7 @@ import org.springframework.util.StringUtils;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -69,14 +70,10 @@ public class AppointmentScheduleService {
         validateSlotTime(slot.getStartTime(), slot.getEndTime());
 
         // Nếu tất cả kiểm tra đều hợp lệ, trả về khoảng thời gian bắt đầu và kết thúc của cuộc hẹn
-        Instant startAt = appointmentDate.atTime(slot.getStartTime())
-                .atZone(bookingProperties.getBusinessZone())
-                .toInstant();
+        Instant startAt = buildSlotStartAt(appointmentDate, slot);
+        Instant endAt = buildSlotEndAt(appointmentDate, slot);
 
-        Instant endAt = appointmentDate.atTime(slot.getEndTime())
-                .atZone(bookingProperties.getBusinessZone())
-                .toInstant();
-
+        validateMinimumNotice(startAt);
 
         return new AppointmentTimeRange(startAt, endAt);
     }
@@ -104,6 +101,7 @@ public class AppointmentScheduleService {
         List<AppointmentAvailableSlotsResponse.SlotItem> slots = serviceTimeSlotRepository
                 .findByDealershipIdAndAppointmentTypeAndActiveTrueOrderByStartTimeAsc(dealershipId, appointmentType)
                 .stream()
+                .filter(slot -> isAfterMinimumNotice(appointmentDate, slot))
                 .map(this::toAvailableSlotItem)
                 .toList();
 
@@ -266,18 +264,52 @@ public class AppointmentScheduleService {
         );
     }
 
-    // Kiểm tra ngày hẹn có hợp lệ không: bắt buộc có ngày, từ ngày mai và không quá 4 tháng.
+    // Kiểm tra ngày hẹn có hợp lệ không: bắt buộc có ngày, không ở quá khứ và không quá 4 tháng.
+    // Điều kiện tối thiểu 12 tiếng được kiểm tra theo từng khung giờ cụ thể.
     private void validateBookingDate(LocalDate appointmentDate) {
         if (appointmentDate == null) {
             throw new CustomException(400, "Vui lòng chọn ngày hẹn");
         }
 
-        LocalDate minDate = LocalDate.now(bookingProperties.getBusinessZone()).plusDays(1);
-        LocalDate maxDate = minDate.plusMonths(4);
+        LocalDate today = LocalDate.now(bookingProperties.getBusinessZone());
+        LocalDate maxDate = today.plusMonths(4);
 
-        if (appointmentDate.isBefore(minDate) || appointmentDate.isAfter(maxDate)) {
-            throw new CustomException(400, "Chỉ được đặt lịch từ ngày mai đến tối đa 4 tháng tiếp theo");
+        if (appointmentDate.isBefore(today) || appointmentDate.isAfter(maxDate)) {
+            throw new CustomException(400, "Chỉ được đặt lịch từ hôm nay đến tối đa 4 tháng tiếp theo");
         }
+    }
+
+    // Kiểm tra khung giờ bắt đầu có cách thời điểm hiện tại tối thiểu theo cấu hình hay không.
+    private void validateMinimumNotice(Instant startAt) {
+        if (startAt.isBefore(getMinimumAllowedStartAt())) {
+            throw new CustomException(400, "Chỉ được đặt lịch trước tối thiểu 12 tiếng");
+        }
+    }
+
+    // Dùng cho API available-slots để chỉ trả về những khung giờ FE được phép hiển thị cho user chọn.
+    private boolean isAfterMinimumNotice(LocalDate appointmentDate, ServiceTimeSlot slot) {
+        return !buildSlotStartAt(appointmentDate, slot).isBefore(getMinimumAllowedStartAt());
+    }
+
+    // Hàm này tính toán thời điểm bắt đầu tối thiểu được phép đặt lịch từ thời điểm hiện tại.
+    private Instant getMinimumAllowedStartAt() {
+        return ZonedDateTime.now(bookingProperties.getBusinessZone())
+                .plus(bookingProperties.getMinimumNotice())
+                .toInstant();
+    }
+
+    // Hàm này xây dựng thời điểm bắt đầu của cuộc hẹn dựa trên ngày hẹn và khung giờ đã chọn, chuyển sang Instant để lưu vào database.
+    private Instant buildSlotStartAt(LocalDate appointmentDate, ServiceTimeSlot slot) {
+        return appointmentDate.atTime(slot.getStartTime())
+                .atZone(bookingProperties.getBusinessZone())
+                .toInstant();
+    }
+
+    // Hàm này xây dựng thời điểm kết thúc của cuộc hẹn dựa trên ngày hẹn và khung giờ đã chọn, chuyển sang Instant để lưu vào database.
+    private Instant buildSlotEndAt(LocalDate appointmentDate, ServiceTimeSlot slot) {
+        return appointmentDate.atTime(slot.getEndTime())
+                .atZone(bookingProperties.getBusinessZone())
+                .toInstant();
     }
 
     // Kiểm tra giờ bắt đầu và giờ kết thúc của khung giờ.

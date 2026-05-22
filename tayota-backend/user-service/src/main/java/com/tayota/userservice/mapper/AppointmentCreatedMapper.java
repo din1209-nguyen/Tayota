@@ -4,7 +4,6 @@ package com.tayota.userservice.mapper;
 import com.tayota.userservice.config.AppointmentBookingProperties;
 import com.tayota.userservice.dto.Response.AppointmentCreatedResponse;
 import com.tayota.userservice.entity.Appointment;
-import com.tayota.userservice.entity.GuestInformation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -17,12 +16,14 @@ public class AppointmentCreatedMapper {
     private final AppointmentBookingProperties bookingProperties;
 
     public AppointmentCreatedResponse toResponse(Appointment appointment) {
-        GuestInformation guest = appointment.getGuestInformation();
 
         ZonedDateTime start = appointment.getScheduledStartAt()
                 .atZone(bookingProperties.getBusinessZone());
 
         ZonedDateTime end = appointment.getScheduledEndAt()
+                .atZone(bookingProperties.getBusinessZone());
+
+        ZonedDateTime createdAt = appointment.getCreatedAt()
                 .atZone(bookingProperties.getBusinessZone());
 
         return new AppointmentCreatedResponse(
@@ -31,7 +32,8 @@ public class AppointmentCreatedMapper {
                 appointment.getStatus(),
                 start.toLocalDate(),
                 start.toLocalTime(),
-                end.toLocalTime()
+                end.toLocalTime(),
+                createdAt.toLocalDateTime()
         );
     }
 }

@@ -1,30 +1,27 @@
 package com.tayota.userservice.mapper;
 
 import com.tayota.userservice.config.AppointmentBookingProperties;
-import com.tayota.userservice.dto.Response.AppointmentResponse;
+import com.tayota.userservice.dto.Response.MyAppointmentDetailResponse;
 import com.tayota.userservice.entity.Appointment;
-import com.tayota.userservice.entity.GuestInformation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.ZonedDateTime;
 
-// Mapper để chuyển đổi giữa Appointment entity và AppointmentResponse DTO
+// Mapper để chuyển đổi Appointment entity sang DTO chi tiết dành cho user.
 @Component
 @RequiredArgsConstructor
-public class AppointmentMapper {
+public class MyAppointmentDetailMapper {
     private final AppointmentBookingProperties bookingProperties;
 
-    public AppointmentResponse toResponse(Appointment appointment) {
-        GuestInformation guest = appointment.getGuestInformation();
-
+    public MyAppointmentDetailResponse toResponse(Appointment appointment) {
         ZonedDateTime start = appointment.getScheduledStartAt()
                 .atZone(bookingProperties.getBusinessZone());
 
         ZonedDateTime end = appointment.getScheduledEndAt()
                 .atZone(bookingProperties.getBusinessZone());
 
-        return new AppointmentResponse(
+        return new MyAppointmentDetailResponse(
                 appointment.getId(),
                 appointment.getType(),
                 appointment.getStatus(),
@@ -34,11 +31,9 @@ public class AppointmentMapper {
                 appointment.getDealershipId(),
                 appointment.getCarVersionId(),
                 appointment.getVinId(),
-                guest != null ? guest.getFullName() : null,
-                guest != null ? guest.getEmail() : null,
-                guest != null ? guest.getPhone() : null,
                 appointment.getNotes(),
-                appointment.getCreatedAt()
+                appointment.getCreatedAt(),
+                appointment.getUpdatedAt()
         );
     }
 }

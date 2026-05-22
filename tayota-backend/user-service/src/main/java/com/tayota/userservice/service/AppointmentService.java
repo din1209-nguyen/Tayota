@@ -5,27 +5,30 @@ import com.tayota.userservice.config.AppointmentBookingProperties;
 import com.tayota.userservice.config.CarServiceProperties;
 import com.tayota.userservice.dto.Request.CreateServiceAppointmentRequest;
 import com.tayota.userservice.dto.Request.CreateTestDriveAppointmentRequest;
+import com.tayota.userservice.dto.Request.UpdateAppointmentRequest;
 import com.tayota.userservice.dto.Response.AppointmentCreatedResponse;
-import com.tayota.userservice.dto.Response.AppointmentResponse;
+import com.tayota.userservice.dto.Response.AppointmentManagementDetailResponse;
+import com.tayota.userservice.dto.Response.MyAppointmentDetailResponse;
 import com.tayota.userservice.entity.Appointment;
 import com.tayota.userservice.entity.GuestInformation;
 import com.tayota.userservice.enums.AppointmentStatus;
 import com.tayota.userservice.enums.AppointmentType;
 import com.tayota.userservice.mapper.AppointmentCreatedMapper;
-import com.tayota.userservice.mapper.AppointmentMapper;
+import com.tayota.userservice.mapper.MyAppointmentDetailMapper;
 import com.tayota.userservice.repository.AppointmentRepository;
 import com.tayota.userservice.repository.GuestInformationRepository;
+import com.tayota.userservice.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.net.http.HttpClient;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -36,12 +39,12 @@ public class AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
     private final GuestInformationRepository guestInformationRepository;
+    private final UserProfileRepository userProfileRepository;
     private final RedisTemplate<String, Object> redisTemplate;
     private final AppointmentBookingProperties bookingProperties;
     private final CarServiceProperties carServiceProperties;
-
-    private final AppointmentMapper appointmentMapper;
     private final AppointmentCreatedMapper appointmentCreatedMapper;
+    private final MyAppointmentDetailMapper myAppointmentDetailMapper;
 
     // Dịch vụ tạo lịch hẹn lái thử cho cả user đã đăng nhập và guest chưa đăng nhập, phân biệt bằng userId có null hay không
     @Transactional
@@ -149,6 +152,203 @@ public class AppointmentService {
                 .stream()
                 .map(appointmentCreatedMapper::toResponse)
                 .toList();
+    }
+
+    // Lấy danh sách lịch hẹn cho quản lý/admin theo trạng thái. Nếu status là ALL thì lấy tất cả trạng thái.
+    @Transactional(readOnly = true)
+    public List<AppointmentCreatedResponse> getAppointmentsForManagement(String status) {
+
+        // Nếu status là ALL thì không lọc theo trạng thái, lấy tất cả lịch hẹn.
+        if ("ALL".equalsIgnoreCase(normalize(status))) {
+            return appointmentRepository.findAllWithGuestInformationOrderByScheduledStartAtDesc()
+                    .stream()
+                    .map(appointmentCreatedMapper::toResponse)
+                    .toList();
+        }
+
+        // Phân tích trạng thái từ chuỗi đầu vào, nếu không hợp lệ thì ném lỗi 400
+        AppointmentStatus searchStatus = parseAppointmentStatus(status);
+
+        // Lấy danh sách lịch hẹn theo trạng thái đã phân tích
+        return appointmentRepository.findByStatusWithGuestInformationOrderByScheduledStartAtDesc(searchStatus)
+                .stream()
+                .map(appointmentCreatedMapper::toResponse)
+                .toList();
+    }
+
+    // Lấy chi tiết một lịch hẹn của user đang đăng nhập.
+    @Transactional(readOnly = true)
+    public MyAppointmentDetailResponse getMyAppointmentDetail(UUID appointmentId, UUID userId) {
+        if (userId == null) {
+            throw new CustomException(401, "Vui lòng đăng nhập để xem chi tiết lịch hẹn");
+        }
+
+        Appointment appointment = appointmentRepository.findWithGuestInformationByIdAndUserId(appointmentId, userId)
+                .orElseThrow(() -> new CustomException(404, "Không tìm thấy lịch hẹn của bạn"));
+
+        return myAppointmentDetailMapper.toResponse(appointment);
+    }
+
+    // Lấy chi tiết lịch hẹn cho quản lý/admin duyệt và xử lý.
+    @Transactional(readOnly = true)
+    public AppointmentManagementDetailResponse getAppointmentDetailForManagement(UUID appointmentId) {
+        Appointment appointment = appointmentRepository.findWithGuestInformationById(appointmentId)
+                .orElseThrow(() -> new CustomException(404, "Không tìm thấy lịch hẹn"));
+
+        return toManagementDetailResponse(appointment);
+    }
+
+    // Cập nhật thông tin lịch hẹn cho quản lý/admin.
+    @Transactional
+    public AppointmentManagementDetailResponse updateAppointmentForManagement(UUID appointmentId, UpdateAppointmentRequest request) {
+        Appointment appointment = appointmentRepository.findWithGuestInformationById(appointmentId)
+                .orElseThrow(() -> new CustomException(404, "Không tìm thấy lịch hẹn"));
+
+        // Cập nhật ngày hẹn và giờ bắt đầu nếu có thay đổi
+        updateScheduleIfNeeded(appointment, request);
+
+        // Cập nhật các trường thông tin khác nếu có thay đổi
+        updateAppointmentFieldsIfNeeded(appointment, request);
+
+        // Cập nhật trạng thái lịch hẹn nếu có thay đổi
+        updateAppointmentStatusIfNeeded(appointment, request);
+
+        // Lưu các thay đổi vào database
+        Appointment saved = appointmentRepository.save(appointment);
+
+        return toManagementDetailResponse(saved);
+    }
+
+    // Hàm cập nhật ngày hẹn và giờ bắt đầu nếu có thay đổi, đồng thời kiểm tra tính hợp lệ của chúng, nếu chỉ thay đổi một trong hai trường này mà không có trường còn lại thì ném lỗi 400 với thông điệp tùy chỉnh
+    private void updateScheduleIfNeeded(Appointment appointment, UpdateAppointmentRequest request) {
+        if (request.getAppointmentDate() == null && request.getStartTime() == null) {
+            return;
+        }
+
+        if (request.getAppointmentDate() == null || request.getStartTime() == null) {
+            throw new CustomException(400, "Vui lòng nhập đầy đủ ngày hẹn và giờ bắt đầu");
+        }
+
+        AppointmentTimeRange timeRange = buildAppointmentTimeRange(request.getAppointmentDate(), request.getStartTime());
+        appointment.setScheduledStartAt(timeRange.startAt());
+        appointment.setScheduledEndAt(timeRange.endAt());
+    }
+
+    // Hàm cập nhật các trường thông tin khác của lịch hẹn nếu có thay đổi, bao gồm đại lý, ghi chú, lý do hủy, v.v.
+    private void updateAppointmentFieldsIfNeeded(Appointment appointment, UpdateAppointmentRequest request) {
+        // Cập nhật đại lý nếu có thay đổi
+        if (StringUtils.hasText(request.getDealershipId())) {
+            appointment.setDealershipId(parseUuid(request.getDealershipId(), "Đại lý không hợp lệ"));
+        }
+
+        // Cập nhật ghi chú nếu có thay đổi
+        if (request.getNotes() != null) {
+            appointment.setNotes(normalize(request.getNotes()));
+        }
+
+        // Cập nhật lý do hủy nếu có thay đổi
+        if (request.getCancelReason() != null) {
+            appointment.setCancelReason(normalize(request.getCancelReason()));
+        }
+    }
+
+    // Hàm cập nhật trạng thái lịch hẹn nếu có thay đổi, đồng thời cập nhật các trường thời gian tương ứng với từng trạng thái (confirmedAt, completedAt, canceledAt, expiredAt), nếu chuyển sang trạng thái CANCELED mà không có lý do hủy thì ném lỗi 400 với thông điệp tùy chỉnh
+    private void updateAppointmentStatusIfNeeded(Appointment appointment, UpdateAppointmentRequest request) {
+        AppointmentStatus newStatus = request.getStatus();
+
+        if (newStatus == null || appointment.getStatus() == newStatus) {
+            return;
+        }
+
+        Instant now = Instant.now();
+        appointment.setStatus(newStatus);
+
+        switch (newStatus) {
+            case CONFIRMED -> appointment.setConfirmedAt(now);
+            case COMPLETED -> appointment.setCompletedAt(now);
+            case CANCELED -> {
+                appointment.setCanceledAt(now);
+                if (!StringUtils.hasText(appointment.getCancelReason())) {
+                    throw new CustomException(400, "Vui lòng nhập lý do hủy lịch hẹn");
+                }
+            }
+            case EXPIRED -> appointment.setExpiredAt(now);
+            default -> {
+            }
+        }
+    }
+
+    // Hàm phân tích trạng thái lịch hẹn từ chuỗi đầu vào, nếu không hợp lệ thì ném lỗi 400 với thông điệp tùy chỉnh, nếu chuỗi rỗng hoặc null thì mặc định là PENDING
+    private AppointmentStatus parseAppointmentStatus(String status) {
+        String normalizedStatus = normalize(status);
+
+        if (!StringUtils.hasText(normalizedStatus)) {
+            return AppointmentStatus.PENDING;
+        }
+
+        try {
+            return AppointmentStatus.valueOf(normalizedStatus.toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            throw new CustomException(400, "Trạng thái lịch hẹn không hợp lệ");
+        }
+    }
+
+    // Hàm chuyển đổi Appointment entity sang AppointmentManagementDetailResponse bao gồm cả thông tin khách hàng (loại khách, tên đầy đủ, email, số điện thoại) được xây dựng từ GuestInformation nếu là guest hoặc UserContact nếu là user đã đăng nhập, đồng thời định dạng lại ngày hẹn và giờ theo múi giờ của doanh nghiệp
+    private AppointmentManagementDetailResponse toManagementDetailResponse(Appointment appointment) {
+        CustomerInformation customerInformation = buildCustomerInformation(appointment);
+
+        ZonedDateTime start = appointment.getScheduledStartAt()
+                .atZone(bookingProperties.getBusinessZone());
+
+        ZonedDateTime end = appointment.getScheduledEndAt()
+                .atZone(bookingProperties.getBusinessZone());
+
+        return new AppointmentManagementDetailResponse(
+                appointment.getId(),
+                appointment.getUserId(),
+                customerInformation.customerType(),
+                customerInformation.fullName(),
+                customerInformation.email(),
+                customerInformation.phone(),
+                appointment.getType(),
+                appointment.getStatus(),
+                start.toLocalDate(),
+                start.toLocalTime(),
+                end.toLocalTime(),
+                appointment.getDealershipId(),
+                appointment.getCarVersionId(),
+                appointment.getVinId(),
+                appointment.getNotes(),
+                appointment.getConfirmedAt(),
+                appointment.getCompletedAt(),
+                appointment.getCanceledAt(),
+                appointment.getExpiredAt(),
+                appointment.getCancelReason(),
+                appointment.getCreatedAt(),
+                appointment.getUpdatedAt()
+        );
+    }
+
+    // Hàm xây dựng thông tin khách hàng (loại khách, tên đầy đủ, email, số điện thoại) được xây dựng từ GuestInformation nếu là guest hoặc UserContact nếu là user đã đăng nhập, nếu không tìm thấy thông tin khách hàng nào thì trả về loại khách UNKNOWN với các trường còn lại là null
+    private CustomerInformation buildCustomerInformation(Appointment appointment) {
+        GuestInformation guest = appointment.getGuestInformation();
+
+        if (guest != null) {
+            return new CustomerInformation("GUEST", guest.getFullName(), guest.getEmail(), guest.getPhone());
+        }
+
+        if (appointment.getUserId() == null) {
+            return new CustomerInformation("UNKNOWN", null, null, null);
+        }
+
+        return userProfileRepository.findContactByUserId(appointment.getUserId())
+                .map(userContact -> new CustomerInformation(
+                        "USER",
+                        userContact.getFullname(),
+                        userContact.getEmail(),
+                        userContact.getPhone()
+                ))
+                .orElseGet(() -> new CustomerInformation("USER", null, null, null));
     }
 
     // Hàm xây dựng khoảng thời gian hẹn từ ngày hẹn và giờ bắt đầu, đồng thời kiểm tra tính hợp lệ của chúng
@@ -358,5 +558,9 @@ public class AppointmentService {
 
     // Lớp record để đại diện cho khoảng thời gian hẹn với thời điểm bắt đầu và kết thúc, được xây dựng từ ngày hẹn và giờ bắt đầu, đồng thời đã được kiểm tra tính hợp lệ
     private record AppointmentTimeRange(Instant startAt, Instant endAt) {
+    }
+
+    // Lớp record để đại diện cho thông tin khách hàng (loại khách, tên đầy đủ, email, số điện thoại) được xây dựng từ GuestInformation nếu là guest hoặc UserContact nếu là user đã đăng nhập, được sử dụng trong phần chi tiết lịch hẹn cho quản lý/admin
+    private record CustomerInformation(String customerType, String fullName, String email, String phone) {
     }
 }

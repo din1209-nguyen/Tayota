@@ -504,6 +504,62 @@ ALTER TABLE "APPOINTMENT"
   ADD CONSTRAINT fk_appt_guest        FOREIGN KEY (guest_information_id) REFERENCES "GUEST_INFORMATION"(id) ON DELETE CASCADE;
 
 -- ============================================================
+--  APPOINTMENT SCHEDULE CONFIGURATION
+-- ============================================================
+
+CREATE TABLE "SERVICE_TIME_SLOT" (
+  id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  dealership_id    UUID        NOT NULL,
+  appointment_type VARCHAR(40) NOT NULL,
+  start_time       TIME        NOT NULL,
+  end_time         TIME        NOT NULL,
+  is_active        BOOLEAN     NOT NULL DEFAULT TRUE,
+  created_at       TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at       TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT uk_service_time_slot_dealership_type_start
+    UNIQUE (dealership_id, appointment_type, start_time),
+  CONSTRAINT chk_service_time_slot_time
+    CHECK (end_time > start_time)
+);
+COMMENT ON TABLE  "SERVICE_TIME_SLOT"                  IS 'Khung giờ đặt lịch theo từng đại lý và loại lịch hẹn';
+COMMENT ON COLUMN "SERVICE_TIME_SLOT".dealership_id    IS 'Đại lý sở hữu khung giờ';
+COMMENT ON COLUMN "SERVICE_TIME_SLOT".appointment_type IS 'Loại lịch: TEST_DRIVE hoặc SERVICE';
+COMMENT ON COLUMN "SERVICE_TIME_SLOT".start_time       IS 'Giờ bắt đầu khung giờ';
+COMMENT ON COLUMN "SERVICE_TIME_SLOT".end_time         IS 'Giờ kết thúc khung giờ';
+COMMENT ON COLUMN "SERVICE_TIME_SLOT".is_active        IS 'Cho phép khách đặt khung giờ này hay không';
+
+CREATE INDEX idx_service_time_slot_lookup
+  ON "SERVICE_TIME_SLOT" (dealership_id, appointment_type, is_active, start_time);
+
+ALTER TABLE "SERVICE_TIME_SLOT"
+  ADD CONSTRAINT fk_service_time_slot_dealership
+    FOREIGN KEY (dealership_id) REFERENCES "DEALERSHIP"(id) ON DELETE CASCADE;
+
+CREATE TABLE "APPOINTMENT_HOLIDAY" (
+  id             UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  dealership_id  UUID         NOT NULL,
+  holiday_date   DATE         NOT NULL,
+  reason         VARCHAR(255),
+  is_active      BOOLEAN      NOT NULL DEFAULT TRUE,
+  created_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT uk_appointment_holiday_dealership_date
+    UNIQUE (dealership_id, holiday_date)
+);
+COMMENT ON TABLE  "APPOINTMENT_HOLIDAY"               IS 'Ngày nghỉ không cho khách đặt lịch theo từng đại lý';
+COMMENT ON COLUMN "APPOINTMENT_HOLIDAY".dealership_id IS 'Đại lý áp dụng ngày nghỉ';
+COMMENT ON COLUMN "APPOINTMENT_HOLIDAY".holiday_date  IS 'Ngày không nhận lịch hẹn';
+COMMENT ON COLUMN "APPOINTMENT_HOLIDAY".reason        IS 'Lý do nghỉ hoặc ghi chú nội bộ';
+COMMENT ON COLUMN "APPOINTMENT_HOLIDAY".is_active     IS 'Ngày nghỉ còn hiệu lực hay không';
+
+CREATE INDEX idx_appointment_holiday_lookup
+  ON "APPOINTMENT_HOLIDAY" (dealership_id, holiday_date, is_active);
+
+ALTER TABLE "APPOINTMENT_HOLIDAY"
+  ADD CONSTRAINT fk_appointment_holiday_dealership
+    FOREIGN KEY (dealership_id) REFERENCES "DEALERSHIP"(id) ON DELETE CASCADE;
+
+-- ============================================================
 --  MECHANIC
 -- ============================================================
 

@@ -20,4 +20,7 @@ public class CreateAccountRequestDTO {
 
     @NotBlank(message = "Vai trò không được để trống")
     String role;
+
+    // Chỉ cần dealershipId khi role là SERVICE_ADVISOR hoặc MECHANIC, còn các role khác sẽ không cần trường này
+    private String dealershipId;
 }

@@ -13,6 +13,7 @@ import com.tayota.userservice.dto.Response.DeviceResponseDTO;
 import com.tayota.userservice.dto.Request.ForgotPasswordResetRequestDTO;
 import com.tayota.userservice.entity.ServiceAdvisor;
 import com.tayota.userservice.entity.UserProfile;
+import com.tayota.userservice.entity.workorder.Mechanic;
 import com.tayota.userservice.enums.ProviderType;
 import com.tayota.userservice.enums.StatusType;
 import com.tayota.userservice.object.RegisterCacheData;
@@ -23,6 +24,7 @@ import com.tayota.userservice.repository.ServiceAdvisorRepository;
 import com.tayota.userservice.repository.UserProfileRepository;
 import com.tayota.userservice.repository.UserRepository;
 import com.tayota.commoncore.exception.CustomException;
+import com.tayota.userservice.repository.workorder.MechanicRepository;
 import com.tayota.userservice.util.*;
 import io.jsonwebtoken.Claims;
 import jakarta.annotation.PostConstruct;
@@ -63,6 +65,7 @@ public class AuthService {
     private final EmailService emailService;
 
     private final ServiceAdvisorRepository serviceAdvisorRepository;
+    private final MechanicRepository mechanicRepository;
 
     // Đối tượng của Google cung cấp để xác minh tính hợp lệ của token
     private GoogleIdTokenVerifier verifier;
@@ -130,6 +133,11 @@ public class AuthService {
             throw new CustomException(400, "Cố vấn dịch vụ cần thuộc một đại lý");
         }
 
+        // Nếu role là MECHANIC thì bắt buộc phải có dealershipId, nếu không có sẽ ném lỗi
+        if (roleType == RoleType.MECHANIC && !StringUtils.hasText(createAccountRequestDTO.getDealershipId())) {
+            throw new CustomException(400, "Thợ kỹ thuật cần thuộc một đại lý");
+        }
+
         // Lấy role người dùng hiện tại từ Security Context
         String currentUserRole = SecurityContextUtil.getCurrentUserRole();
 
@@ -162,6 +170,17 @@ public class AuthService {
                         .build();
 
                 serviceAdvisorRepository.save(serviceAdvisor);
+            }
+
+            // Nếu role là MECHANIC thì tạo thêm bản ghi trong bảng Mechanic để lưu thông tin đại lý mà thợ kỹ thuật đó thuộc về và trạng thái hoạt động của thợ kỹ thuật đó
+            if (roleType == RoleType.MECHANIC) {
+                Mechanic mechanic = Mechanic.builder()
+                        .id(savedProfile.getUser().getId())
+                        .dealershipId(UUID.fromString(createAccountRequestDTO.getDealershipId()))
+                        .active(true)
+                        .build();
+
+                mechanicRepository.save(mechanic);
             }
 
         }

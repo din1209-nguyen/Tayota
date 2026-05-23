@@ -7,20 +7,28 @@ import com.tayota.userservice.config.CarServiceProperties;
 import com.tayota.userservice.dto.Request.appointment.CreateServiceAppointmentRequest;
 import com.tayota.userservice.dto.Request.appointment.CreateTestDriveAppointmentRequest;
 import com.tayota.userservice.dto.Request.appointment.UpdateAppointmentRequest;
+import com.tayota.userservice.dto.Request.workorder.CheckInServiceAppointmentRequest;
 import com.tayota.userservice.dto.Response.appointment.AppointmentCreatedResponse;
 import com.tayota.userservice.dto.Response.appointment.AppointmentManagementDetailResponse;
 import com.tayota.userservice.dto.Response.appointment.MyAppointmentDetailResponse;
+import com.tayota.userservice.dto.Response.workorder.CheckInServiceAppointmentResponse;
+import com.tayota.userservice.dto.Response.workorder.ServiceTicketSummaryResponse;
 import com.tayota.userservice.entity.appointment.Appointment;
 import com.tayota.userservice.entity.appointment.GuestInformation;
 import com.tayota.userservice.entity.ServiceAdvisor;
+import com.tayota.userservice.entity.workorder.Mechanic;
+import com.tayota.userservice.entity.workorder.ServiceTicket;
 import com.tayota.userservice.enums.appointment.AppointmentStatus;
 import com.tayota.userservice.enums.appointment.AppointmentType;
+import com.tayota.userservice.enums.workorder.ServiceTicketStatus;
 import com.tayota.userservice.mapper.appointment.AppointmentCreatedMapper;
 import com.tayota.userservice.mapper.appointment.MyAppointmentDetailMapper;
 import com.tayota.userservice.repository.appointment.AppointmentRepository;
 import com.tayota.userservice.repository.appointment.GuestInformationRepository;
 import com.tayota.userservice.repository.ServiceAdvisorRepository;
 import com.tayota.userservice.repository.UserProfileRepository;
+import com.tayota.userservice.repository.workorder.MechanicRepository;
+import com.tayota.userservice.repository.workorder.ServiceTicketRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -43,6 +51,8 @@ public class AppointmentService {
     private final GuestInformationRepository guestInformationRepository;
     private final ServiceAdvisorRepository serviceAdvisorRepository;
     private final UserProfileRepository userProfileRepository;
+    private final MechanicRepository mechanicRepository;
+    private final ServiceTicketRepository serviceTicketRepository;
     private final RedisTemplate<String, Object> redisTemplate;
     private final AppointmentBookingProperties bookingProperties;
     private final CarServiceProperties carServiceProperties;
@@ -260,6 +270,48 @@ public class AppointmentService {
         return toManagementDetailResponse(saved);
     }
 
+    // Xác nhận khách đã đến đại lý cho lịch lái thử, chỉ cập nhật trạng thái appointment sang CHECKED_IN.
+    @Transactional
+    public AppointmentManagementDetailResponse checkInTestDriveAppointment(UUID appointmentId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new CustomException(404, "Không tìm thấy lịch hẹn"));
+
+        validateCurrentUserCanHandleAppointment(appointment);
+        validateAppointmentCanCheckIn(appointment);
+
+        if (appointment.getType() != AppointmentType.TEST_DRIVE) {
+            throw new CustomException(400, "Endpoint này chỉ dùng để check-in lịch lái thử");
+        }
+
+        appointment.setStatus(AppointmentStatus.CHECKED_IN);
+        Appointment saved = appointmentRepository.save(appointment);
+
+        return toManagementDetailResponse(saved);
+    }
+
+    // Xác nhận khách đã đến đại lý cho lịch dịch vụ, đồng thời tạo phiếu dịch vụ và gán thợ phụ trách.
+    @Transactional
+    public CheckInServiceAppointmentResponse checkInServiceAppointment(UUID appointmentId, CheckInServiceAppointmentRequest request) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new CustomException(404, "Không tìm thấy lịch hẹn"));
+
+        validateCurrentUserCanHandleAppointment(appointment);
+        validateAppointmentCanCheckIn(appointment);
+
+        if (appointment.getType() != AppointmentType.SERVICE) {
+            throw new CustomException(400, "Endpoint này chỉ dùng để check-in lịch dịch vụ");
+        }
+
+        appointment.setStatus(AppointmentStatus.CHECKED_IN);
+        ServiceTicket serviceTicket = createServiceTicketForCheckedInAppointment(appointment, request, Instant.now());
+        Appointment savedAppointment = appointmentRepository.save(appointment);
+
+        return new CheckInServiceAppointmentResponse(
+                toManagementDetailResponse(savedAppointment),
+                toServiceTicketSummaryResponse(serviceTicket)
+        );
+    }
+
     // ========================== CÁC HÀM TIỆN ÍCH CHUNG CHO SERVICE ==========================
 
     // Hàm kiểm tra xem user hiện tại có quyền xử lý lịch hẹn này hay không (cố vấn dịch vụ chỉ được xử lý lịch của đại lý mình), nếu không có quyền thì ném lỗi 403 với thông điệp tùy chỉnh
@@ -280,6 +332,96 @@ public class AppointmentService {
                 .orElseThrow(() -> new CustomException(403, "Tài khoản cố vấn dịch vụ chưa được gán đại lý"));
 
         return serviceAdvisor.getDealershipId();
+    }
+
+    private void validateAppointmentCanCheckIn(Appointment appointment) {
+        if (appointment.getStatus() != AppointmentStatus.CONFIRMED) {
+            throw new CustomException(400, "Chỉ có thể check-in lịch hẹn đã được xác nhận");
+        }
+    }
+
+    // Hàm tạo phiếu dịch vụ cho lịch hẹn dịch vụ đã được check-in, bao gồm việc gán thợ phụ trách và các thông tin liên quan đến việc tiếp nhận xe. Nếu đã có phiếu dịch vụ cho lịch hẹn này thì ném lỗi 409 với thông điệp tùy chỉnh.
+    private ServiceTicket createServiceTicketForCheckedInAppointment(
+            Appointment appointment,
+            CheckInServiceAppointmentRequest request,
+            Instant receivingAt
+    ) {
+        // Kiểm tra thông tin tiếp nhận xe có đầy đủ hay không, nếu thiếu thì ném lỗi 400 với thông điệp tùy chỉnh
+        if (request == null) {
+            throw new CustomException(400, "Vui lòng nhập thông tin tiếp nhận xe");
+        }
+
+        // Kiểm tra thợ phụ trách có được chọn hay không, nếu không thì ném lỗi 400 với thông điệp tùy chỉnh
+        if (request.getMechanicId() == null) {
+            throw new CustomException(400, "Vui lòng chọn thợ phụ trách");
+        }
+
+        // Kiểm tra số km hiện tại của xe có được nhập hay không, nếu không thì ném lỗi 400 với thông điệp tùy chỉnh
+        if (request.getMileageAtService() == null) {
+            throw new CustomException(400, "Vui lòng nhập số km hiện tại của xe");
+        }
+
+        // Kiểm tra tình trạng xe có được nhập hay không, nếu không thì ném lỗi 400 với thông điệp tùy chỉnh
+        if (!StringUtils.hasText(request.getVehicleCondition())) {
+            throw new CustomException(400, "Vui lòng nhập tình trạng xe khi tiếp nhận");
+        }
+
+        // Kiểm tra xem lịch hẹn dịch vụ đã có số VIN hay chưa, nếu chưa thì ném lỗi 400 với thông điệp tùy chỉnh
+        if (StringUtils.hasText(appointment.getVinId()) == false) {
+            throw new CustomException(400, "Lịch hẹn dịch vụ không có số VIN");
+        }
+
+        // Kiểm tra xem lịch hẹn dịch vụ đã có phiếu dịch vụ chưa, nếu đã có thì ném lỗi 409 với thông điệp tùy chỉnh
+        if (serviceTicketRepository.findByAppointmentId(appointment.getId()).isPresent()) {
+            throw new CustomException(409, "Lịch hẹn này đã có phiếu dịch vụ");
+        }
+
+        // Kiểm tra thợ phụ trách có tồn tại không, nếu không thì ném lỗi 404 với thông điệp tùy chỉnh
+        Mechanic mechanic = mechanicRepository.findById(request.getMechanicId())
+                .orElseThrow(() -> new CustomException(404, "Không tìm thấy thợ phụ trách"));
+
+        // Kiểm tra thợ phụ trách có thuộc đại lý của lịch hẹn không, nếu không thì ném lỗi 400 với thông điệp tùy chỉnh
+        if (!appointment.getDealershipId().equals(mechanic.getDealershipId())) {
+            throw new CustomException(400, "Thợ phụ trách không thuộc đại lý của lịch hẹn");
+        }
+
+        // Kiểm tra thợ phụ trách có đang hoạt động không, nếu không thì ném lỗi 400 với thông điệp tùy chỉnh
+        if (Boolean.FALSE.equals(mechanic.getActive())) {
+            throw new CustomException(400, "Thợ phụ trách đang không hoạt động");
+        }
+
+        // Gán thợ phụ trách cho lịch hẹn để tiện cho việc theo dõi và quản lý, đồng thời tạo phiếu dịch vụ với các thông tin liên quan đến việc tiếp nhận xe như số km hiện tại, tình trạng xe, ghi chú, v.v.
+        appointment.setMechanicId(mechanic.getId());
+
+        ServiceTicket serviceTicket = ServiceTicket.builder()
+                .userId(appointment.getUserId())
+                .vinId(appointment.getVinId())
+                .mechanicId(mechanic.getId())
+                .dealershipId(appointment.getDealershipId())
+                .appointment(appointment)
+                .mileageAtService(request.getMileageAtService())
+                .status(ServiceTicketStatus.CONFIRMED)
+                .vehicleCondition(normalizeRequired(request.getVehicleCondition(), "Vui lòng nhập tình trạng xe khi tiếp nhận"))
+                .notes(normalize(request.getNotes()))
+                .receivingAt(receivingAt)
+                .build();
+
+        return serviceTicketRepository.save(serviceTicket);
+    }
+
+    // Hàm chuyển đổi ServiceTicket entity sang ServiceTicketSummaryResponse để trả về cho FE, chỉ chứa các trường cần thiết để hiển thị trong phần danh sách phiếu dịch vụ của lịch hẹn đã check-in.
+    private ServiceTicketSummaryResponse toServiceTicketSummaryResponse(ServiceTicket serviceTicket) {
+        return new ServiceTicketSummaryResponse(
+                serviceTicket.getId(),
+                serviceTicket.getAppointment().getId(),
+                serviceTicket.getVinId(),
+                serviceTicket.getMechanicId(),
+                serviceTicket.getMileageAtService(),
+                serviceTicket.getStatus(),
+                serviceTicket.getVehicleCondition(),
+                serviceTicket.getNotes(),
+                serviceTicket.getReceivingAt()
+        );
     }
 
     // Hàm cập nhật ngày hẹn và giờ bắt đầu nếu có thay đổi, đồng thời kiểm tra tính hợp lệ của chúng, nếu chỉ thay đổi một trong hai trường này mà không có trường còn lại thì ném lỗi 400 với thông điệp tùy chỉnh

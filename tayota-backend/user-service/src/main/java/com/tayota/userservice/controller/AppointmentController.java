@@ -10,12 +10,14 @@ import com.tayota.userservice.dto.Request.appointment.CreateTestDriveAppointment
 import com.tayota.userservice.dto.Request.appointment.UpdateAppointmentHolidayRequest;
 import com.tayota.userservice.dto.Request.appointment.UpdateAppointmentRequest;
 import com.tayota.userservice.dto.Request.appointment.UpdateServiceTimeSlotRequest;
+import com.tayota.userservice.dto.Request.workorder.CheckInServiceAppointmentRequest;
 import com.tayota.userservice.dto.Response.appointment.AppointmentAvailableSlotsResponse;
 import com.tayota.userservice.dto.Response.appointment.AppointmentCreatedResponse;
 import com.tayota.userservice.dto.Response.appointment.AppointmentHolidayResponse;
 import com.tayota.userservice.dto.Response.appointment.AppointmentManagementDetailResponse;
 import com.tayota.userservice.dto.Response.appointment.MyAppointmentDetailResponse;
 import com.tayota.userservice.dto.Response.appointment.ServiceTimeSlotResponse;
+import com.tayota.userservice.dto.Response.workorder.CheckInServiceAppointmentResponse;
 import com.tayota.userservice.enums.appointment.AppointmentType;
 import com.tayota.userservice.service.appointment.AppointmentScheduleService;
 import com.tayota.userservice.service.appointment.AppointmentService;
@@ -171,6 +173,29 @@ public class AppointmentController {
         AppointmentManagementDetailResponse response = appointmentService.updateAppointmentForManagement(appointmentId, request);
 
         return ApiResponse.success(200, "Cập nhật lịch hẹn thành công!", response);
+    }
+
+    // Dùng cho cố vấn dịch vụ xác nhận khách đã đến đại lý cho lịch lái thử.
+    @PatchMapping("advisor/test-drive/{appointmentId}/check-in")
+    @PreAuthorize("hasRole('SERVICE_ADVISOR')")
+    public ApiResponse<AppointmentManagementDetailResponse> checkInTestDriveAppointment(
+            @PathVariable UUID appointmentId
+    ) {
+        AppointmentManagementDetailResponse response = appointmentService.checkInTestDriveAppointment(appointmentId);
+
+        return ApiResponse.success(200, "Check-in lịch lái thử thành công!", response);
+    }
+
+    // Dùng cho cố vấn dịch vụ xác nhận khách đã đến đại lý cho lịch dịch vụ, đồng thời tạo phiếu dịch vụ.
+    @PatchMapping("advisor/service/{appointmentId}/check-in")
+    @PreAuthorize("hasRole('SERVICE_ADVISOR')")
+    public ApiResponse<CheckInServiceAppointmentResponse> checkInServiceAppointment(
+            @PathVariable UUID appointmentId,
+            @Valid @RequestBody CheckInServiceAppointmentRequest request
+    ) {
+        CheckInServiceAppointmentResponse response = appointmentService.checkInServiceAppointment(appointmentId, request);
+
+        return ApiResponse.success(200, "Check-in lịch dịch vụ thành công!", response);
     }
 
     // Dùng cho cố vấn dịch vụ quản lý khung giờ làm việc của đại lý mình

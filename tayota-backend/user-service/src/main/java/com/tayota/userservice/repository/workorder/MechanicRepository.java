@@ -11,6 +11,7 @@ import java.util.UUID;
 
 // Repository để quản lý thông tin thợ sửa xe (Mechanic) trong hệ thống
 public interface MechanicRepository extends JpaRepository<Mechanic, UUID> {
+    // Lấy danh sách thợ sửa xe đang hoạt động của một đại lý cụ thể, sắp xếp theo tên và chuyên môn
     @Query("""
             select mechanic.id as id,
                    userProfile.fullname as fullName,
@@ -24,6 +25,7 @@ public interface MechanicRepository extends JpaRepository<Mechanic, UUID> {
             """)
     List<MechanicView> findActiveMechanicsByDealershipId(@Param("dealershipId") UUID dealershipId);
 
+    // Giao diện projection để lấy dữ liệu cần thiết cho thợ sửa xe mà không cần phải lấy toàn bộ entity
     interface MechanicView {
         UUID getId();
 

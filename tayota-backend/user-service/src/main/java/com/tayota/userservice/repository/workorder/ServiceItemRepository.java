@@ -9,5 +9,10 @@ import java.util.UUID;
 
 @Repository
 public interface ServiceItemRepository extends JpaRepository<ServiceItem, UUID> {
+
+    // Lấy tất cả các ServiceItem liên quan đến một ServiceTicket cụ thể, sắp xếp theo thời gian tạo
     List<ServiceItem> findByServiceTicketId(UUID serviceTicketId);
+
+    // Lấy tất cả các ServiceItem liên quan đến một ServiceTicket cụ thể, sắp xếp theo thời gian tạo tăng dần
+    List<ServiceItem> findByServiceTicketIdOrderByCreatedAtAsc(UUID serviceTicketId);
 }

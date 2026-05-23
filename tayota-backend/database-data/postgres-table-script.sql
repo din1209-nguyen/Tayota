@@ -35,10 +35,10 @@ CREATE TYPE payment_method_enum AS ENUM ('CASH', 'BANK_LOAN');
 CREATE TYPE service_status_type AS ENUM (
   'CONFIRMED',
   'RECEIVING',
-  'PROCESSING',
+  'IN_PROGRESS',
   'COMPLETED',
-  'DELIVERED',
-  'CANCELED'
+  'CANCELED',
+  'EXPIRED'
 );
 
 CREATE TYPE item_type_enum AS ENUM ('LABOR', 'PART');

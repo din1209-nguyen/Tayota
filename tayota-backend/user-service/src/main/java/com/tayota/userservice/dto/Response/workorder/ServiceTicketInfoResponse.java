@@ -10,11 +10,16 @@ import java.util.UUID;
 
 @Getter
 @AllArgsConstructor
-public class ServiceTicketSummaryResponse {
+public class ServiceTicketInfoResponse {
     private UUID id;
     private UUID appointmentId;
     private String vinId;
+    private UUID mechanicId;
+    private Integer mileageAtService;
     private ServiceTicketStatus status;
+    private String vehicleCondition;
+    private String notes;
     private Instant receivingAt;
+    private Instant processingAt;
     private BigDecimal totalAmount;
 }

@@ -4,7 +4,7 @@ public enum ServiceTicketStatus {
     // lưu trạng thái của phiếu dịch vụ
     CONFIRMED,
     RECEIVING,
-    PROCESSING,
+    IN_PROGRESS,
     COMPLETED,
     CANCELED,
     EXPIRED

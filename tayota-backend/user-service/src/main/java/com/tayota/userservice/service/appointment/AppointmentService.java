@@ -12,7 +12,6 @@ import com.tayota.userservice.dto.Response.appointment.AppointmentCreatedRespons
 import com.tayota.userservice.dto.Response.appointment.AppointmentManagementDetailResponse;
 import com.tayota.userservice.dto.Response.appointment.MyAppointmentDetailResponse;
 import com.tayota.userservice.dto.Response.workorder.CheckInServiceAppointmentResponse;
-import com.tayota.userservice.dto.Response.workorder.ServiceTicketSummaryResponse;
 import com.tayota.userservice.entity.appointment.Appointment;
 import com.tayota.userservice.entity.appointment.GuestInformation;
 import com.tayota.userservice.entity.ServiceAdvisor;
@@ -23,6 +22,7 @@ import com.tayota.userservice.enums.appointment.AppointmentType;
 import com.tayota.userservice.enums.workorder.ServiceTicketStatus;
 import com.tayota.userservice.mapper.appointment.AppointmentCreatedMapper;
 import com.tayota.userservice.mapper.appointment.MyAppointmentDetailMapper;
+import com.tayota.userservice.mapper.workorder.WorkOrderMapper;
 import com.tayota.userservice.repository.appointment.AppointmentRepository;
 import com.tayota.userservice.repository.appointment.GuestInformationRepository;
 import com.tayota.userservice.repository.ServiceAdvisorRepository;
@@ -60,6 +60,7 @@ public class AppointmentService {
     private final AppointmentNotificationService appointmentNotificationService;
     private final AppointmentCreatedMapper appointmentCreatedMapper;
     private final MyAppointmentDetailMapper myAppointmentDetailMapper;
+    private final WorkOrderMapper workOrderMapper;
 
     // ========================== SERVICE CHO END-USER ==========================
 
@@ -298,17 +299,25 @@ public class AppointmentService {
         validateCurrentUserCanHandleAppointment(appointment);
         validateAppointmentCanCheckIn(appointment);
 
+        // Nếu không phải lịch hẹn dịch vụ thì không cho check-in qua endpoint này vì sẽ không tạo được phiếu dịch vụ, tránh nhầm lẫn và lỗi quy trình.
         if (appointment.getType() != AppointmentType.SERVICE) {
             throw new CustomException(400, "Endpoint này chỉ dùng để check-in lịch dịch vụ");
         }
 
+        // Cập nhật trạng thái lịch hẹn sang CHECKED_IN
         appointment.setStatus(AppointmentStatus.CHECKED_IN);
+
+        // Tạo phiếu dịch vụ cho lịch hẹn dịch vụ đã được check-in, bao gồm việc gán thợ phụ trách và các thông tin liên quan đến việc tiếp nhận xe.
+        // Nếu đã có phiếu dịch vụ cho lịch hẹn này thì ném lỗi 409 với thông điệp tùy chỉnh.
         ServiceTicket serviceTicket = createServiceTicketForCheckedInAppointment(appointment, request, Instant.now());
+
         Appointment savedAppointment = appointmentRepository.save(appointment);
 
         return new CheckInServiceAppointmentResponse(
+                // Trả về cả thông tin chi tiết của lịch hẹn đã được check-in và thông tin tóm tắt của phiếu dịch vụ vừa tạo để FE tiện hiển thị.
                 toManagementDetailResponse(savedAppointment),
-                toServiceTicketSummaryResponse(serviceTicket)
+                // Chỉ trả về thông tin tóm tắt của phiếu dịch vụ để FE hiển thị trong danh sách, không cần chi tiết đầy đủ vì chưa đến bước xử lý phiếu dịch vụ.
+                workOrderMapper.toSummaryResponse(serviceTicket)
         );
     }
 
@@ -407,21 +416,6 @@ public class AppointmentService {
                 .build();
 
         return serviceTicketRepository.save(serviceTicket);
-    }
-
-    // Hàm chuyển đổi ServiceTicket entity sang ServiceTicketSummaryResponse để trả về cho FE, chỉ chứa các trường cần thiết để hiển thị trong phần danh sách phiếu dịch vụ của lịch hẹn đã check-in.
-    private ServiceTicketSummaryResponse toServiceTicketSummaryResponse(ServiceTicket serviceTicket) {
-        return new ServiceTicketSummaryResponse(
-                serviceTicket.getId(),
-                serviceTicket.getAppointment().getId(),
-                serviceTicket.getVinId(),
-                serviceTicket.getMechanicId(),
-                serviceTicket.getMileageAtService(),
-                serviceTicket.getStatus(),
-                serviceTicket.getVehicleCondition(),
-                serviceTicket.getNotes(),
-                serviceTicket.getReceivingAt()
-        );
     }
 
     // Hàm cập nhật ngày hẹn và giờ bắt đầu nếu có thay đổi, đồng thời kiểm tra tính hợp lệ của chúng, nếu chỉ thay đổi một trong hai trường này mà không có trường còn lại thì ném lỗi 400 với thông điệp tùy chỉnh

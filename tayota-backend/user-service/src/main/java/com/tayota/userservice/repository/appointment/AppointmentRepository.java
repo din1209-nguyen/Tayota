@@ -3,9 +3,12 @@ package com.tayota.userservice.repository.appointment;
 import com.tayota.userservice.entity.appointment.Appointment;
 import com.tayota.userservice.enums.appointment.AppointmentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -50,5 +53,22 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
               and appointment.userId = :userId
             """)
     Optional<Appointment> findByIdAndUserId(@Param("id") UUID id, @Param("userId") UUID userId);
+
+    // Tự động chuyển các lịch đã quá giờ hẹn nhưng chưa check-in sang EXPIRED.
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update Appointment appointment
+            set appointment.status = :expiredStatus,
+                appointment.expiredAt = :expiredAt,
+                appointment.updatedAt = :expiredAt
+            where appointment.status in :statuses
+              and appointment.scheduledEndAt < :now
+            """)
+    int expireAppointmentsPastScheduledEnd(
+            @Param("statuses") Collection<AppointmentStatus> statuses,
+            @Param("expiredStatus") AppointmentStatus expiredStatus,
+            @Param("expiredAt") Instant expiredAt,
+            @Param("now") Instant now
+    );
 
 }

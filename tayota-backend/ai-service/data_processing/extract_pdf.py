@@ -136,7 +136,24 @@ def mark_documents_processed(documents: list[dict]) -> None:
     print(f"[INFO] Da cap nhat registry cho {len(processed_files)} PDF.")
 
 
-def extract_pdf_with_metadata(pdf_path: str, file_hash: str = None) -> list[dict]:
+def _metadata_for_path(pdf_file: Path, pdf_metadata_by_path: dict | None) -> dict:
+    if not pdf_metadata_by_path:
+        return {}
+
+    resolved = str(pdf_file.resolve())
+    return (
+        pdf_metadata_by_path.get(resolved)
+        or pdf_metadata_by_path.get(str(pdf_file))
+        or pdf_metadata_by_path.get(pdf_file.name)
+        or {}
+    )
+
+
+def extract_pdf_with_metadata(
+    pdf_path: str,
+    file_hash: str = None,
+    extra_metadata: dict | None = None,
+) -> list[dict]:
     pdf_file = Path(pdf_path)
     source_key = _source_key(pdf_file)
     source_id = _source_id(pdf_file)
@@ -165,6 +182,7 @@ def extract_pdf_with_metadata(pdf_path: str, file_hash: str = None) -> list[dict
                     "source_hash": file_hash,
                     "page": page_num + 1,
                     "total_pages": len(doc),
+                    **(extra_metadata or {}),
                 },
             })
     finally:
@@ -178,6 +196,7 @@ def extract_all_pdfs(
     use_documents_folder: bool = True,
     glob_pattern: str = None,
     update_registry: bool = False,
+    pdf_metadata_by_path: dict | None = None,
 ) -> list[dict]:
     """
     Read every PDF from disk, ignoring .processed_pdfs.json.
@@ -194,7 +213,10 @@ def extract_all_pdfs(
     for pdf_file in pdf_files:
         print(f"[INFO] Dang doc PDF: {pdf_file.name}")
         try:
-            docs = extract_pdf_with_metadata(str(pdf_file))
+            docs = extract_pdf_with_metadata(
+                str(pdf_file),
+                extra_metadata=_metadata_for_path(pdf_file, pdf_metadata_by_path),
+            )
             all_documents.extend(docs)
 
             print(f"       -> {len(docs)} trang")
@@ -217,6 +239,7 @@ def extract_multiple_pdfs(
     glob_pattern: str = None,
     force_reprocess: bool = False,
     skip_processed: bool = True,
+    pdf_metadata_by_path: dict | None = None,
 ) -> list[dict]:
     """
     Incremental extractor.
@@ -231,6 +254,7 @@ def extract_multiple_pdfs(
             use_documents_folder=use_documents_folder,
             glob_pattern=glob_pattern,
             update_registry=True,
+            pdf_metadata_by_path=pdf_metadata_by_path,
         )
 
     pdf_files = _resolve_pdf_paths(pdf_paths, use_documents_folder, glob_pattern)
@@ -267,7 +291,11 @@ def extract_multiple_pdfs(
         label = "(moi)" if key not in registry else "(da thay doi noi dung)"
         print(f"[INFO] Dang xu ly {label}: {pdf_file.name}")
         try:
-            docs = extract_pdf_with_metadata(str(pdf_file), file_hash=file_hash)
+            docs = extract_pdf_with_metadata(
+                str(pdf_file),
+                file_hash=file_hash,
+                extra_metadata=_metadata_for_path(pdf_file, pdf_metadata_by_path),
+            )
             all_documents.extend(docs)
             print(f"       -> {len(docs)} trang")
         except Exception as e:

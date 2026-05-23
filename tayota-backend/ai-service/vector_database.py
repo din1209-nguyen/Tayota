@@ -98,6 +98,8 @@ def _chunk_payload(chunk: Dict[str, Any]) -> Dict[str, Any]:
         "char_start": metadata.get("char_start"),
         "char_end": metadata.get("char_end"),
         "content_hash": metadata.get("content_hash"),
+        "document_id": metadata.get("document_id"),
+        "gridfs_file_id": metadata.get("gridfs_file_id"),
     }
 
 
@@ -254,6 +256,8 @@ def _point_payload_result(payload: Dict[str, Any], score: float = 1.0) -> Dict[s
         "chunk_index": payload.get("chunk_index"),
         "char_start": payload.get("char_start"),
         "char_end": payload.get("char_end"),
+        "document_id": payload.get("document_id"),
+        "gridfs_file_id": payload.get("gridfs_file_id"),
     }
 
 
@@ -328,6 +332,7 @@ def ingest_documents(
     rebuild: bool = False,
     pdf_paths: List[str] | None = None,
     glob_pattern: str | None = None,
+    pdf_metadata_by_path: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     """
     Ingest PDFs into Qdrant.
@@ -350,6 +355,7 @@ def ingest_documents(
         docs = extract_all_pdfs(
             pdf_paths=pdf_paths,
             glob_pattern=glob_pattern,
+            pdf_metadata_by_path=pdf_metadata_by_path,
         )
     else:
         print("[INFO] Ingest incremental: chi doc PDF moi/da thay doi theo cache.")
@@ -359,12 +365,14 @@ def ingest_documents(
             docs = extract_all_pdfs(
                 pdf_paths=pdf_paths,
                 glob_pattern=glob_pattern,
+                pdf_metadata_by_path=pdf_metadata_by_path,
             )
         else:
             docs = extract_multiple_pdfs(
                 pdf_paths=pdf_paths,
                 glob_pattern=glob_pattern,
                 skip_processed=True,
+                pdf_metadata_by_path=pdf_metadata_by_path,
             )
 
     if not docs:

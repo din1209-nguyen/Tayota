@@ -1,36 +1,33 @@
-import os
-import shutil
+import tempfile
 import uuid
 from pathlib import Path
 from typing import Any, Dict, Literal
 
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
-from conversation_state_manager import RedisStateError, state_manager
+from conversation_state_manager import MongoStateError, state_manager
+from mongo_storage import (
+    MongoConnection,
+    MongoDocumentJobStore,
+    MongoDocumentStore,
+    MongoStorageError,
+)
 from rag import GROQ_API_KEY, LLM_PROVIDER, answer
 from vector_database import get_collection_info, ingest_documents
 
 load_dotenv()
-
-DOCUMENTS_DIR = Path(os.getenv("DOCUMENTS_DIR", "documents")).resolve()
-JOB_TTL_SECS = int(os.getenv("DOCUMENT_JOB_TTL_SECS", "86400"))
-
-try:
-    import redis
-    from redis.exceptions import RedisError
-except ImportError:  # pragma: no cover - only hit before dependencies are installed.
-    redis = None
-
-    class RedisError(Exception):
-        pass
 
 
 class Source(BaseModel):
     source: str | None = None
     page: int | None = None
     score: float | None = None
+    chunk_id: str | None = None
+    chunk_index: int | None = None
+    document_id: str | None = None
+    gridfs_file_id: str | None = None
 
 
 class ChatRequest(BaseModel):
@@ -57,6 +54,7 @@ class DocumentJobStatus(BaseModel):
     job_id: str
     status: Literal["queued", "running", "success", "failed"]
     message: str = ""
+    document_id: str | None = None
     indexed_pages: int = 0
     indexed_chunks: int = 0
 
@@ -69,53 +67,14 @@ class ResetSessionResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     qdrant: str
-    redis: str
+    mongo: str
+    redis: str = "unused"
     llm: str
 
 
-class JobStore:
-    def __init__(self, redis_url: str | None = None):
-        self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
-        self._client = None
-
-    def _key(self, job_id: str) -> str:
-        return f"ai-service:document-jobs:{job_id}"
-
-    def _get_client(self):
-        if redis is None:
-            raise RedisStateError(
-                "Redis dependency is not installed. Run `pip install -r requirements.txt`."
-            )
-        if self._client is None:
-            self._client = redis.Redis.from_url(
-                self.redis_url,
-                decode_responses=True,
-                socket_connect_timeout=2,
-                socket_timeout=2,
-            )
-        return self._client
-
-    def set(self, status: DocumentJobStatus) -> None:
-        try:
-            self._get_client().setex(
-                self._key(status.job_id),
-                JOB_TTL_SECS,
-                status.model_dump_json(),
-            )
-        except RedisError as exc:
-            raise RedisStateError(f"Cannot save document job to Redis: {exc}") from exc
-
-    def get(self, job_id: str) -> DocumentJobStatus | None:
-        try:
-            payload = self._get_client().get(self._key(job_id))
-        except RedisError as exc:
-            raise RedisStateError(f"Cannot load document job from Redis: {exc}") from exc
-        if not payload:
-            return None
-        return DocumentJobStatus.model_validate_json(payload)
-
-
-job_store = JobStore()
+mongo_connection = MongoConnection()
+document_store = MongoDocumentStore(mongo_connection)
+job_store = MongoDocumentJobStore(mongo_connection)
 app = FastAPI(title="Toyota RAG AI Service", version="1.0.0")
 
 
@@ -130,32 +89,78 @@ def _safe_filename(filename: str) -> str:
     return name
 
 
-def _run_ingest_job(job_id: str, pdf_path: str, rebuild: bool) -> None:
+def _qdrant_metadata_for_path(path: Path, document: Dict[str, Any]) -> Dict[str, Any]:
+    document_id = document.get("document_id")
+    gridfs_file_id = str(document.get("gridfs_file_id"))
+    return {
+        str(path.resolve()): {
+            "document_id": document_id,
+            "gridfs_file_id": gridfs_file_id,
+            "source_id": f"mongo-{document_id}",
+            "source_key": f"gridfs/{gridfs_file_id}",
+            "source_path": f"gridfs://{gridfs_file_id}",
+        }
+    }
+
+
+def _run_ingest_job(job_id: str, document_id: str, rebuild: bool) -> None:
     job_store.set(
         DocumentJobStatus(
             job_id=job_id,
             status="running",
             message="Indexing document.",
+            document_id=document_id,
         )
     )
     try:
-        ingest_paths = [str(DOCUMENTS_DIR)] if rebuild else [pdf_path]
-        info = ingest_documents(rebuild=rebuild, pdf_paths=ingest_paths)
+        document_store.update_status(document_id, "indexing")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            pdf_metadata_by_path: Dict[str, Any] = {}
+            if rebuild:
+                documents = document_store.list_documents()
+                paths = []
+                for document in documents:
+                    path = document_store.materialize_pdf(
+                        str(document["document_id"]),
+                        tmp_dir,
+                    )
+                    paths.append(path)
+                    pdf_metadata_by_path.update(_qdrant_metadata_for_path(path, document))
+            else:
+                document = document_store.get_document(document_id)
+                if not document:
+                    raise MongoStorageError(f"Document '{document_id}' was not found.")
+                path = document_store.materialize_pdf(document_id, tmp_dir)
+                paths = [path]
+                pdf_metadata_by_path.update(_qdrant_metadata_for_path(path, document))
+
+            info = ingest_documents(
+                rebuild=rebuild,
+                pdf_paths=[str(path) for path in paths],
+                pdf_metadata_by_path=pdf_metadata_by_path,
+            )
         indexed_chunks = int(info.get("vectors_count") or info.get("points_count") or 0)
+        document_store.update_status(document_id, "indexed")
         job_store.set(
             DocumentJobStatus(
                 job_id=job_id,
                 status="success",
                 message="Document indexed successfully.",
+                document_id=document_id,
                 indexed_chunks=indexed_chunks,
             )
         )
     except Exception as exc:
+        try:
+            document_store.update_status(document_id, "failed")
+        except Exception:
+            pass
         job_store.set(
             DocumentJobStatus(
                 job_id=job_id,
                 status="failed",
                 message=str(exc),
+                document_id=document_id,
             )
         )
 
@@ -163,8 +168,12 @@ def _run_ingest_job(job_id: str, pdf_path: str, rebuild: bool) -> None:
 @app.post("/api/v1/chat", response_model=ChatResponse)
 def chat(request: ChatRequest) -> ChatResponse:
     try:
-        result = answer(request.message, session_id=request.session_id)
-    except RedisStateError as exc:
+        result = answer(
+            request.message,
+            session_id=request.session_id,
+            user_id=request.user_id,
+        )
+    except MongoStateError as exc:
         raise _service_unavailable(str(exc)) from exc
     except RuntimeError as exc:
         raise _service_unavailable(str(exc)) from exc
@@ -184,26 +193,29 @@ def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     rebuild: bool = False,
+    user_id: str | None = Form(default=None),
 ) -> DocumentJobResponse:
     filename = _safe_filename(file.filename or "")
-    DOCUMENTS_DIR.mkdir(parents=True, exist_ok=True)
-    target = DOCUMENTS_DIR / filename
-
-    with target.open("wb") as out_file:
-        shutil.copyfileobj(file.file, out_file)
 
     job_id = str(uuid.uuid4())
-    status = DocumentJobStatus(
-        job_id=job_id,
-        status="queued",
-        message=f"Queued ingest for {filename}.",
-    )
     try:
+        document = document_store.save_pdf(
+            filename=filename,
+            content_type=file.content_type,
+            file_obj=file.file,
+            uploaded_by_user_id=user_id,
+        )
+        status = DocumentJobStatus(
+            job_id=job_id,
+            status="queued",
+            message=f"Queued ingest for {filename}.",
+            document_id=str(document["document_id"]),
+        )
         job_store.set(status)
-    except RedisStateError as exc:
+    except MongoStorageError as exc:
         raise _service_unavailable(str(exc)) from exc
 
-    background_tasks.add_task(_run_ingest_job, job_id, str(target), rebuild)
+    background_tasks.add_task(_run_ingest_job, job_id, str(document["document_id"]), rebuild)
     return DocumentJobResponse(job_id=job_id, status="queued")
 
 
@@ -211,33 +223,31 @@ def upload_document(
 def get_document_job(job_id: str) -> DocumentJobStatus:
     try:
         status = job_store.get(job_id)
-    except RedisStateError as exc:
+    except MongoStorageError as exc:
         raise _service_unavailable(str(exc)) from exc
     if status is None:
         raise HTTPException(status_code=404, detail="Document job not found.")
-    return status
+    return DocumentJobStatus.model_validate(status)
 
 
 @app.post("/api/v1/sessions/{session_id}/reset", response_model=ResetSessionResponse)
 def reset_session(session_id: str) -> ResetSessionResponse:
     try:
         state_manager.reset(session_id)
-    except RedisStateError as exc:
+    except MongoStateError as exc:
         raise _service_unavailable(str(exc)) from exc
     return ResetSessionResponse(session_id=session_id, status="reset")
 
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    redis_status = "ok"
+    mongo_status = "ok"
     qdrant_status = "ok"
 
     try:
-        ping = getattr(state_manager, "ping", None)
-        if ping:
-            ping()
+        mongo_connection.ping()
     except Exception as exc:
-        redis_status = f"error: {exc}"
+        mongo_status = f"error: {exc}"
 
     try:
         get_collection_info()
@@ -249,10 +259,10 @@ def health() -> HealthResponse:
     else:
         llm_status = f"configured:{LLM_PROVIDER}"
 
-    status = "ok" if redis_status == "ok" and qdrant_status == "ok" else "degraded"
+    status = "ok" if mongo_status == "ok" and qdrant_status == "ok" else "degraded"
     return HealthResponse(
         status=status,
         qdrant=qdrant_status,
-        redis=redis_status,
+        mongo=mongo_status,
         llm=llm_status,
     )

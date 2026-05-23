@@ -2,10 +2,10 @@
 logic_smart_car_consultant.py
 Logic tư vấn xe thông minh — quyết định cách trả lời dựa trên state + slots.
 
-Chiến lược: Tư vấn ngay với thông tin đã có, hỏi thêm sau.
+Chiến lược: Tư vấn ngay với thông tin đã có, không tự hỏi thêm theo slot còn thiếu.
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 from conversation_state_manager import ConversationState
 from slot_extractor import should_extract_slots
 
@@ -19,16 +19,6 @@ SLOT_DISPLAY = {
     "fuel":             "loại nhiên liệu",
     "region":           "khu vực đi lại",
     "type_car":         "loại xe ưa thích",
-}
-
-# Câu hỏi gợi ý cho từng slot còn thiếu
-SLOT_QUESTIONS = {
-    "budget":   "Anh/chị có thể cho biết ngân sách dự kiến là bao nhiêu không? (ví dụ: 800 triệu, 1 tỷ 2...)",
-    "seats":    "Anh/chị cần xe mấy chỗ ngồi?",
-    "purpose":  "Xe chủ yếu dùng cho mục đích gì ạ? (gia đình, kinh doanh, cá nhân, off-road...)",
-    "fuel":     "Anh/chị có ưu tiên loại nhiên liệu nào không? (xăng, dầu, hybrid, điện)",
-    "region":   "Xe chủ yếu chạy ở đâu ạ? (thành phố, đường dài, địa hình khó...)",
-    "type_car": "Anh/chị muốn xe loại nào? (sedan, SUV, đa dụng, bán tải, hatchback)",
 }
 
 # Slot ưu tiên hỏi trước (theo thứ tự quan trọng)
@@ -61,21 +51,6 @@ def build_slot_context(slots: Dict[str, Any]) -> str:
 
     return "\n".join(lines)
 
-
-def build_followup_question(missing: List[str], turn_count: int) -> Optional[str]:
-    """
-    Tạo câu hỏi follow-up cho slot còn thiếu quan trọng nhất.
-    Không hỏi nếu đã hỏi nhiều lượt (tránh làm phiền người dùng).
-    """
-    if not missing or turn_count >= 6:
-        return None
-
-    # Hỏi theo thứ tự priority
-    for slot in SLOT_PRIORITY:
-        if slot in missing:
-            return SLOT_QUESTIONS[slot]
-
-    return None
 
 def build_advise_prompt(
     query: str,
@@ -110,12 +85,12 @@ class SmartCarConsultant:
     """
     Quyết định cách xử lý mỗi lượt hội thoại.
 
-    Chiến lược: tư vấn ngay với thông tin đã có, append câu hỏi follow-up sau.
+    Chiến lược: tư vấn ngay với thông tin đã có, không tự hỏi thêm từng slot còn thiếu.
 
     Workflow:
         decision = consultant.decide(query, state, retrieved_docs)
         # decision.prompt   → đưa vào LLM
-        # decision.followup → append vào cuối response
+        # decision.followup → append vào cuối response, chỉ dùng cho greeting nếu có
         # decision.skip_rag → True nếu không cần gọi RAG
     """
 
@@ -130,13 +105,11 @@ class SmartCarConsultant:
         """
         Trả về ConsultDecision gồm:
             prompt    : message gửi vào LLM
-            followup  : câu hỏi bổ sung (append sau response LLM)
+            followup  : câu hỏi bổ sung, không dùng cho các slot còn thiếu
             skip_rag  : True nếu không cần RAG retrieval
             stage     : stage hiện tại
         """
         stage   = state.stage
-        missing = state.get_missing_slots()
-
         # ── Greeting ─────────────────────────────────────────────────────────
         if stage == "greeting" or state.last_intent == "greeting":
             return ConsultDecision(
@@ -154,15 +127,9 @@ class SmartCarConsultant:
             rag_context,
             use_slot_context=use_slot_context,
         )
-        followup = (
-            build_followup_question(missing, state.turn_count)
-            if use_slot_context
-            else None
-        )
-
         return ConsultDecision(
             prompt   = prompt,
-            followup = followup,
+            followup = None,
             skip_rag = False,
             stage    = stage,
         )

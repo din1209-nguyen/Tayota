@@ -977,10 +977,11 @@ def _domain_answer_instruction(offroad_need: bool) -> str:
 def answer(
     query: str,
     session_id: str = "default",
+    user_id: str | None = None,
 ) -> Dict[str, Any]:
 
     # ── Lấy / tạo conversation state ─────────────────────────────────────────
-    state: ConversationState = state_manager.get_or_create(session_id)
+    state: ConversationState = state_manager.get_or_create(session_id, user_id=user_id)
 
     # ── Bước 1: Classify intent ───────────────────────────────────────────────
     intent_result = classify_intent(query)
@@ -1001,6 +1002,8 @@ def answer(
             rule_name=rule_name,
             state=state,
             session_id=session_id,
+            user_id=user_id,
+            question=query,
         )
 
     warning_prefix = f"{rule_response}\n\n---\n\n" if rule_response else ""
@@ -1086,6 +1089,8 @@ def answer(
                     "score": round(r["score"], 3),
                     "chunk_id": r.get("chunk_id"),
                     "chunk_index": r.get("chunk_index"),
+                    "document_id": r.get("document_id"),
+                    "gridfs_file_id": r.get("gridfs_file_id"),
                 }
                 for r in retrieved
             ]
@@ -1104,6 +1109,8 @@ def answer(
                 rule_name=rule_name,
                 state=state,
                 session_id=session_id,
+                user_id=user_id,
+                question=query,
             )
 
     # ── Bước 6: Build prompt cuối với RAG context đầy đủ ─────────────────────
@@ -1142,6 +1149,8 @@ def answer(
         rule_name=rule_name,
         state=state,
         session_id=session_id,
+        user_id=user_id,
+        question=query,
     )
 
 
@@ -1153,8 +1162,22 @@ def _make_result(
     rule_name: str,
     state: ConversationState,
     session_id: str,
+    user_id: str | None = None,
+    question: str = "",
 ) -> Dict[str, Any]:
     state_manager.save(state)
+    state_manager.log_chat_message(
+        session_id=session_id,
+        user_id=user_id or state.user_id,
+        question=question,
+        answer=answer,
+        intent=intent,
+        stage=state.stage,
+        slots_snapshot=state.get_filled_slots(),
+        sources=sources,
+        model_used=model_used,
+        rule_triggered=rule_name,
+    )
     return {
         "answer": answer,
         "sources": sources,

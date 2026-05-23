@@ -1,8 +1,8 @@
-import json
 import os
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
@@ -12,12 +12,12 @@ from slot_extractor import empty_slots
 load_dotenv()
 
 try:
-    import redis
-    from redis.exceptions import RedisError
+    from pymongo import MongoClient
+    from pymongo.errors import PyMongoError
 except ImportError:  # pragma: no cover - only hit before dependencies are installed.
-    redis = None
+    MongoClient = None
 
-    class RedisError(Exception):
+    class PyMongoError(Exception):
         pass
 
 
@@ -30,9 +30,14 @@ STAGE_ADVISING = "advising"
 STAGE_DONE = "done"
 
 
+class MongoStateError(RuntimeError):
+    pass
+
+
 @dataclass
 class ConversationState:
     session_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: Optional[str] = None
     slots: Dict[str, Any] = field(default_factory=empty_slots)
     history: List[Dict[str, str]] = field(default_factory=list)
     intent_history: List[str] = field(default_factory=list)
@@ -41,6 +46,7 @@ class ConversationState:
     turn_count: int = 0
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
+    status: str = "active"
 
     def update_slots(self, new_slots: Dict[str, Any]) -> None:
         from slot_extractor import merge_slots
@@ -89,12 +95,14 @@ class ConversationState:
     def summary(self) -> Dict[str, Any]:
         return {
             "session_id": self.session_id,
+            "user_id": self.user_id,
             "stage": self.stage,
             "turn_count": self.turn_count,
             "last_intent": self.last_intent,
             "filled_slots": self.get_filled_slots(),
             "missing_slots": self.get_missing_slots(),
             "history_len": len(self.history),
+            "status": self.status,
         }
 
 
@@ -103,10 +111,15 @@ class ConversationStateManager:
 
     def __init__(self):
         self._sessions: Dict[str, ConversationState] = {}
+        self.chat_messages: List[Dict[str, Any]] = []
 
-    def create(self, session_id: Optional[str] = None) -> ConversationState:
+    def create(
+        self,
+        session_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+    ) -> ConversationState:
         sid = session_id or str(uuid.uuid4())
-        state = ConversationState(session_id=sid)
+        state = ConversationState(session_id=sid, user_id=user_id)
         self._sessions[sid] = state
         return state
 
@@ -117,10 +130,18 @@ class ConversationStateManager:
             return None
         return state
 
-    def get_or_create(self, session_id: str) -> ConversationState:
+    def get_or_create(
+        self,
+        session_id: str,
+        user_id: Optional[str] = None,
+    ) -> ConversationState:
         state = self.get(session_id)
         if state is None:
-            state = self.create(session_id)
+            state = self.create(session_id, user_id=user_id)
+        elif user_id and state.user_id != user_id:
+            state.user_id = user_id
+            state.updated_at = time.time()
+            self.save(state)
         return state
 
     def save(self, state: ConversationState) -> None:
@@ -129,9 +150,13 @@ class ConversationStateManager:
     def delete(self, session_id: str) -> None:
         self._sessions.pop(session_id, None)
 
-    def reset(self, session_id: str) -> ConversationState:
+    def reset(
+        self,
+        session_id: str,
+        user_id: Optional[str] = None,
+    ) -> ConversationState:
         self.delete(session_id)
-        return self.create(session_id)
+        return self.create(session_id, user_id=user_id)
 
     def purge_expired(self) -> int:
         expired = [sid for sid, state in self._sessions.items() if state.is_expired()]
@@ -145,124 +170,232 @@ class ConversationStateManager:
     def all_summaries(self) -> List[Dict[str, Any]]:
         return [state.summary() for state in self._sessions.values()]
 
+    def log_chat_message(
+        self,
+        *,
+        session_id: str,
+        user_id: Optional[str],
+        question: str,
+        answer: str,
+        intent: str,
+        stage: str,
+        slots_snapshot: Dict[str, Any],
+        sources: List[Dict[str, Any]],
+        model_used: str,
+        rule_triggered: str,
+    ) -> None:
+        self.chat_messages.append(
+            {
+                "session_id": session_id,
+                "user_id": user_id,
+                "question": question,
+                "answer": answer,
+                "intent": intent,
+                "stage": stage,
+                "slots_snapshot": slots_snapshot,
+                "sources": sources,
+                "model_used": model_used,
+                "rule_triggered": rule_triggered,
+                "created_at": datetime.now(timezone.utc),
+            }
+        )
 
-class RedisStateError(RuntimeError):
-    pass
 
-
-class RedisConversationStateManager:
-    """Redis-backed session store for the FastAPI service."""
+class MongoConversationStateManager:
+    """MongoDB-backed session and chat log store for the FastAPI service."""
 
     def __init__(
         self,
-        redis_url: str | None = None,
+        mongo_uri: str | None = None,
+        db_name: str | None = None,
         *,
-        ttl_seconds: int = SESSION_TTL_SECS,
-        key_prefix: str = "ai-service:sessions",
+        sessions_collection: str = "ai_sessions",
+        messages_collection: str = "ai_chat_messages",
     ):
-        self.redis_url = redis_url or os.getenv("REDIS_URL", "redis://localhost:6379/0")
-        self.ttl_seconds = ttl_seconds
-        self.key_prefix = key_prefix.rstrip(":")
+        self.mongo_uri = mongo_uri or os.getenv("MONGO_URI", "mongodb://localhost:27017")
+        self.db_name = db_name or os.getenv("MONGO_DB", "tayota_ai_db")
+        self.sessions_collection = sessions_collection
+        self.messages_collection = messages_collection
         self._client = None
-
-    def _key(self, session_id: str) -> str:
-        return f"{self.key_prefix}:{session_id}"
+        self._db = None
 
     def _get_client(self):
-        if redis is None:
-            raise RedisStateError(
-                "Redis dependency is not installed. Run `pip install -r requirements.txt`."
+        if MongoClient is None:
+            raise MongoStateError(
+                "MongoDB dependency is not installed. Run `pip install -r requirements.txt`."
             )
         if self._client is None:
-            self._client = redis.Redis.from_url(
-                self.redis_url,
-                decode_responses=True,
-                socket_connect_timeout=2,
-                socket_timeout=2,
+            self._client = MongoClient(
+                self.mongo_uri,
+                serverSelectionTimeoutMS=2000,
+                connectTimeoutMS=2000,
             )
         return self._client
 
+    def _get_db(self):
+        if self._db is None:
+            self._db = self._get_client()[self.db_name]
+        return self._db
+
+    @property
+    def sessions(self):
+        return self._get_db()[self.sessions_collection]
+
+    @property
+    def messages(self):
+        return self._get_db()[self.messages_collection]
+
     def ping(self) -> bool:
         try:
-            return bool(self._get_client().ping())
-        except RedisError as exc:
-            raise RedisStateError(
-                f"Cannot connect to Redis at {self.redis_url}: {exc}"
+            self._get_client().admin.command("ping")
+            return True
+        except PyMongoError as exc:
+            raise MongoStateError(
+                f"Cannot connect to MongoDB at {self.mongo_uri}: {exc}"
             ) from exc
 
-    def create(self, session_id: Optional[str] = None) -> ConversationState:
+    def create(
+        self,
+        session_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+    ) -> ConversationState:
         sid = session_id or str(uuid.uuid4())
-        state = ConversationState(session_id=sid)
+        state = ConversationState(session_id=sid, user_id=user_id)
         self.save(state)
         return state
 
     def get(self, session_id: str) -> Optional[ConversationState]:
         try:
-            payload = self._get_client().get(self._key(session_id))
-        except RedisError as exc:
-            raise RedisStateError(
-                f"Cannot load session '{session_id}' from Redis: {exc}"
+            payload = self.sessions.find_one({"_id": session_id})
+        except PyMongoError as exc:
+            raise MongoStateError(
+                f"Cannot load session '{session_id}' from MongoDB: {exc}"
             ) from exc
 
         if not payload:
             return None
 
-        try:
-            state = ConversationState(**json.loads(payload))
-        except (TypeError, ValueError) as exc:
-            raise RedisStateError(
-                f"Stored session '{session_id}' is invalid JSON/state data."
-            ) from exc
+        return self._state_from_document(payload)
 
-        if state.is_expired():
-            self.delete(session_id)
-            return None
-        return state
-
-    def get_or_create(self, session_id: str) -> ConversationState:
+    def get_or_create(
+        self,
+        session_id: str,
+        user_id: Optional[str] = None,
+    ) -> ConversationState:
         state = self.get(session_id)
         if state is None:
-            state = self.create(session_id)
+            return self.create(session_id, user_id=user_id)
+        if user_id and state.user_id != user_id:
+            state.user_id = user_id
+            state.updated_at = time.time()
+            self.save(state)
         return state
 
     def save(self, state: ConversationState) -> None:
+        document = self._state_to_document(state)
         try:
-            self._get_client().setex(
-                self._key(state.session_id),
-                self.ttl_seconds,
-                json.dumps(asdict(state), ensure_ascii=False),
+            self.sessions.replace_one(
+                {"_id": state.session_id},
+                document,
+                upsert=True,
             )
-        except RedisError as exc:
-            raise RedisStateError(
-                f"Cannot save session '{state.session_id}' to Redis: {exc}"
+        except PyMongoError as exc:
+            raise MongoStateError(
+                f"Cannot save session '{state.session_id}' to MongoDB: {exc}"
             ) from exc
 
     def delete(self, session_id: str) -> None:
         try:
-            self._get_client().delete(self._key(session_id))
-        except RedisError as exc:
-            raise RedisStateError(
-                f"Cannot delete session '{session_id}' from Redis: {exc}"
+            self.sessions.delete_one({"_id": session_id})
+        except PyMongoError as exc:
+            raise MongoStateError(
+                f"Cannot delete session '{session_id}' from MongoDB: {exc}"
             ) from exc
 
-    def reset(self, session_id: str) -> ConversationState:
+    def reset(
+        self,
+        session_id: str,
+        user_id: Optional[str] = None,
+    ) -> ConversationState:
         self.delete(session_id)
-        return self.create(session_id)
+        return self.create(session_id, user_id=user_id)
 
     def active_count(self) -> int:
         try:
-            return len(list(self._get_client().scan_iter(f"{self.key_prefix}:*")))
-        except RedisError as exc:
-            raise RedisStateError(f"Cannot scan Redis sessions: {exc}") from exc
+            return self.sessions.count_documents({"status": "active"})
+        except PyMongoError as exc:
+            raise MongoStateError(f"Cannot count MongoDB sessions: {exc}") from exc
+
+    def log_chat_message(
+        self,
+        *,
+        session_id: str,
+        user_id: Optional[str],
+        question: str,
+        answer: str,
+        intent: str,
+        stage: str,
+        slots_snapshot: Dict[str, Any],
+        sources: List[Dict[str, Any]],
+        model_used: str,
+        rule_triggered: str,
+    ) -> None:
+        try:
+            self.messages.insert_one(
+                {
+                    "session_id": session_id,
+                    "user_id": user_id,
+                    "question": question,
+                    "answer": answer,
+                    "intent": intent,
+                    "stage": stage,
+                    "slots_snapshot": slots_snapshot,
+                    "sources": sources,
+                    "model_used": model_used,
+                    "rule_triggered": rule_triggered,
+                    "created_at": datetime.now(timezone.utc),
+                }
+            )
+        except PyMongoError as exc:
+            raise MongoStateError(
+                f"Cannot save chat log for session '{session_id}' to MongoDB: {exc}"
+            ) from exc
+
+    def _state_to_document(self, state: ConversationState) -> Dict[str, Any]:
+        payload = asdict(state)
+        payload["_id"] = state.session_id
+        payload["recent_history"] = payload.pop("history")
+        payload["created_at_iso"] = datetime.fromtimestamp(
+            state.created_at,
+            tz=timezone.utc,
+        )
+        payload["updated_at_iso"] = datetime.fromtimestamp(
+            state.updated_at,
+            tz=timezone.utc,
+        )
+        return payload
+
+    def _state_from_document(self, document: Dict[str, Any]) -> ConversationState:
+        payload = dict(document)
+        payload.pop("_id", None)
+        payload.pop("created_at_iso", None)
+        payload.pop("updated_at_iso", None)
+        if "recent_history" in payload:
+            payload["history"] = payload.pop("recent_history")
+        allowed = ConversationState.__dataclass_fields__.keys()
+        return ConversationState(**{k: v for k, v in payload.items() if k in allowed})
 
 
 def _build_state_manager():
-    backend = os.getenv("STATE_BACKEND", "redis").lower()
+    backend = os.getenv("STATE_BACKEND", "mongo").lower()
     if backend == "memory":
         return ConversationStateManager()
-    if backend != "redis":
-        raise ValueError("STATE_BACKEND must be 'redis' or 'memory'.")
-    return RedisConversationStateManager()
+    if backend != "mongo":
+        raise ValueError("STATE_BACKEND must be 'mongo' or 'memory'.")
+    return MongoConversationStateManager()
 
 
 state_manager = _build_state_manager()
+
+# Backward-compatible names for existing imports/tests during transition.
+RedisStateError = MongoStateError

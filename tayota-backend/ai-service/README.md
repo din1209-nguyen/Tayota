@@ -1,7 +1,7 @@
 # Tayota AI Service
 
 FastAPI microservice for Toyota car consulting RAG. It handles chat,
-Redis-backed conversation sessions, PDF upload jobs, Qdrant vector search, and
+MongoDB-backed conversation sessions and PDF storage, Qdrant vector search, and
 Groq LLM generation.
 
 ## Run In Tayota Backend
@@ -23,7 +23,9 @@ GET  http://localhost:9090/ai/api/v1/documents/jobs/{job_id}
 POST http://localhost:9090/ai/api/v1/sessions/{session_id}/reset
 ```
 
-Run the initial Qdrant ingest after the containers are up:
+Upload PDFs through the document API so the original files are stored in MongoDB
+GridFS and indexed into Qdrant by the background job. The disk ingest command is
+kept only for local development with files already present in the container:
 
 ```powershell
 docker compose exec ai-service python rag.py --rebuild --pdf-path /app/documents
@@ -43,8 +45,9 @@ For running this service directly outside Docker, set:
 
 ```env
 QDRANT_URL=http://localhost:6333
-REDIS_URL=redis://localhost:6379/0
-DOCUMENTS_DIR=documents
+MONGO_URI=mongodb://tayota:123456@localhost:27017/tayota_ai_db?authSource=admin
+MONGO_DB=tayota_ai_db
+MONGO_GRIDFS_BUCKET=ai_pdfs
 COLLECTION=atbm_httt
 ```
 
@@ -52,7 +55,7 @@ Then start dependencies from the backend root and run Uvicorn locally:
 
 ```powershell
 cd Tayota\tayota-backend
-docker compose up -d redis qdrant
+docker compose up -d mongodb qdrant
 cd ai-service
 python -m pip install -r requirements.txt
 python -m uvicorn app:app --reload --port 8094

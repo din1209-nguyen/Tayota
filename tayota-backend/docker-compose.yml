@@ -87,23 +87,23 @@ services:
       timeout: 5s
       retries: 10
 
-#    # --- MongoDB ---
-#  mongodb:
-#    image: mongo:8.0
-#    environment:
-#      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
-#      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
-#    ports:
-#      - "27017:27017"
-#    volumes:
-#      - ./docker-data/mongo-data:/data/db
-#    networks:
-#      - tayota-network
-#    healthcheck:
-#      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
-#      interval: 10s
-#      timeout: 5s
-#      retries: 5
+  # --- MongoDB ---
+  mongodb:
+    image: mongo:8.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-tayota}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-123456}
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./docker-data/mongo-data:/data/db
+    networks:
+      - tayota-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # --- Redis ---
   redis:
@@ -221,14 +221,13 @@ services:
       - GROQ_MODEL=${GROQ_MODEL:-llama-3.3-70b-versatile}
       - QDRANT_URL=http://qdrant:6333
       - QDRANT_API_KEY=${QDRANT_API_KEY:-}
-      - REDIS_URL=redis://redis:6379/0
-      - DOCUMENTS_DIR=/app/documents
+      - MONGO_URI=mongodb://${MONGO_USER:-tayota}:${MONGO_PASSWORD:-123456}@mongodb:27017/${MONGO_AI_DB:-tayota_ai_db}?authSource=admin
+      - MONGO_DB=${MONGO_AI_DB:-tayota_ai_db}
+      - MONGO_GRIDFS_BUCKET=ai_pdfs
       - COLLECTION=${COLLECTION:-atbm_httt}
       - SESSION_TTL_SECS=${SESSION_TTL_SECS:-3600}
-    volumes:
-      - ./ai-service/documents:/app/documents
     depends_on:
-      redis:
+      mongodb:
         condition: service_healthy
       qdrant:
         condition: service_started

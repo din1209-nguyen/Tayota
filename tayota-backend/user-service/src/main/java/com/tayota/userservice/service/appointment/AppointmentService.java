@@ -35,6 +35,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -268,6 +269,11 @@ public class AppointmentService {
             appointmentNotificationService.notifyAppointmentConfirmed(saved);
         }
 
+        // Nếu trạng thái thay đổi sang COMPLETED thì gửi lời cảm ơn và khảo sát đánh giá cho khách hàng.
+        if (oldStatus != AppointmentStatus.COMPLETED && saved.getStatus() == AppointmentStatus.COMPLETED) {
+            appointmentNotificationService.notifyAppointmentCompleted(saved);
+        }
+
         return toManagementDetailResponse(saved);
     }
 
@@ -410,6 +416,7 @@ public class AppointmentService {
                 .appointment(appointment)
                 .mileageAtService(request.getMileageAtService())
                 .status(ServiceTicketStatus.CONFIRMED)
+                .totalAmount(BigDecimal.ZERO)
                 .vehicleCondition(normalizeRequired(request.getVehicleCondition(), "Vui lòng nhập tình trạng xe khi tiếp nhận"))
                 .notes(normalize(request.getNotes()))
                 .receivingAt(receivingAt)

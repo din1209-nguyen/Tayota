@@ -34,6 +34,7 @@ public class WorkOrderMapper {
                 serviceTicket.getNotes(),
                 serviceTicket.getReceivingAt(),
                 serviceTicket.getProcessingAt(),
+                serviceTicket.getCompletedAt(),
                 serviceTicket.getTotalAmount()
         );
     }

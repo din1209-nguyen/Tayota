@@ -5,13 +5,17 @@ import com.tayota.commoncore.util.SecurityContextUtil;
 import com.tayota.userservice.dto.Request.workorder.CreateServiceItemRequest;
 import com.tayota.userservice.dto.Response.workorder.ServiceTicketDetailResponse;
 import com.tayota.userservice.dto.Response.workorder.ServiceTicketSummaryResponse;
+import com.tayota.userservice.entity.appointment.Appointment;
 import com.tayota.userservice.entity.workorder.ServiceItem;
 import com.tayota.userservice.entity.workorder.ServiceTicket;
+import com.tayota.userservice.enums.appointment.AppointmentStatus;
 import com.tayota.userservice.enums.workorder.BillingType;
 import com.tayota.userservice.enums.workorder.ServiceTicketStatus;
 import com.tayota.userservice.mapper.workorder.WorkOrderMapper;
+import com.tayota.userservice.repository.appointment.AppointmentRepository;
 import com.tayota.userservice.repository.workorder.ServiceItemRepository;
 import com.tayota.userservice.repository.workorder.ServiceTicketRepository;
+import com.tayota.userservice.service.appointment.AppointmentNotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +31,8 @@ import java.util.UUID;
 public class WorkOrderService {
     private final ServiceTicketRepository serviceTicketRepository;
     private final ServiceItemRepository serviceItemRepository;
+    private final AppointmentRepository appointmentRepository;
+    private final AppointmentNotificationService appointmentNotificationService;
     private final WorkOrderMapper workOrderMapper;
 
     // Kỹ thuật viên xem danh sách phiếu dịch vụ được giao cho mình.
@@ -110,6 +116,36 @@ public class WorkOrderService {
     }
 
     // Kỹ thuật viên hoàn thành sửa, chuyển phiếu dịch vụ từ IN_PROGRESS sang COMPLETED.
+    @Transactional
+    public ServiceTicketDetailResponse completeServiceTicket(UUID serviceTicketId) {
+        ServiceTicket serviceTicket = getMyServiceTicket(serviceTicketId);
+
+        if (serviceTicket.getStatus() != ServiceTicketStatus.IN_PROGRESS) {
+            throw new CustomException(400, "Chỉ có thể hoàn thành phiếu dịch vụ đang sửa");
+        }
+
+        Appointment appointment = serviceTicket.getAppointment();
+        if (appointment == null) {
+            throw new CustomException(400, "Phiếu dịch vụ chưa liên kết với lịch hẹn");
+        }
+
+        // Cập nhật trạng thái và thời gian hoàn thành cho cả phiếu dịch vụ và lịch hẹn, đảm bảo tính nhất quán.
+        Instant now = Instant.now();
+        serviceTicket.setStatus(ServiceTicketStatus.COMPLETED);
+        serviceTicket.setCompletedAt(now);
+        appointment.setStatus(AppointmentStatus.COMPLETED);
+        appointment.setCompletedAt(now);
+
+        // Lưu thay đổi cho cả phiếu dịch vụ và lịch hẹn trước khi gửi thông báo, đảm bảo rằng thông tin đã được cập nhật chính xác khi FE lấy lại dữ liệu.
+        serviceTicketRepository.save(serviceTicket);
+        Appointment savedAppointment = appointmentRepository.save(appointment);
+
+        // Gửi thông báo cảm ơn và lời mời đánh giá sau khi lịch hẹn hoàn thành. Thông báo này sẽ được gửi đến user nếu có userId, hoặc gửi email nếu có thông tin liên hệ.
+        appointmentNotificationService.notifyAppointmentCompleted(savedAppointment);
+
+        return getServiceTicketDetail(serviceTicket.getId());
+    }
+
     private ServiceTicket getMyServiceTicket(UUID serviceTicketId) {
         UUID mechanicId = getCurrentUserId();
         ServiceTicket serviceTicket = serviceTicketRepository.findById(serviceTicketId)

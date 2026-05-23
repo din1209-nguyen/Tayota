@@ -67,4 +67,14 @@ public class WorkOrderController {
 
         return ApiResponse.success(201, "Thêm hạng mục dịch vụ thành công!", response);
     }
+
+    @PatchMapping("/mechanic/{serviceTicketId}/complete")
+    @PreAuthorize("hasRole('MECHANIC')")
+    public ApiResponse<ServiceTicketDetailResponse> completeServiceTicket(
+            @PathVariable UUID serviceTicketId
+    ) {
+        ServiceTicketDetailResponse response = workOrderService.completeServiceTicket(serviceTicketId);
+
+        return ApiResponse.success(200, "Hoàn thành phiếu dịch vụ thành công!", response);
+    }
 }

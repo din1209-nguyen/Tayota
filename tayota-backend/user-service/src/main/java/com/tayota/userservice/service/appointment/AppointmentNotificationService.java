@@ -44,6 +44,27 @@ public class AppointmentNotificationService {
         }
     }
 
+    // Gửi lời cảm ơn và lời mời đánh giá sau khi lịch hẹn hoàn thành.
+    public void notifyAppointmentCompleted(Appointment appointment) {
+        CustomerContact customer = buildCustomerContact(appointment);
+        String title = "Tayota - Cảm ơn quý khách đã sử dụng dịch vụ";
+        String content = buildCompletionContent(appointment, customer.fullName());
+
+        if (appointment.getUserId() != null) {
+            notificationService.createNotification(
+                    appointment.getUserId(),
+                    null,
+                    NotificationType.APPOINTMENT,
+                    title,
+                    content
+            );
+        }
+
+        if (StringUtils.hasText(customer.email())) {
+            emailService.sendEmailAsync(customer.email(), title, content);
+        }
+    }
+
     // Hàm dùng để xây dựng thông tin liên hệ của khách hàng
     private CustomerContact buildCustomerContact(Appointment appointment) {
         // Ưu tiên lấy thông tin từ guestInformation nếu có, vì có thể khách vãng lai không có userId.
@@ -93,6 +114,26 @@ public class AppointmentNotificationService {
                 end.toLocalTime(),
                 start.toLocalDate()
         );
+    }
+
+    // Hàm xây dựng nội dung email/notification sau khi lịch hẹn hoàn thành, bao gồm lời cảm ơn và lời mời đánh giá trải nghiệm.
+    private String buildCompletionContent(Appointment appointment, String customerName) {
+        String greetingName = StringUtils.hasText(customerName) ? customerName : "quý khách";
+        String appointmentType = switch (appointment.getType()) {
+            case SERVICE -> "dịch vụ bảo dưỡng/sửa chữa";
+            case TEST_DRIVE -> "buổi lái thử";
+        };
+
+        return """
+                Xin chào %s,
+
+                Cảm ơn bạn đã tin tưởng Tayota. %s của bạn đã được hoàn tất.
+
+                Rất mong bạn dành ít phút để đánh giá trải nghiệm, giúp Tayota tiếp tục cải thiện chất lượng phục vụ.
+
+                Trân trọng,
+                Tayota
+                """.formatted(greetingName, appointmentType);
     }
 
     private record CustomerContact(String fullName, String email) {

@@ -1,0 +1,9 @@
+.git
+.pytest_cache
+.venv
+venv
+__pycache__
+*.pyc
+.env
+qdrant_storage
+*.log

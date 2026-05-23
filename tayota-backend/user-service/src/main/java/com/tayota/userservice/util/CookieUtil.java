@@ -67,4 +67,24 @@ public class CookieUtil {
         // Thêm header Set-Cookie vào response
         response.addHeader("Set-Cookie", cookieHeader);
     }
+
+
+    // Các hằng số và phương thức tiện ích cho cookie của phiên chat, giúp quản lý cookie lưu trữ sessionId của phiên chat giữa khách và hệ thống
+    // CHAT_SESSION_COOKIE: Tên cookie dùng để lưu sessionId của phiên chat
+    private static final String CHAT_SESSION_COOKIE = "chat-session";
+    // CHAT_SESSION_MAX_AGE_SEC: Thời gian sống tối đa của cookie phiên chat (24 giờ), sau đó cookie sẽ tự động hết hạn và bị trình duyệt xóa
+    private static final int CHAT_SESSION_MAX_AGE_SEC = 24 * 60 * 60;
+
+    // Thiết lập cookie cho phiên chat với sessionId, giúp duy trì trạng thái phiên chat giữa khách và hệ thống
+    // Khi khách bắt đầu một phiên chat mới, hệ thống sẽ tạo một sessionId duy nhất và lưu nó vào cookie để nhận diện phiên chat trong các yêu cầu tiếp theo
+    // Cookie này sẽ tồn tại trong 24 giờ hoặc cho đến khi khách đóng trình duyệt, giúp cải thiện trải nghiệm người dùng bằng cách giữ trạng thái phiên chat liên tục
+    public void setChatSessionCookie(HttpServletResponse response, String sessionId) {
+        // Thiết lập cookie với tên "chat-session", giá trị là sessionId của phiên chat, và thời gian sống tối đa là 24 giờ
+        setCookie(response, CHAT_SESSION_COOKIE, sessionId, CHAT_SESSION_MAX_AGE_SEC);
+    }
+
+    public void clearChatSessionCookie(HttpServletResponse response) {
+        // Xóa cookie phiên chat bằng cách ghi đè với giá trị null và maxAge = 0, yêu cầu trình duyệt xóa cookie ngay lập tức
+        setCookie(response, CHAT_SESSION_COOKIE, null, 0);
+    }
 }

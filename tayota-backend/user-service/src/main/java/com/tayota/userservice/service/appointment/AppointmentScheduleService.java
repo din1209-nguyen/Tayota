@@ -37,7 +37,6 @@ public class AppointmentScheduleService {
     private final AppointmentHolidayRepository appointmentHolidayRepository;
     private final ServiceAdvisorRepository serviceAdvisorRepository;
     private final AppointmentBookingProperties bookingProperties;
-    private final AppointmentScheduleCacheService appointmentScheduleCacheService;
 
     // ============================== DÀNH CHO USER ĐẶT LỊCH ==============================
 
@@ -54,9 +53,8 @@ public class AppointmentScheduleService {
         validateBookingDate(appointmentDate);
 
         // Kiểm tra xem ngày hẹn có rơi vào ngày nghỉ của đại lý hay không
-        // Sử dụng cache để giảm thiểu truy vấn database, vì thông tin ngày nghỉ thường không thay đổi nhiều và được truy cập thường xuyên khi người dùng đặt lịch.
-        AppointmentHoliday holiday = appointmentScheduleCacheService
-                .getActiveHoliday(dealershipId, appointmentDate)
+        AppointmentHoliday holiday = appointmentHolidayRepository
+                .findByDealershipIdAndHolidayDateAndActiveTrue(dealershipId, appointmentDate)
                 .orElse(null);
 
         if (holiday != null) {
@@ -64,8 +62,8 @@ public class AppointmentScheduleService {
         }
 
         // Kiểm tra xem khung giờ hẹn có hợp lệ hay không
-        ServiceTimeSlot slot = appointmentScheduleCacheService
-                .getActiveTimeSlotByStart(dealershipId, appointmentType, startTime)
+        ServiceTimeSlot slot = serviceTimeSlotRepository
+                .findByDealershipIdAndAppointmentTypeAndStartTimeAndActiveTrue(dealershipId, appointmentType, startTime)
                 .orElseThrow(() -> new CustomException(400, "Khung giờ không hợp lệ"));
 
         // Kiểm tra xem giờ bắt đầu và giờ kết thúc của khung giờ hẹn có hợp lệ hay không
@@ -90,8 +88,8 @@ public class AppointmentScheduleService {
         validateBookingDate(appointmentDate);
 
         // Kiểm tra xem ngày hẹn có rơi vào ngày nghỉ của đại lý hay không
-        AppointmentHoliday holiday = appointmentScheduleCacheService
-                .getActiveHoliday(dealershipId, appointmentDate)
+        AppointmentHoliday holiday = appointmentHolidayRepository
+                .findByDealershipIdAndHolidayDateAndActiveTrue(dealershipId, appointmentDate)
                 .orElse(null);
 
         // Nếu ngày hẹn rơi vào ngày nghỉ, trả về thông tin ngày nghỉ và danh sách khung giờ trống (rỗng)
@@ -100,8 +98,8 @@ public class AppointmentScheduleService {
         }
 
         // Nếu ngày hẹn không rơi vào ngày nghỉ, trả về danh sách khung giờ trống cho ngày hẹn và loại cuộc hẹn đã chọn
-        List<AppointmentAvailableSlotsResponse.SlotItem> slots = appointmentScheduleCacheService
-                .getActiveTimeSlots(dealershipId, appointmentType)
+        List<AppointmentAvailableSlotsResponse.SlotItem> slots = serviceTimeSlotRepository
+                .findByDealershipIdAndAppointmentTypeAndActiveTrueOrderByStartTimeAsc(dealershipId, appointmentType)
                 .stream()
                 .filter(slot -> isAfterMinimumNotice(appointmentDate, slot))
                 .map(this::toAvailableSlotItem)
@@ -139,9 +137,6 @@ public class AppointmentScheduleService {
 
         ServiceTimeSlot saved = serviceTimeSlotRepository.saveAndFlush(slot);
 
-        // Sau khi tạo khung giờ, cần xóa cache liên quan để đảm bảo dữ liệu mới nhất được trả về cho các API khác.
-        appointmentScheduleCacheService.evictTimeSlotCaches();
-
         return toTimeSlotResponse(saved);
     }
 
@@ -175,9 +170,6 @@ public class AppointmentScheduleService {
 
         ServiceTimeSlot saved = serviceTimeSlotRepository.save(slot);
 
-        // Sau khi cập nhật khung giờ, cần xóa cache liên quan để đảm bảo dữ liệu mới nhất được trả về cho các API khác.
-        appointmentScheduleCacheService.evictTimeSlotCaches();
-
         return toTimeSlotResponse(saved);
     }
 
@@ -192,10 +184,7 @@ public class AppointmentScheduleService {
         validateBelongsToDealership(slot.getDealershipId(), dealershipId);
         slot.setActive(false);
 
-        // Sau khi tắt khung giờ, cần xóa cache liên quan để đảm bảo dữ liệu mới nhất được trả về cho các API khác.
         serviceTimeSlotRepository.save(slot);
-
-        appointmentScheduleCacheService.evictTimeSlotCaches();
     }
 
 
@@ -228,9 +217,6 @@ public class AppointmentScheduleService {
 
         AppointmentHoliday saved = appointmentHolidayRepository.saveAndFlush(holiday);
 
-        // Sau khi tạo ngày nghỉ, cần xóa cache liên quan để đảm bảo dữ liệu mới nhất được trả về cho các API khác.
-        appointmentScheduleCacheService.evictHolidayCaches();
-
         return toHolidayResponse(saved);
     }
 
@@ -258,9 +244,6 @@ public class AppointmentScheduleService {
 
         AppointmentHoliday saved = appointmentHolidayRepository.save(holiday);
 
-        // Sau khi cập nhật ngày nghỉ, cần xóa cache liên quan để đảm bảo dữ liệu mới nhất được trả về cho các API khác.
-        appointmentScheduleCacheService.evictHolidayCaches();
-
         return toHolidayResponse(saved);
     }
 
@@ -275,9 +258,6 @@ public class AppointmentScheduleService {
         validateBelongsToDealership(holiday.getDealershipId(), dealershipId);
         holiday.setActive(false);
         appointmentHolidayRepository.save(holiday);
-
-        // Sau khi tắt ngày nghỉ, cần xóa cache liên quan để đảm bảo dữ liệu mới nhất được trả về cho các API khác.
-        appointmentScheduleCacheService.evictHolidayCaches();
     }
 
     // ============================== HÀM HỖ TRỢ CHUNG ==============================

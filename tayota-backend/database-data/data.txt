@@ -393,15 +393,16 @@ Ref: "MECHANIC"."id" - "USER"."id"
 ENUM service_status_type {
   CONFIRMED
   RECEIVING
-  PROCESSING
+  IN_PROGRESS
   COMPLETED
-  DELIVERED
   CANCELED
+  EXPIRED
 }
 
 Table "SERVICE" {
   "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'Mã phiếu dịch vụ']
-  "user_id" BINARY(16) [not null, note: 'Khách hàng']
+  "user_id" BINARY(16) [note: 'Khách hàng có tài khoản, có thể NULL nếu là khách vãng lai']
+  "guest_information_id" BINARY(16) [note: 'Thông tin khách vãng lai hoặc khách walk-in nếu không có tài khoản']
   "vin_id" VARCHAR(17) [not null, note: 'Xe cụ thể (Số khung)']
   "mechanic_id" BINARY(16) [note: 'Thợ chính phụ trách']
   "dealership_id" BINARY(16) [not null, note: 'Địa điểm sửa chữa']
@@ -416,6 +417,7 @@ Table "SERVICE" {
 }
 
 Ref: "SERVICE"."id" - "APPOINTMENT"."id"
+Ref: "GUEST_INFORMATION"."id" < "SERVICE"."guest_information_id"
 
 Enum item_type_enum {
   LABOR     // Tiền công thợ (VD: Công thay nhớt, Công đánh bóng)
@@ -440,15 +442,27 @@ Table "SERVICE_ITEM" {
   "final_price" DECIMAL(15,2) [not null, note: 'Thành tiền thực tế thu của khách. Nếu billing_type là WARRANTY hoặc GIFT thì = 0']
 }
 
-Table "USER_REVIEW" {
+Table "CUSTOMER_REVIEW" {
   "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`]
-  "service_id" BINARY(16) [unique, not null, note: 'Đánh giá cho lần sửa nào (1-1)']
-  "user_id" BINARY(16) [not null, note: 'Người đánh giá']
-  "mechanic_id" BINARY(16) [not null, note: 'Người thợ được đánh giá']
-  "rating" TINYINT [not null, note: 'Số sao (1-5)']
-  "comment" TEXT [note: 'Nhận xét chi tiết']
+  "review_type" VARCHAR(30) [not null, note: 'TEST_DRIVE hoặc SERVICE']
+  "status" VARCHAR(30) [not null, note: 'PENDING, SUBMITTED hoặc EXPIRED']
+  "review_token" VARCHAR(80) [unique, not null, note: 'Token gửi trong email để khách đánh giá']
+  "token_expires_at" TIMESTAMP [not null]
+  "submitted_at" TIMESTAMP
+  "appointment_id" BINARY(16) [unique, note: 'Lịch hẹn được đánh giá nếu có']
+  "service_id" BINARY(16) [unique, note: 'Phiếu dịch vụ được đánh giá nếu có']
+  "user_id" BINARY(16) [note: 'Người đánh giá nếu có tài khoản']
+  "guest_full_name" VARCHAR(100)
+  "guest_email" VARCHAR(120)
+  "guest_phone" VARCHAR(20)
+  "dealership_id" BINARY(16) [not null]
+  "service_rating" TINYINT [note: 'Số sao đánh giá dịch vụ chung']
+  "service_comment" TEXT
+  "mechanic_id" BINARY(16) [note: 'Thợ được đánh giá nếu là dịch vụ sửa chữa']
+  "mechanic_rating" TINYINT
+  "mechanic_comment" TEXT
   "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
-  Note: 'Lưu trữ đánh giá của khách hàng sau khi hoàn tất dịch vụ'
+  Note: 'Lưu đánh giá của khách hàng sau lịch lái thử hoặc dịch vụ sửa chữa'
 }
 
 Table "SUPPORT" {
@@ -517,9 +531,11 @@ Ref: "CAR"."vin_id" < "SERVICE"."vin_id"
 Ref: "MECHANIC"."id" < "SERVICE"."mechanic_id"
 Ref: "DEALERSHIP"."id" < "SERVICE"."dealership_id"
 Ref: "SERVICE"."id" < "SERVICE_ITEM"."service_id" [delete: cascade]
-Ref: "SERVICE"."id" - "USER_REVIEW"."service_id" [delete: cascade]
-Ref: "USER"."id" < "USER_REVIEW"."user_id"
-Ref: "MECHANIC"."id" < "USER_REVIEW"."service_id"
+Ref: "APPOINTMENT"."id" - "CUSTOMER_REVIEW"."appointment_id" [delete: cascade]
+Ref: "SERVICE"."id" - "CUSTOMER_REVIEW"."service_id" [delete: cascade]
+Ref: "USER"."id" < "CUSTOMER_REVIEW"."user_id"
+Ref: "DEALERSHIP"."id" < "CUSTOMER_REVIEW"."dealership_id"
+Ref: "MECHANIC"."id" < "CUSTOMER_REVIEW"."mechanic_id"
 
 
 Ref:"CAR_STYLE"."id" < "CAR_SERIES"."car_style_id" [delete: cascade]

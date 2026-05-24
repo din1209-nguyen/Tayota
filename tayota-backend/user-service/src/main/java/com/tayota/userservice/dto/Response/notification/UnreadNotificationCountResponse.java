@@ -1,0 +1,11 @@
+package com.tayota.userservice.dto.Response.notification;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+@Getter
+@AllArgsConstructor
+// DTO này dùng để trả về số lượng thông báo chưa đọc của người dùng
+public class UnreadNotificationCountResponse {
+    private long unreadCount;
+}

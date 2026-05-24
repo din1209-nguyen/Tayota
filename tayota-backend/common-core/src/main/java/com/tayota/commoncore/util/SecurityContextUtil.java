@@ -12,6 +12,7 @@ public final class SecurityContextUtil {
             Map.of(
                     "ROLE_ADMIN", 5,
                     "ROLE_MANAGER", 4,
+                    "ROLE_SERVICE_ADVISOR", 3,
                     "ROLE_ASSISTANT", 1,
                     "ROLE_MECHANIC", 1,
                     "ROLE_USER", 1

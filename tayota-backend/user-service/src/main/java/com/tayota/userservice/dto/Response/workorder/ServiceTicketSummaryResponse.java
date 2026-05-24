@@ -13,6 +13,7 @@ import java.util.UUID;
 public class ServiceTicketSummaryResponse {
     private UUID id;
     private UUID appointmentId;
+    private UUID guestInformationId;
     private String vinId;
     private ServiceTicketStatus status;
     private Instant receivingAt;

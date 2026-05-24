@@ -18,6 +18,9 @@ public class ServiceTicketInfoResponse {
     // ID của lịch hẹn liên quan đến phiếu dịch vụ
     private UUID appointmentId;
 
+    // ID thông tin khách vãng lai, dùng cho guest hoặc service walk-in nếu không có tài khoản
+    private UUID guestInformationId;
+
     // ID của xe (VIN) liên quan đến phiếu dịch vụ
     private String vinId;
 

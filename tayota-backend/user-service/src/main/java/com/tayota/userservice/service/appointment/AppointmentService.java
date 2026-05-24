@@ -410,6 +410,7 @@ public class AppointmentService {
 
         ServiceTicket serviceTicket = ServiceTicket.builder()
                 .userId(appointment.getUserId())
+                .guestInformation(appointment.getGuestInformation())
                 .vinId(appointment.getVinId())
                 .mechanicId(mechanic.getId())
                 .dealershipId(appointment.getDealershipId())

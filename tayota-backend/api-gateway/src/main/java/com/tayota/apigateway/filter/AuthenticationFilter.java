@@ -57,7 +57,9 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             // operation
             PublicEndpoint.of(HttpMethod.GET, "/user/appointments/available-slots"),
             PublicEndpoint.of(HttpMethod.POST, "/user/appointments/test-drive/guest"),
-            PublicEndpoint.of(HttpMethod.POST, "/user/appointments/service/guest")
+            PublicEndpoint.of(HttpMethod.POST, "/user/appointments/service/guest"),
+            PublicEndpoint.of(HttpMethod.GET, "/user/reviews/token/**"),
+            PublicEndpoint.of(HttpMethod.PATCH, "/user/reviews/token/**")
 
     );
 

@@ -14,6 +14,7 @@ public class WorkOrderMapper {
         return new ServiceTicketSummaryResponse(
                 serviceTicket.getId(),
                 serviceTicket.getAppointment() == null ? null : serviceTicket.getAppointment().getId(),
+                serviceTicket.getGuestInformation() == null ? null : serviceTicket.getGuestInformation().getId(),
                 serviceTicket.getVinId(),
                 serviceTicket.getStatus(),
                 serviceTicket.getReceivingAt(),
@@ -26,6 +27,7 @@ public class WorkOrderMapper {
         return new ServiceTicketInfoResponse(
                 serviceTicket.getId(),
                 serviceTicket.getAppointment() == null ? null : serviceTicket.getAppointment().getId(),
+                serviceTicket.getGuestInformation() == null ? null : serviceTicket.getGuestInformation().getId(),
                 serviceTicket.getVinId(),
                 serviceTicket.getMechanicId(),
                 serviceTicket.getMileageAtService(),

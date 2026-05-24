@@ -586,7 +586,8 @@ ALTER TABLE "MECHANIC"
 
 CREATE TABLE "SERVICE" (
   id                  UUID                PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id             UUID                NOT NULL,
+  user_id             UUID,
+  guest_information_id UUID,
   vin_id              VARCHAR(17)         NOT NULL,
   mechanic_id         UUID,
   dealership_id       UUID                NOT NULL,
@@ -599,7 +600,8 @@ CREATE TABLE "SERVICE" (
   completed_at        TIMESTAMP
 );
 COMMENT ON TABLE  "SERVICE"                       IS 'Lưu trữ các phiên làm việc/sửa chữa xe';
-COMMENT ON COLUMN "SERVICE".user_id               IS 'Khách hàng';
+COMMENT ON COLUMN "SERVICE".user_id               IS 'Khách hàng có tài khoản, có thể NULL nếu là khách vãng lai';
+COMMENT ON COLUMN "SERVICE".guest_information_id  IS 'Thông tin khách vãng lai hoặc khách walk-in nếu không có tài khoản';
 COMMENT ON COLUMN "SERVICE".vin_id                IS 'Xe cụ thể (Số khung)';
 COMMENT ON COLUMN "SERVICE".mechanic_id           IS 'Thợ chính phụ trách';
 COMMENT ON COLUMN "SERVICE".dealership_id         IS 'Địa điểm sửa chữa';
@@ -610,6 +612,7 @@ COMMENT ON COLUMN "SERVICE".notes                 IS 'Ghi chú tình trạng xe 
 
 ALTER TABLE "SERVICE"
   ADD CONSTRAINT fk_service_user        FOREIGN KEY (user_id)        REFERENCES "USER"(id),
+  ADD CONSTRAINT fk_service_guest_information FOREIGN KEY (guest_information_id) REFERENCES "GUEST_INFORMATION"(id),
   ADD CONSTRAINT fk_service_car         FOREIGN KEY (vin_id)         REFERENCES "CAR"(vin_id),
   ADD CONSTRAINT fk_service_mechanic    FOREIGN KEY (mechanic_id)    REFERENCES "MECHANIC"(id),
   ADD CONSTRAINT fk_service_dealership  FOREIGN KEY (dealership_id)  REFERENCES "DEALERSHIP"(id),
@@ -641,27 +644,55 @@ ALTER TABLE "SERVICE_ITEM"
   ADD CONSTRAINT fk_service_item_service FOREIGN KEY (service_id) REFERENCES "SERVICE"(id) ON DELETE CASCADE;
 
 -- ============================================================
---  USER REVIEW
+--  CUSTOMER REVIEW
 -- ============================================================
 
-CREATE TABLE "USER_REVIEW" (
-  id          UUID      PRIMARY KEY DEFAULT gen_random_uuid(),
-  service_id  UUID      NOT NULL UNIQUE,
-  user_id     UUID      NOT NULL,
-  mechanic_id UUID      NOT NULL,
-  rating      SMALLINT  NOT NULL,
-  comment     TEXT,
-  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE "CUSTOMER_REVIEW" (
+  id                UUID      PRIMARY KEY DEFAULT gen_random_uuid(),
+  review_type       VARCHAR(30)  NOT NULL,
+  status            VARCHAR(30)  NOT NULL,
+  review_token      VARCHAR(80)  NOT NULL UNIQUE,
+  token_expires_at  TIMESTAMP    NOT NULL,
+  submitted_at      TIMESTAMP,
+  appointment_id    UUID      UNIQUE,
+  service_id        UUID      UNIQUE,
+  user_id           UUID,
+  guest_full_name   VARCHAR(100),
+  guest_email       VARCHAR(120),
+  guest_phone       VARCHAR(20),
+  dealership_id     UUID      NOT NULL,
+  service_rating    SMALLINT,
+  service_comment   TEXT,
+  mechanic_id       UUID,
+  mechanic_rating   SMALLINT,
+  mechanic_comment  TEXT,
+  created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT chk_customer_review_type
+    CHECK (review_type IN ('TEST_DRIVE', 'SERVICE')),
+  CONSTRAINT chk_customer_review_status
+    CHECK (status IN ('PENDING', 'SUBMITTED', 'EXPIRED')),
+  CONSTRAINT chk_customer_review_target
+    CHECK (appointment_id IS NOT NULL OR service_id IS NOT NULL),
+  CONSTRAINT chk_customer_review_service_rating
+    CHECK (service_rating IS NULL OR service_rating BETWEEN 1 AND 5),
+  CONSTRAINT chk_customer_review_mechanic_rating
+    CHECK (mechanic_rating IS NULL OR mechanic_rating BETWEEN 1 AND 5),
+  CONSTRAINT chk_customer_review_test_drive_no_mechanic
+    CHECK (review_type <> 'TEST_DRIVE' OR (mechanic_id IS NULL AND mechanic_rating IS NULL AND mechanic_comment IS NULL))
 );
-COMMENT ON TABLE  "USER_REVIEW"           IS 'Lưu trữ đánh giá của khách hàng sau khi hoàn tất dịch vụ';
-COMMENT ON COLUMN "USER_REVIEW".service_id IS 'Đánh giá cho lần sửa nào (1-1)';
-COMMENT ON COLUMN "USER_REVIEW".rating     IS 'Số sao (1-5)';
-COMMENT ON COLUMN "USER_REVIEW".comment    IS 'Nhận xét chi tiết';
+COMMENT ON TABLE  "CUSTOMER_REVIEW"                IS 'Lưu đánh giá của khách hàng sau lịch lái thử hoặc dịch vụ sửa chữa';
+COMMENT ON COLUMN "CUSTOMER_REVIEW".review_type    IS 'Loại đánh giá: TEST_DRIVE hoặc SERVICE';
+COMMENT ON COLUMN "CUSTOMER_REVIEW".status         IS 'Trạng thái đánh giá: PENDING, SUBMITTED, EXPIRED';
+COMMENT ON COLUMN "CUSTOMER_REVIEW".review_token   IS 'Token gửi trong email để khách đánh giá không cần đăng nhập';
+COMMENT ON COLUMN "CUSTOMER_REVIEW".service_rating IS 'Số sao đánh giá trải nghiệm dịch vụ chung';
+COMMENT ON COLUMN "CUSTOMER_REVIEW".mechanic_rating IS 'Số sao đánh giá thợ sửa, chỉ dùng cho dịch vụ sửa chữa';
 
-ALTER TABLE "USER_REVIEW"
-  ADD CONSTRAINT fk_review_service  FOREIGN KEY (service_id)  REFERENCES "SERVICE"(id) ON DELETE CASCADE,
-  ADD CONSTRAINT fk_review_user     FOREIGN KEY (user_id)     REFERENCES "USER"(id),
-  ADD CONSTRAINT fk_review_mechanic FOREIGN KEY (mechanic_id) REFERENCES "MECHANIC"(id);
+ALTER TABLE "CUSTOMER_REVIEW"
+  ADD CONSTRAINT fk_customer_review_appointment FOREIGN KEY (appointment_id) REFERENCES "APPOINTMENT"(id) ON DELETE CASCADE,
+  ADD CONSTRAINT fk_customer_review_service     FOREIGN KEY (service_id)     REFERENCES "SERVICE"(id) ON DELETE CASCADE,
+  ADD CONSTRAINT fk_customer_review_user        FOREIGN KEY (user_id)        REFERENCES "USER"(id),
+  ADD CONSTRAINT fk_customer_review_dealership  FOREIGN KEY (dealership_id)  REFERENCES "DEALERSHIP"(id),
+  ADD CONSTRAINT fk_customer_review_mechanic    FOREIGN KEY (mechanic_id)    REFERENCES "MECHANIC"(id);
 
 -- ============================================================
 --  SALES CONTRACT

@@ -7,7 +7,9 @@ import com.tayota.userservice.enums.NotificationType;
 import com.tayota.userservice.repository.UserProfileRepository;
 import com.tayota.userservice.service.EmailService;
 import com.tayota.userservice.service.NotificationService;
+import com.tayota.userservice.service.review.CustomerReviewService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -21,6 +23,10 @@ public class AppointmentNotificationService {
     private final EmailService emailService;
     private final UserProfileRepository userProfileRepository;
     private final AppointmentBookingProperties bookingProperties;
+    private final CustomerReviewService customerReviewService;
+
+    @Value("${review.link-base-url:http://localhost:3000/reviews}")
+    private String reviewLinkBaseUrl;
 
     // Gửi thông báo xác nhận lịch hẹn sau khi cố vấn dịch vụ chuyển trạng thái sang CONFIRMED.
     // User đăng nhập sẽ nhận cả notification trong app và email; guest chỉ nhận email vì không có userId.
@@ -48,7 +54,16 @@ public class AppointmentNotificationService {
     public void notifyAppointmentCompleted(Appointment appointment) {
         CustomerContact customer = buildCustomerContact(appointment);
         String title = "Tayota - Cảm ơn quý khách đã sử dụng dịch vụ";
-        String content = buildCompletionContent(appointment, customer.fullName());
+
+        // Tạo một review pending mới cho lịch hẹn này và lấy token để xây dựng link đánh giá.
+        // Link này sẽ được gửi trong email và notification để khách hàng có thể dễ dàng truy cập và đánh giá trải nghiệm của mình.
+        String reviewToken = customerReviewService.createPendingReviewForAppointment(appointment);
+
+        // Xây dựng link đánh giá dựa trên token vừa tạo.
+        // Đảm bảo rằng mỗi khách hàng chỉ có thể đánh giá một lần cho mỗi lịch hẹn
+        // Link đánh giá sẽ hết hạn sau một khoảng thời gian nhất định để tránh việc đánh giá cũ không còn phù hợp.
+        String reviewLink = buildReviewLink(reviewToken);
+        String content = buildCompletionContent(appointment, customer.fullName(), reviewLink);
 
         if (appointment.getUserId() != null) {
             notificationService.createNotification(
@@ -117,11 +132,11 @@ public class AppointmentNotificationService {
     }
 
     // Hàm xây dựng nội dung email/notification sau khi lịch hẹn hoàn thành, bao gồm lời cảm ơn và lời mời đánh giá trải nghiệm.
-    private String buildCompletionContent(Appointment appointment, String customerName) {
+    private String buildCompletionContent(Appointment appointment, String customerName, String reviewLink) {
         String greetingName = StringUtils.hasText(customerName) ? customerName : "quý khách";
         String appointmentType = switch (appointment.getType()) {
-            case SERVICE -> "dịch vụ bảo dưỡng/sửa chữa";
-            case TEST_DRIVE -> "buổi lái thử";
+            case SERVICE -> "Dịch vụ bảo dưỡng/sửa chữa";
+            case TEST_DRIVE -> "Buổi lái thử";
         };
 
         return """
@@ -131,9 +146,17 @@ public class AppointmentNotificationService {
 
                 Rất mong bạn dành ít phút để đánh giá trải nghiệm, giúp Tayota tiếp tục cải thiện chất lượng phục vụ.
 
+                Link đánh giá: %s
+
                 Trân trọng,
                 Tayota
-                """.formatted(greetingName, appointmentType);
+                """.formatted(greetingName, appointmentType, reviewLink);
+    }
+
+    // Hàm xây dựng link đánh giá dựa trên token, đảm bảo rằng link có thể chứa thêm tham số nếu đã có query parameters trong base URL.
+    private String buildReviewLink(String token) {
+        String separator = reviewLinkBaseUrl.contains("?") ? "&" : "?";
+        return reviewLinkBaseUrl + separator + "token=" + token;
     }
 
     private record CustomerContact(String fullName, String email) {

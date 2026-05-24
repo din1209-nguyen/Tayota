@@ -3,7 +3,19 @@ from fastapi.testclient import TestClient
 import app as app_module
 
 
-client = TestClient(app_module.app)
+client = TestClient(
+    app_module.app,
+    headers={"X-Gateway-Secret": app_module.GATEWAY_INTERNAL_SECRET},
+)
+
+
+def test_gateway_secret_is_required_for_service_apis():
+    direct_client = TestClient(app_module.app)
+
+    response = direct_client.get("/health")
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Gateway secret is required."}
 
 
 def test_chat_requires_ai_session_header():

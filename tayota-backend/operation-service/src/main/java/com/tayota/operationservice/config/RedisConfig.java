@@ -16,11 +16,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.Duration;
 
 @Configuration
-@ConditionalOnProperty(prefix = "common.redis", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class RedisConfig {
-    /* --- Cấu hình thủ công (Dùng RedisTemplate) --- */
-    // RedisTemplate cho phép dev tự code các thao tác CRUD trực tiếp với Redis
-    // Ví dụ: redisTemplate.opsForValue().set(key, value)
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory, ObjectMapper objectMapper) {
         // Khởi tạo RedisTemplate<String, Object>

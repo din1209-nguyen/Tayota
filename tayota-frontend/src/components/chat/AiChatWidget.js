@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { sendAiChatMessage } from "@/lib/services/chat";
 
 function makeSessionId() {
   return `tayota-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -35,11 +35,7 @@ export default function AiChatWidget() {
     setMessages((items) => [...items, { role: "user", text }]);
     setLoading(true);
     try {
-      const result = await apiFetch("/ai/api/v1/chat", {
-        method: "POST",
-        headers: { "X-AI-Session-Id": sessionId },
-        body: JSON.stringify({ message: text }),
-      });
+      const result = await sendAiChatMessage({ message: text, sessionId });
       setMessages((items) => [
         ...items,
         {

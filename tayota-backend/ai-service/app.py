@@ -1,10 +1,13 @@
+import hmac
+import os
 import tempfile
 import uuid
 from pathlib import Path
 from typing import Any, Dict, Literal
 
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, FastAPI, File, Header, HTTPException, Query, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, Header, HTTPException, Query, Request, UploadFile
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from conversation_state_manager import MongoStateError, state_manager
@@ -138,6 +141,18 @@ document_store = MongoDocumentStore(mongo_connection)
 job_store = MongoDocumentJobStore(mongo_connection)
 app = FastAPI(title="Toyota RAG AI Service", version="1.0.0")
 DEFAULT_DOCUMENT_STATUSES = ("uploaded", "indexing", "indexed", "failed")
+GATEWAY_SECRET_HEADER = "X-Gateway-Secret"
+GATEWAY_INTERNAL_SECRET = os.getenv("GATEWAY_INTERNAL_SECRET", "change-me-gateway-internal-secret")
+
+
+@app.middleware("http")
+async def require_gateway_secret(request: Request, call_next):
+    path = request.url.path
+    if path == "/health" or path.startswith("/api/v1/"):
+        supplied_secret = request.headers.get(GATEWAY_SECRET_HEADER)
+        if not supplied_secret or not hmac.compare_digest(supplied_secret, GATEWAY_INTERNAL_SECRET):
+            return JSONResponse(status_code=403, content={"detail": "Gateway secret is required."})
+    return await call_next(request)
 
 
 def _service_unavailable(detail: str) -> HTTPException:

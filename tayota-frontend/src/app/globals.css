@@ -198,10 +198,10 @@ button {
 .desktop-nav {
   display: flex;
   align-items: center;
-  gap: 22px;
+  gap: 14px;
   margin-left: auto;
   color: var(--muted-foreground);
-  font-size: 0.94rem;
+  font-size: 0.9rem;
   font-weight: 550;
 }
 
@@ -1080,6 +1080,122 @@ button {
   text-align: center;
 }
 
+.ops-page {
+  background: linear-gradient(180deg, rgba(3, 4, 5, 0.82), rgba(8, 10, 14, 0.96));
+}
+
+.ops-nav,
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ops-nav {
+  margin-top: 18px;
+}
+
+.ops-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.ops-panel {
+  display: grid;
+  gap: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(12, 14, 19, 0.86);
+  padding: 18px;
+}
+
+.ops-panel h2 {
+  margin: 4px 0 0;
+  font-size: 1.35rem;
+}
+
+.ops-panel-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ops-list,
+.ops-form {
+  display: grid;
+  gap: 10px;
+}
+
+.ops-list article {
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(229, 231, 235, 0.12);
+  border-radius: 8px;
+  background: rgba(3, 4, 5, 0.42);
+  padding: 12px;
+}
+
+.ops-list span,
+.ops-list small {
+  color: var(--muted-foreground);
+}
+
+.compact-field {
+  width: min(220px, 100%);
+}
+
+.status-pill {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: var(--silver);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.status-pill.connected {
+  border-color: rgba(40, 99, 74, 0.8);
+  color: #86efac;
+}
+
+.status-pill.error {
+  border-color: rgba(159, 18, 57, 0.8);
+  color: #fda4af;
+}
+
+.live-chat-panel {
+  min-height: 520px;
+}
+
+.live-chat-messages {
+  min-height: 280px;
+  max-height: 420px;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  overflow: auto;
+}
+
+.live-chat-message {
+  border: 1px solid rgba(229, 231, 235, 0.12);
+  border-radius: 8px;
+  background: rgba(3, 4, 5, 0.44);
+  padding: 10px;
+}
+
+.live-chat-message p {
+  margin: 4px 0 0;
+  color: var(--silver);
+}
+
+.live-chat-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
 @media (max-width: 700px) {
   .section {
     padding: 52px 0;
@@ -1131,7 +1247,9 @@ button {
   .appointment-layout,
   .auth-layout,
   .form-grid,
-  .slot-row {
+  .slot-row,
+  .ops-grid,
+  .live-chat-form {
     grid-template-columns: 1fr;
   }
 

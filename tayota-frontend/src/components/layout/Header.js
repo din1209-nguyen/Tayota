@@ -9,6 +9,8 @@ const navItems = [
   ["Lái thử", "/appointments/test-drive"],
   ["Dịch vụ", "/appointments/service"],
   ["AI tư vấn", "#ai-chat"],
+  ["Live chat", "/support/live-chat"],
+  ["Dashboard", "/dashboard"],
   ["Tài khoản", "/auth/login"],
 ];
 

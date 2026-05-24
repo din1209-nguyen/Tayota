@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { login, register } from "@/lib/services/auth";
 import { setAccessToken } from "@/lib/session";
 
 export default function AuthForm({ mode }) {
   const isRegister = mode === "register";
-  const [form, setForm] = useState({ fullName: "", email: "", password: "", phone: "" });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -21,10 +21,7 @@ export default function AuthForm({ mode }) {
     setLoading(true);
     setMessage("");
     try {
-      const result = await apiFetch(isRegister ? "/user/register" : "/user/login", {
-        method: "POST",
-        body: JSON.stringify(form),
-      });
+      const result = isRegister ? await register(form) : await login(form);
       if (result?.accessToken) setAccessToken(result.accessToken);
       setMessage(isRegister ? "Đăng ký thành công. Vui lòng kiểm tra email nếu cần xác thực." : "Đăng nhập thành công.");
     } catch (error) {
@@ -36,18 +33,6 @@ export default function AuthForm({ mode }) {
 
   return (
     <form className="form-panel auth-form" onSubmit={submit}>
-      {isRegister ? (
-        <>
-          <label className="label">
-            Họ và tên
-            <input className="field" name="fullName" value={form.fullName} onChange={updateField} />
-          </label>
-          <label className="label">
-            Số điện thoại
-            <input className="field" name="phone" value={form.phone} onChange={updateField} />
-          </label>
-        </>
-      ) : null}
       <label className="label">
         Email
         <input className="field" type="email" name="email" value={form.email} onChange={updateField} required />

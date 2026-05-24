@@ -1,52 +1,58 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { apiFetch, buildQuery } from "@/lib/api";
+import { useState } from "react";
+import { createAppointment, getAvailableSlots } from "@/lib/services/appointments";
 import { getAccessToken } from "@/lib/session";
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(value) {
+  return UUID_PATTERN.test(value || "");
+}
 
 export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
   const isService = type === "service";
   const [form, setForm] = useState({
-    fullName: "",
-    phone: "",
-    email: "",
+    guestFullName: "",
+    guestPhone: "",
+    guestEmail: "",
     carVersionId: defaultCarVersionId,
-    vin: "",
-    dealershipId: "1",
+    vinId: "",
+    dealershipId: "",
     appointmentDate: "",
-    appointmentTime: "",
-    note: "",
+    startTime: "",
+    notes: "",
   });
   const [slots, setSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
 
-  const endpoint = useMemo(() => {
-    const token = getAccessToken();
-    if (isService) return token ? "/operation/appointments/service" : "/operation/appointments/service/guest";
-    return token ? "/operation/appointments/test-drive" : "/operation/appointments/test-drive/guest";
-  }, [isService]);
-
   function updateField(event) {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
   }
 
   async function loadSlots() {
-    if (!form.dealershipId || !form.appointmentDate) {
-      setMessage("Vui lòng chọn đại lý và ngày hẹn trước.");
+    if (!isUuid(form.dealershipId) || !form.appointmentDate) {
+      setMessage("Vui lòng nhập UUID đại lý và chọn ngày hẹn trước.");
       return;
     }
+
     setLoadingSlots(true);
     setMessage("");
     try {
-      const query = buildQuery({
+      const result = await getAvailableSlots({
         dealershipId: form.dealershipId,
         appointmentType: isService ? "SERVICE" : "TEST_DRIVE",
         appointmentDate: form.appointmentDate,
       });
-      const result = await apiFetch(`/operation/appointments/available-slots${query}`);
-      setSlots(Array.isArray(result) ? result : result?.slots || []);
+      const availableSlots = Array.isArray(result?.slots)
+        ? result.slots.filter((slot) => slot?.available !== false)
+        : [];
+      setSlots(availableSlots);
+      if (!availableSlots.length) {
+        setMessage(result?.holiday ? result?.holidayReason || "Đại lý nghỉ trong ngày này." : "Không còn khung giờ trống.");
+      }
     } catch (error) {
       setSlots([]);
       setMessage(error.message);
@@ -55,30 +61,63 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
     }
   }
 
+  function validateForm() {
+    if (!form.guestFullName || !form.guestPhone || !form.guestEmail || !form.appointmentDate || !form.startTime) {
+      return "Vui lòng điền đầy đủ thông tin liên hệ và khung giờ.";
+    }
+    if (!isUuid(form.dealershipId)) {
+      return "Đại lý phải là UUID hợp lệ.";
+    }
+    if (isService && form.vinId.length !== 17) {
+      return "Đặt lịch dịch vụ cần số VIN gồm 17 ký tự.";
+    }
+    if (isService && !form.notes.trim()) {
+      return "Đặt lịch dịch vụ cần mô tả tình trạng xe.";
+    }
+    if (!isService && !form.carVersionId) {
+      return "Đặt lịch lái thử cần mã phiên bản xe.";
+    }
+    return "";
+  }
+
   async function submit(event) {
     event.preventDefault();
     if (submitting) return;
-    if (!form.fullName || !form.phone || !form.email || !form.appointmentDate || !form.appointmentTime) {
-      setMessage("Vui lòng điền đầy đủ thông tin liên hệ và khung giờ.");
+
+    const validationMessage = validateForm();
+    if (validationMessage) {
+      setMessage(validationMessage);
       return;
     }
-    if (isService && !form.vin) {
-      setMessage("Đặt lịch dịch vụ cần số VIN.");
-      return;
-    }
+
     setSubmitting(true);
     setMessage("");
     try {
-      const token = getAccessToken();
-      const result = await apiFetch(endpoint, {
-        method: "POST",
-        token,
-        body: JSON.stringify({
-          ...form,
-          appointmentType: isService ? "SERVICE" : "TEST_DRIVE",
-        }),
-      });
-      setMessage(`Đặt lịch thành công. Mã lịch hẹn: ${result?.appointmentId || result?.id || "đang chờ xác nhận"}.`);
+      const authenticated = Boolean(getAccessToken());
+      const payload = isService
+        ? {
+            guestFullName: form.guestFullName,
+            guestEmail: form.guestEmail,
+            guestPhone: form.guestPhone,
+            vinId: form.vinId,
+            dealershipId: form.dealershipId,
+            appointmentDate: form.appointmentDate,
+            startTime: form.startTime,
+            notes: form.notes,
+          }
+        : {
+            guestFullName: form.guestFullName,
+            guestEmail: form.guestEmail,
+            guestPhone: form.guestPhone,
+            carVersionId: form.carVersionId,
+            dealershipId: form.dealershipId,
+            appointmentDate: form.appointmentDate,
+            startTime: form.startTime,
+            notes: form.notes,
+          };
+
+      const result = await createAppointment({ type, authenticated, payload });
+      setMessage(`Đặt lịch thành công. Mã lịch hẹn: ${result?.id || "đang chờ xác nhận"}.`);
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -91,27 +130,27 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
       <div className="form-grid">
         <label className="label">
           Họ và tên
-          <input className="field" name="fullName" value={form.fullName} onChange={updateField} />
+          <input className="field" name="guestFullName" value={form.guestFullName} onChange={updateField} />
         </label>
         <label className="label">
           Số điện thoại
-          <input className="field" name="phone" value={form.phone} onChange={updateField} />
+          <input className="field" name="guestPhone" value={form.guestPhone} onChange={updateField} />
         </label>
         <label className="label">
           Email
-          <input className="field" type="email" name="email" value={form.email} onChange={updateField} />
+          <input className="field" type="email" name="guestEmail" value={form.guestEmail} onChange={updateField} />
         </label>
         <label className="label">
           {isService ? "VIN" : "Mã phiên bản xe"}
           <input
             className="field"
-            name={isService ? "vin" : "carVersionId"}
-            value={isService ? form.vin : form.carVersionId}
+            name={isService ? "vinId" : "carVersionId"}
+            value={isService ? form.vinId : form.carVersionId}
             onChange={updateField}
           />
         </label>
         <label className="label">
-          Đại lý
+          UUID đại lý
           <input className="field" name="dealershipId" value={form.dealershipId} onChange={updateField} />
         </label>
         <label className="label">
@@ -123,18 +162,19 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
         <button className="btn btn-ghost" type="button" onClick={loadSlots} disabled={loadingSlots}>
           {loadingSlots ? "Đang tải giờ..." : "Kiểm tra giờ trống"}
         </button>
-        <select className="field" name="appointmentTime" value={form.appointmentTime} onChange={updateField}>
+        <select className="field" name="startTime" value={form.startTime} onChange={updateField}>
           <option value="">Chọn khung giờ</option>
-          {slots.map((slot, index) => (
-            <option key={`${slot}-${index}`} value={slot?.time || slot?.startTime || slot}>
-              {slot?.time || slot?.startTime || slot}
+          {slots.map((slot) => (
+            <option key={slot.id || slot.startTime} value={slot.startTime}>
+              {slot.startTime}
+              {slot.endTime ? ` - ${slot.endTime}` : ""}
             </option>
           ))}
         </select>
       </div>
       <label className="label">
-        Ghi chú
-        <textarea className="field" name="note" value={form.note} onChange={updateField} rows={4} />
+        {isService ? "Mô tả tình trạng xe" : "Ghi chú"}
+        <textarea className="field" name="notes" value={form.notes} onChange={updateField} rows={4} />
       </label>
       {message ? <div className="status-box">{message}</div> : null}
       <button className="btn btn-primary" type="submit" disabled={submitting}>

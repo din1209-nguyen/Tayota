@@ -30,8 +30,10 @@ import java.util.UUID;
 @Component
 public class AuthenticationFilter implements GlobalFilter, Ordered {
     private static final String AI_CHAT_PATH = "/ai/api/v1/chat";
+    private static final String AI_PATH_PREFIX = "/ai/";
     private static final String AI_SESSION_COOKIE = "ai_session_id";
     private static final String AI_SESSION_HEADER = "X-AI-Session-Id";
+    private static final String GATEWAY_SECRET_HEADER = "X-Gateway-Secret";
     private static final String USER_ID_HEADER = "X-User-Id";
     private static final String USER_ROLE_HEADER = "X-User-Role";
     private static final String USER_EMAIL_HEADER = "X-User-Email";
@@ -39,15 +41,18 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
     private final JwtUtil jwtUtil;
     private final boolean aiChatCookieSecure;
     private final long aiChatSessionTtlSeconds;
+    private final String gatewayInternalSecret;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     public AuthenticationFilter(
             JwtUtil jwtUtil,
             @Value("${ai.chat.cookie.secure:false}") boolean aiChatCookieSecure,
-            @Value("${ai.chat.session-ttl-seconds:21600}") long aiChatSessionTtlSeconds) {
+            @Value("${ai.chat.session-ttl-seconds:21600}") long aiChatSessionTtlSeconds,
+            @Value("${gateway.internal-secret:change-me-gateway-internal-secret}") String gatewayInternalSecret) {
         this.jwtUtil = jwtUtil;
         this.aiChatCookieSecure = aiChatCookieSecure;
         this.aiChatSessionTtlSeconds = aiChatSessionTtlSeconds;
+        this.gatewayInternalSecret = gatewayInternalSecret;
     }
 
     private final List<PublicEndpoint> whitelistUrls = List.of(
@@ -60,7 +65,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             PublicEndpoint.of(HttpMethod.POST, "/user/forgot-password/verify-otp"),
             PublicEndpoint.of(HttpMethod.PATCH, "/user/forgot-password/reset-password"),
 
-            PublicEndpoint.of(HttpMethod.GET, "/user/chat/ws/*"),
+            PublicEndpoint.of(HttpMethod.GET, "/user/chat/ws/**"),
             PublicEndpoint.of(HttpMethod.POST, "/user/chat/sessions/current"),
             PublicEndpoint.of(HttpMethod.GET, "/user/chat/sessions/current/messages"),
             PublicEndpoint.of(HttpMethod.POST, "/user/chat/messages"),
@@ -71,7 +76,14 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             PublicEndpoint.of(HttpMethod.GET, "/car/car-versions/**"),
             PublicEndpoint.of(HttpMethod.GET, "/car/accessories/**"),
 
-            PublicEndpoint.of(HttpMethod.POST, "/operation/api/appointments/test-drive/guest")
+            PublicEndpoint.of(HttpMethod.GET, "/operation/appointments/available-slots"),
+            PublicEndpoint.of(HttpMethod.POST, "/operation/appointments/test-drive/guest"),
+            PublicEndpoint.of(HttpMethod.POST, "/operation/appointments/service/guest"),
+
+            PublicEndpoint.of(HttpMethod.GET, "/operation/reviews/token/*"),
+            PublicEndpoint.of(HttpMethod.PATCH, "/operation/reviews/token/*"),
+
+            PublicEndpoint.of(HttpMethod.GET, "/ai/health")
     );
 
     @Override
@@ -86,7 +98,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
         if (HttpMethod.OPTIONS.equals(request.getMethod())
                 || whitelistUrls.stream().anyMatch(endpoint -> isWhitelisted(endpoint, request.getMethod(), path))) {
-            return chain.filter(exchange);
+            return chain.filter(exchange.mutate().request(withSanitizedTrustedHeaders(request, path)).build());
         }
 
         String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
@@ -99,6 +111,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
                     request,
                     jwtUtil.getClaims(authHeader.substring(7))
             );
+            modifiedRequest = withGatewaySecretIfAiRequest(modifiedRequest, path);
             return chain.filter(exchange.mutate().request(modifiedRequest).build());
         }
         catch (ExpiredJwtException e) {
@@ -128,6 +141,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             }
             ServerHttpRequest modifiedRequest = request.mutate()
                     .headers(this::removeTrustedHeaders)
+                    .headers(headers -> headers.set(GATEWAY_SECRET_HEADER, gatewayInternalSecret))
                     .header(AI_SESSION_HEADER, resolvedSessionId)
                     .build();
             return chain.filter(exchange.mutate().request(modifiedRequest).build());
@@ -148,6 +162,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             ).mutate()
                     .headers(headers -> {
                         headers.remove(AI_SESSION_HEADER);
+                        headers.set(GATEWAY_SECRET_HEADER, gatewayInternalSecret);
                         headers.set(AI_SESSION_HEADER, resolvedSessionId);
                     })
                     .build();
@@ -205,6 +220,7 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         httpHeaders.remove(USER_ROLE_HEADER);
         httpHeaders.remove(USER_EMAIL_HEADER);
         httpHeaders.remove(AI_SESSION_HEADER);
+        httpHeaders.remove(GATEWAY_SECRET_HEADER);
     }
 
     private Mono<Void> unAuthorizedResponse(ServerHttpResponse response, String message) {
@@ -223,6 +239,26 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 
     private boolean isAiChatRequest(HttpMethod method, String path) {
         return HttpMethod.POST.equals(method) && AI_CHAT_PATH.equals(path);
+    }
+
+    private ServerHttpRequest withSanitizedTrustedHeaders(ServerHttpRequest request, String path) {
+        return request.mutate()
+                .headers(headers -> {
+                    removeTrustedHeaders(headers);
+                    if (path.startsWith(AI_PATH_PREFIX)) {
+                        headers.set(GATEWAY_SECRET_HEADER, gatewayInternalSecret);
+                    }
+                })
+                .build();
+    }
+
+    private ServerHttpRequest withGatewaySecretIfAiRequest(ServerHttpRequest request, String path) {
+        if (!path.startsWith(AI_PATH_PREFIX)) {
+            return request;
+        }
+        return request.mutate()
+                .headers(headers -> headers.set(GATEWAY_SECRET_HEADER, gatewayInternalSecret))
+                .build();
     }
 
     private record PublicEndpoint(HttpMethod method, String pattern) {

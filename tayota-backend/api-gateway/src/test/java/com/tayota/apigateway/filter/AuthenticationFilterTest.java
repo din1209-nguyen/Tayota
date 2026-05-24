@@ -21,8 +21,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class AuthenticationFilterTest {
+    private static final String GATEWAY_SECRET = "test-gateway-secret";
+
     private final JwtUtil jwtUtil = mock(JwtUtil.class);
-    private final AuthenticationFilter filter = new AuthenticationFilter(jwtUtil, false, 21600);
+    private final AuthenticationFilter filter = new AuthenticationFilter(jwtUtil, false, 21600, GATEWAY_SECRET);
 
     @Test
     void aiChatGuestWithoutCookieCreatesSessionCookieAndHeader() {
@@ -35,6 +37,8 @@ class AuthenticationFilterTest {
 
         String sessionHeader = forwarded.get().getRequest().getHeaders().getFirst("X-AI-Session-Id");
         assertThat(sessionHeader).isNotBlank();
+        assertThat(forwarded.get().getRequest().getHeaders().getFirst("X-Gateway-Secret"))
+                .isEqualTo(GATEWAY_SECRET);
         assertThat(exchange.getResponse().getCookies().getFirst("ai_session_id")).isNotNull();
         assertThat(exchange.getResponse().getCookies().getFirst("ai_session_id").getValue())
                 .isEqualTo(sessionHeader);
@@ -48,6 +52,7 @@ class AuthenticationFilterTest {
                 MockServerHttpRequest.post("/ai/api/v1/chat")
                         .cookie(new HttpCookie("ai_session_id", "existing-session"))
                         .header("X-AI-Session-Id", "spoofed-session")
+                        .header("X-Gateway-Secret", "spoofed-secret")
                         .build()
         );
         AtomicReference<ServerWebExchange> forwarded = new AtomicReference<>();
@@ -56,6 +61,8 @@ class AuthenticationFilterTest {
 
         assertThat(forwarded.get().getRequest().getHeaders().getFirst("X-AI-Session-Id"))
                 .isEqualTo("existing-session");
+        assertThat(forwarded.get().getRequest().getHeaders().getFirst("X-Gateway-Secret"))
+                .isEqualTo(GATEWAY_SECRET);
         assertThat(exchange.getResponse().getCookies()).doesNotContainKey("ai_session_id");
     }
 
@@ -81,6 +88,7 @@ class AuthenticationFilterTest {
         assertThat(headers.getFirst("X-User-Id")).isEqualTo("user-1");
         assertThat(headers.getFirst("X-User-Role")).isEqualTo("CUSTOMER");
         assertThat(headers.getFirst("X-User-Email")).isEqualTo("user@example.com");
+        assertThat(headers.getFirst("X-Gateway-Secret")).isEqualTo(GATEWAY_SECRET);
     }
 
     @Test
@@ -100,10 +108,64 @@ class AuthenticationFilterTest {
         assertThat(forwarded.get()).isNull();
     }
 
+    @Test
+    void guestAppointmentRoutesArePublicThroughGatewayPaths() {
+        assertPublicRoute(MockServerHttpRequest.post("/operation/appointments/test-drive/guest").build());
+        assertPublicRoute(MockServerHttpRequest.post("/operation/appointments/service/guest").build());
+        assertPublicRoute(MockServerHttpRequest.get("/operation/appointments/available-slots").build());
+    }
+
+    @Test
+    void reviewTokenRoutesArePublic() {
+        assertPublicRoute(MockServerHttpRequest.get("/operation/reviews/token/review-token").build());
+        assertPublicRoute(MockServerHttpRequest.patch("/operation/reviews/token/review-token").build());
+    }
+
+    @Test
+    void protectedRouteWithoutTokenReturnsUnauthorized() {
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/operation/appointments/my").build()
+        );
+        AtomicReference<ServerWebExchange> forwarded = new AtomicReference<>();
+
+        filter.filter(exchange, captureExchange(forwarded)).block();
+
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(forwarded.get()).isNull();
+    }
+
+    @Test
+    void aiHealthIsPublicAndReceivesGatewaySecret() {
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/ai/health")
+                        .header("X-Gateway-Secret", "spoofed-secret")
+                        .header("X-User-Id", "spoofed-user")
+                        .build()
+        );
+        AtomicReference<ServerWebExchange> forwarded = new AtomicReference<>();
+
+        filter.filter(exchange, captureExchange(forwarded)).block();
+
+        HttpHeaders headers = forwarded.get().getRequest().getHeaders();
+        assertThat(exchange.getResponse().getStatusCode()).isNull();
+        assertThat(headers.getFirst("X-Gateway-Secret")).isEqualTo(GATEWAY_SECRET);
+        assertThat(headers.getFirst("X-User-Id")).isNull();
+    }
+
     private GatewayFilterChain captureExchange(AtomicReference<ServerWebExchange> forwarded) {
         return exchange -> {
             forwarded.set(exchange);
             return Mono.empty();
         };
+    }
+
+    private void assertPublicRoute(MockServerHttpRequest request) {
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+        AtomicReference<ServerWebExchange> forwarded = new AtomicReference<>();
+
+        filter.filter(exchange, captureExchange(forwarded)).block();
+
+        assertThat(exchange.getResponse().getStatusCode()).isNull();
+        assertThat(forwarded.get()).isNotNull();
     }
 }

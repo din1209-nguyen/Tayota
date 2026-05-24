@@ -12,6 +12,8 @@ ai:
     session-ttl-seconds: ${AI_CHAT_SESSION_TTL_SECONDS:21600}
 jwt:
   secret: ${JWT_SECRET:change-me-to-a-long-random-secret}
+gateway:
+  internal-secret: ${GATEWAY_INTERNAL_SECRET:change-me-gateway-internal-secret}
 spring:
   application:
     name: api-gateway

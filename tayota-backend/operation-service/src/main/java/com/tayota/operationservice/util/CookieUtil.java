@@ -20,6 +20,9 @@ public class CookieUtil {
     @Value("${cookie.secure}")
     private boolean secure;
 
+    @Value("${cookie.same-site:Lax}")
+    private String sameSite;
+
     // Lấy giá trị của cookie theo tên từ Request
     public String getCookieValue(HttpServletRequest request, String name) {
         if (request.getCookies() == null) {
@@ -60,11 +63,12 @@ public class CookieUtil {
         // Giảm rủi ro CSRF bằng SameSite=Lax
         // Áp dụng cookie cho toàn bộ domain bằng Path=/
         String cookieHeader = String.format(
-                "%s=%s; Max-Age=%d; Path=/; HttpOnly; %sSameSite=Lax",
+                "%s=%s; Max-Age=%d; Path=/; HttpOnly; %sSameSite=%s",
                 name,
                 cookieValue,
                 maxAgeSec,
-                secureAttribute
+                secureAttribute,
+                sameSite
         );
 
         // Thêm header Set-Cookie vào response

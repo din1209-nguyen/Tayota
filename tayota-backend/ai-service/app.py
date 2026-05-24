@@ -141,10 +141,12 @@ DEFAULT_DOCUMENT_STATUSES = ("uploaded", "indexing", "indexed", "failed")
 
 
 def _service_unavailable(detail: str) -> HTTPException:
+    """Tạo lỗi 503 khi service phụ thuộc như MongoDB hoặc Qdrant không sẵn sàng."""
     return HTTPException(status_code=503, detail=detail)
 
 
 def _safe_filename(filename: str) -> str:
+    """Chuẩn hóa tên file upload và chỉ cho phép tài liệu PDF."""
     name = Path(filename).name
     if not name.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF uploads are supported.")
@@ -152,6 +154,7 @@ def _safe_filename(filename: str) -> str:
 
 
 def _has_admin_role(user_role: str | None) -> bool:
+    """Kiểm tra header role có chứa quyền ADMIN hay không."""
     if not user_role:
         return False
     roles = {
@@ -163,11 +166,13 @@ def _has_admin_role(user_role: str | None) -> bool:
 
 
 def _require_admin(user_role: str | None) -> None:
+    """Chặn request không có quyền admin bằng lỗi HTTP 403."""
     if not _has_admin_role(user_role):
         raise HTTPException(status_code=403, detail="Admin role is required.")
 
 
 def _qdrant_metadata_for_path(path: Path, document: Dict[str, Any]) -> Dict[str, Any]:
+    """Tạo metadata gắn với file tạm để ingest chunk vào Qdrant."""
     document_id = document.get("document_id")
     gridfs_file_id = str(document.get("gridfs_file_id"))
     return {
@@ -182,6 +187,7 @@ def _qdrant_metadata_for_path(path: Path, document: Dict[str, Any]) -> Dict[str,
 
 
 def _run_ingest_job(job_id: str, document_id: str, rebuild: bool) -> None:
+    """Chạy job nền để materialize PDF, ingest vào vector DB và cập nhật trạng thái."""
     job_store.set(
         DocumentJobStatus(
             job_id=job_id,
@@ -249,6 +255,7 @@ def chat(
     session_id: str = Header(..., alias="X-AI-Session-Id", min_length=1),
     user_id: str | None = Header(default=None, alias="X-User-Id"),
 ) -> ChatResponse:
+    """Xử lý một lượt chat và trả về câu trả lời cùng nguồn tham khảo."""
     try:
         result = answer(
             request.message,
@@ -276,6 +283,7 @@ def get_user_sessions(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> UserSessionsResponse:
+    """Liệt kê các phiên hội thoại gần đây của một người dùng."""
     try:
         sessions = state_manager.list_user_sessions(
             user_id=user_id,
@@ -298,6 +306,7 @@ def get_session_messages(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> ChatMessagesResponse:
+    """Trả về lịch sử tin nhắn đã lưu của một session."""
     try:
         messages = state_manager.list_chat_messages(
             session_id=session_id,
@@ -322,6 +331,7 @@ def upload_document(
     user_id: str | None = Header(default=None, alias="X-User-Id"),
     user_role: str | None = Header(default=None, alias="X-User-Role"),
 ) -> DocumentJobResponse:
+    """Nhận file PDF từ admin và xếp lịch ingest tài liệu."""
     _require_admin(user_role)
     filename = _safe_filename(file.filename or "")
 
@@ -351,6 +361,7 @@ def upload_document(
 def list_documents(
     status: list[str] | None = Query(default=None),
 ) -> DocumentsResponse:
+    """Liệt kê tài liệu đã upload theo trạng thái được yêu cầu."""
     statuses = tuple(status) if status else DEFAULT_DOCUMENT_STATUSES
     try:
         documents = document_store.list_documents(statuses=statuses)
@@ -366,6 +377,7 @@ def list_documents(
 
 @app.get("/api/v1/documents/jobs/{job_id}", response_model=DocumentJobStatus)
 def get_document_job(job_id: str) -> DocumentJobStatus:
+    """Tra cứu trạng thái hiện tại của một job ingest tài liệu."""
     try:
         status = job_store.get(job_id)
     except MongoStorageError as exc:
@@ -380,6 +392,7 @@ def delete_document(
     document_id: str,
     user_role: str | None = Header(default=None, alias="X-User-Role"),
 ) -> DeleteDocumentResponse:
+    """Xóa metadata tài liệu, file GridFS và các chunk tương ứng trong Qdrant."""
     _require_admin(user_role)
     try:
         document = document_store.get_document(document_id)
@@ -410,6 +423,7 @@ def delete_document(
 
 @app.post("/api/v1/sessions/{session_id}/reset", response_model=ResetSessionResponse)
 def reset_session(session_id: str) -> ResetSessionResponse:
+    """Reset trạng thái hội thoại của một session."""
     try:
         state_manager.reset(session_id)
     except MongoStateError as exc:
@@ -419,6 +433,7 @@ def reset_session(session_id: str) -> ResetSessionResponse:
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
+    """Kiểm tra nhanh trạng thái MongoDB, Qdrant và cấu hình LLM."""
     mongo_status = "ok"
     qdrant_status = "ok"
 

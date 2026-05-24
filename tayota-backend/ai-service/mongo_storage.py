@@ -38,12 +38,14 @@ class MongoConnection:
         mongo_uri: str | None = None,
         db_name: str | None = None,
     ):
+        """Khởi tạo cấu hình kết nối MongoDB dùng chung cho storage."""
         self.mongo_uri = mongo_uri or os.getenv("MONGO_URI", "mongodb://localhost:27017")
         self.db_name = db_name or os.getenv("MONGO_DB", "tayota_ai_db")
         self._client = None
         self._db = None
 
     def client(self):
+        """Khởi tạo lazy MongoClient và tái sử dụng cho các lần gọi sau."""
         if MongoClient is None:
             raise MongoStorageError(
                 "MongoDB dependency is not installed. Run `pip install -r requirements.txt`."
@@ -57,11 +59,13 @@ class MongoConnection:
         return self._client
 
     def db(self):
+        """Trả về database MongoDB đã cấu hình."""
         if self._db is None:
             self._db = self.client()[self.db_name]
         return self._db
 
     def ping(self) -> bool:
+        """Kiểm tra kết nối MongoDB bằng lệnh ping."""
         try:
             self.client().admin.command("ping")
             return True
@@ -79,6 +83,7 @@ class MongoDocumentStore:
         collection_name: str = "ai_documents",
         bucket_name: str | None = None,
     ):
+        """Khởi tạo document store dùng Mongo collection và GridFS bucket."""
         self.connection = connection or MongoConnection()
         self.collection_name = collection_name
         self.bucket_name = bucket_name or os.getenv("MONGO_GRIDFS_BUCKET", "ai_pdfs")
@@ -86,10 +91,12 @@ class MongoDocumentStore:
 
     @property
     def documents(self):
+        """Trả về collection metadata tài liệu."""
         return self.connection.db()[self.collection_name]
 
     @property
     def bucket(self):
+        """Trả về GridFS bucket lưu nội dung PDF."""
         if gridfs is None:
             raise MongoStorageError(
                 "GridFS dependency is not installed. Run `pip install -r requirements.txt`."
@@ -106,6 +113,7 @@ class MongoDocumentStore:
         file_obj: BinaryIO,
         uploaded_by_user_id: Optional[str] = None,
     ) -> Dict[str, object]:
+        """Lưu PDF upload vào GridFS và metadata vào MongoDB."""
         document_id = str(uuid.uuid4())
         sha256 = hashlib.sha256()
         size_bytes = 0
@@ -149,6 +157,7 @@ class MongoDocumentStore:
         return self._public_document(metadata)
 
     def get_document(self, document_id: str) -> Optional[Dict[str, object]]:
+        """Lấy metadata công khai của một tài liệu theo document_id."""
         try:
             document = self.documents.find_one({"document_id": document_id})
         except PyMongoError as exc:
@@ -156,6 +165,7 @@ class MongoDocumentStore:
         return self._public_document(document) if document else None
 
     def list_documents(self, *, statuses: Iterable[str] = ("uploaded", "indexed")) -> List[Dict[str, object]]:
+        """Liệt kê tài liệu có trạng thái nằm trong danh sách cho phép."""
         try:
             docs = self.documents.find({"status": {"$in": list(statuses)}})
             return [self._public_document(doc) for doc in docs]
@@ -163,6 +173,7 @@ class MongoDocumentStore:
             raise MongoStorageError(f"Cannot list MongoDB documents: {exc}") from exc
 
     def update_status(self, document_id: str, status: str) -> None:
+        """Cập nhật trạng thái ingest/indexing của một tài liệu."""
         try:
             self.documents.update_one(
                 {"document_id": document_id},
@@ -179,6 +190,7 @@ class MongoDocumentStore:
             ) from exc
 
     def delete_document(self, document_id: str) -> Optional[Dict[str, object]]:
+        """Xóa file PDF trong GridFS và metadata tài liệu khỏi MongoDB."""
         document = self.get_document(document_id)
         if not document:
             return None
@@ -197,6 +209,7 @@ class MongoDocumentStore:
         return document
 
     def materialize_pdf(self, document_id: str, target_dir: str | Path) -> Path:
+        """Ghi PDF từ GridFS ra thư mục tạm để pipeline ingest đọc được."""
         document = self.get_document(document_id)
         if not document:
             raise MongoStorageError(f"Document '{document_id}' was not found.")
@@ -218,12 +231,14 @@ class MongoDocumentStore:
         return target
 
     def materialize_all_pdfs(self, target_dir: str | Path) -> List[Path]:
+        """Materialize toàn bộ PDF hiện có ra thư mục tạm."""
         return [
             self.materialize_pdf(str(document["document_id"]), target_dir)
             for document in self.list_documents()
         ]
 
     def _public_document(self, document: Dict[str, object]) -> Dict[str, object]:
+        """Loại bỏ trường nội bộ MongoDB khỏi metadata trả ra ngoài."""
         public = dict(document)
         public.pop("_id", None)
         gridfs_file_id = public.get("gridfs_file_id")
@@ -239,14 +254,17 @@ class MongoDocumentJobStore:
         *,
         collection_name: str = "ai_document_jobs",
     ):
+        """Khởi tạo store lưu trạng thái các job ingest tài liệu."""
         self.connection = connection or MongoConnection()
         self.collection_name = collection_name
 
     @property
     def jobs(self):
+        """Trả về collection lưu document ingest jobs."""
         return self.connection.db()[self.collection_name]
 
     def set(self, status) -> None:
+        """Upsert trạng thái mới nhất của một job ingest."""
         payload = (
             status.model_dump()
             if hasattr(status, "model_dump")
@@ -268,6 +286,7 @@ class MongoDocumentJobStore:
             raise MongoStorageError(f"Cannot save document job to MongoDB: {exc}") from exc
 
     def get(self, job_id: str) -> Optional[Dict[str, object]]:
+        """Lấy trạng thái job ingest theo job_id."""
         try:
             payload = self.jobs.find_one({"job_id": job_id})
         except PyMongoError as exc:

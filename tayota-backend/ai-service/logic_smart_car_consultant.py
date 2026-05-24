@@ -58,6 +58,7 @@ def build_advise_prompt(
     context: str,
     use_slot_context: bool = True,
 ) -> str:
+    """Xây prompt tư vấn từ câu hỏi, state hiện tại và ngữ cảnh RAG."""
     slot_ctx = build_slot_context(state.slots) if use_slot_context else ""
 
     parts = []
@@ -135,6 +136,7 @@ class SmartCarConsultant:
         )
 
     def _opening_question(self) -> str:
+        """Trả về câu hỏi mở đầu dùng riêng cho lượt greeting."""
         return (
             "\n\nĐể tôi tư vấn tốt hơn, anh/chị có thể cho biết:\n"
             "- Ngân sách dự kiến?\n"
@@ -166,12 +168,14 @@ class ConsultDecision:
         skip_rag: bool,
         stage:    str,
     ):
+        """Lưu quyết định xử lý cho một lượt hội thoại."""
         self.prompt   = prompt
         self.followup = followup
         self.skip_rag = skip_rag
         self.stage    = stage
 
     def __repr__(self):
+        """Hiển thị ngắn gọn trạng thái decision khi debug."""
         return (
             f"ConsultDecision(stage={self.stage!r}, "
             f"skip_rag={self.skip_rag}, "

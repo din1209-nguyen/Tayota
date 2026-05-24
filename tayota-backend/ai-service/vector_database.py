@@ -31,6 +31,7 @@ T = TypeVar("T")
 
 
 def _qdrant_hint() -> str:
+    """Tạo hướng dẫn khắc phục khi không kết nối được Qdrant."""
     return (
         f"Khong ket noi duoc Qdrant tai {QDRANT_URL}.\n"
         "Hay khoi dong Qdrant truoc khi ingest/search:\n"
@@ -40,6 +41,7 @@ def _qdrant_hint() -> str:
 
 
 def _qdrant_call(action: str, operation: Callable[[], T]) -> T:
+    """Bọc lời gọi Qdrant để chuyển lỗi kết nối thành thông báo dễ hiểu."""
     try:
         return operation()
     except ResponseHandlingException as exc:
@@ -47,6 +49,7 @@ def _qdrant_call(action: str, operation: Callable[[], T]) -> T:
 
 
 def get_client() -> QdrantClient:
+    """Khởi tạo QdrantClient từ cấu hình môi trường."""
     return QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 
 
@@ -86,6 +89,7 @@ def create_collection(recreate: bool = False) -> bool:
 
 
 def _chunk_payload(chunk: Dict[str, Any]) -> Dict[str, Any]:
+    """Chuyển chunk nội bộ thành payload lưu trong Qdrant."""
     metadata = chunk.get("metadata", {})
     return {
         "chunk_id": chunk["chunk_id"],
@@ -135,6 +139,7 @@ def search(
     score_threshold: float = 0.4,
     source_names: List[str] | None = None,
 ) -> List[Dict[str, Any]]:
+    """Tìm các chunk gần nhất trong Qdrant theo vector truy vấn."""
     client = get_client()
     query_filter = _source_filter(source_names)
 
@@ -176,6 +181,7 @@ def search_neighbor_chunks(
     chunk_index: int | None,
     window: int = 1,
 ) -> List[Dict[str, Any]]:
+    """Lấy các chunk liền kề cùng nguồn/trang để bổ sung ngữ cảnh."""
     if not source_id or page is None or chunk_index is None or chunk_index < 0:
         return []
 
@@ -218,6 +224,7 @@ def scroll_chunks(
     source_names: List[str] | None = None,
     limit: int = 1000,
 ) -> List[Dict[str, Any]]:
+    """Scroll chunk từ Qdrant, tùy chọn lọc theo danh sách source."""
     client = get_client()
     points, _ = _qdrant_call(
         "scroll chunks",
@@ -233,6 +240,7 @@ def scroll_chunks(
 
 
 def _source_filter(source_names: List[str] | None) -> Filter | None:
+    """Tạo filter Qdrant theo trường source nếu có danh sách source."""
     query_filter = None
     if source_names:
         query_filter = Filter(
@@ -247,6 +255,7 @@ def _source_filter(source_names: List[str] | None) -> Filter | None:
 
 
 def _point_payload_result(payload: Dict[str, Any], score: float = 1.0) -> Dict[str, Any]:
+    """Chuẩn hóa payload Qdrant thành dict retrieved chunk dùng trong RAG."""
     return {
         "score": score,
         "content": payload["content"],
@@ -263,6 +272,7 @@ def _point_payload_result(payload: Dict[str, Any], score: float = 1.0) -> Dict[s
 
 
 def get_collection_info() -> Dict[str, Any]:
+    """Trả về thông tin cơ bản về collection Qdrant hiện tại."""
     client = get_client()
     result = _qdrant_call(
         f"count collection '{COLLECTION}'",
@@ -275,6 +285,7 @@ def get_collection_info() -> Dict[str, Any]:
 
 
 def collection_point_count() -> int:
+    """Đếm số point/vector hiện có trong collection."""
     client = get_client()
     return _qdrant_call(
         f"count collection '{COLLECTION}'",
@@ -283,6 +294,7 @@ def collection_point_count() -> int:
 
 
 def _document_filter(document_id: str) -> Filter:
+    """Tạo filter Qdrant để chọn chunk theo document_id."""
     return Filter(
         must=[
             FieldCondition(
@@ -294,6 +306,7 @@ def _document_filter(document_id: str) -> Filter:
 
 
 def delete_document_chunks(document_id: str) -> int:
+    """Xóa toàn bộ chunk của một document khỏi Qdrant và cập nhật summary."""
     client = get_client()
     query_filter = _document_filter(document_id)
     count = _qdrant_call(
@@ -320,6 +333,7 @@ def delete_document_chunks(document_id: str) -> int:
 
 
 def refresh_summary_chunk() -> None:
+    """Tạo lại summary chunk dựa trên các chunk tài liệu hiện có."""
     chunks = [
         chunk
         for chunk in scroll_chunks(limit=10000)
@@ -367,6 +381,7 @@ def upsert_summary_chunk(car_names: List[str]) -> None:
 
 
 def _car_names_from_chunks(chunks: List[Dict[str, Any]]) -> List[str]:
+    """Suy ra danh sách tên xe/tài liệu từ source của các chunk."""
     names = []
     for chunk in chunks:
         source = chunk.get("metadata", {}).get("source") or chunk.get("source")
@@ -442,6 +457,7 @@ def ingest_documents(
 
 
 def _parse_args() -> argparse.Namespace:
+    """Parse tham số CLI cho lệnh ingest tài liệu."""
     parser = argparse.ArgumentParser(description="Ingest PDF documents into Qdrant.")
     parser.add_argument(
         "--rebuild",
@@ -464,6 +480,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _configure_console_encoding() -> None:
+    """Cấu hình stdout/stderr dùng UTF-8 khi chạy CLI trên Windows."""
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8", errors="replace")

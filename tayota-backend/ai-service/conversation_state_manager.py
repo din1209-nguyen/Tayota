@@ -49,22 +49,27 @@ class ConversationState:
     status: str = "active"
 
     def update_slots(self, new_slots: Dict[str, Any]) -> None:
+        """Gộp slot mới vào state và cập nhật thời điểm thay đổi."""
         from slot_extractor import merge_slots
 
         self.slots = merge_slots(self.slots, new_slots)
         self.updated_at = time.time()
 
     def get_filled_slots(self) -> Dict[str, Any]:
+        """Trả về các slot đã có giá trị."""
         return {k: v for k, v in self.slots.items() if v is not None}
 
     def get_missing_slots(self) -> List[str]:
+        """Liệt kê các slot vẫn còn thiếu thông tin."""
         return [k for k, v in self.slots.items() if v is None]
 
     def has_enough_info(self) -> bool:
+        """Kiểm tra state đã có ít nhất một slot quan trọng để tư vấn chưa."""
         key_slots = ["budget", "seats", "purpose"]
         return any(self.slots.get(slot) is not None for slot in key_slots)
 
     def add_turn(self, user_msg: str, assistant_msg: str) -> None:
+        """Thêm một cặp user/assistant vào lịch sử hội thoại."""
         self.history.append({"role": "user", "content": user_msg})
         self.history.append({"role": "assistant", "content": assistant_msg})
         self.turn_count += 1
@@ -75,9 +80,11 @@ class ConversationState:
             self.history = self.history[-max_msgs:]
 
     def get_recent_history(self, n_turns: int = 3) -> List[Dict[str, str]]:
+        """Lấy một số lượt hội thoại gần nhất để đưa vào prompt."""
         return self.history[-(n_turns * 2) :]
 
     def update_stage(self, intent: str) -> None:
+        """Cập nhật intent cuối và stage hội thoại dựa trên intent mới."""
         self.last_intent = intent
         self.intent_history.append(intent)
         self.updated_at = time.time()
@@ -90,9 +97,11 @@ class ConversationState:
             self.stage = STAGE_ADVISING
 
     def is_expired(self) -> bool:
+        """Kiểm tra session đã quá thời gian TTL chưa."""
         return (time.time() - self.updated_at) > SESSION_TTL_SECS
 
     def summary(self) -> Dict[str, Any]:
+        """Tạo bản tóm tắt ngắn của session để trả về API hoặc debug."""
         return {
             "session_id": self.session_id,
             "user_id": self.user_id,
@@ -110,6 +119,7 @@ class ConversationStateManager:
     """In-memory state manager, kept for explicit local tests only."""
 
     def __init__(self):
+        """Khởi tạo kho state và chat log trong bộ nhớ."""
         self._sessions: Dict[str, ConversationState] = {}
         self.chat_messages: List[Dict[str, Any]] = []
 
@@ -118,12 +128,14 @@ class ConversationStateManager:
         session_id: Optional[str] = None,
         user_id: Optional[str] = None,
     ) -> ConversationState:
+        """Tạo session mới trong bộ nhớ."""
         sid = session_id or str(uuid.uuid4())
         state = ConversationState(session_id=sid, user_id=user_id)
         self._sessions[sid] = state
         return state
 
     def get(self, session_id: str) -> Optional[ConversationState]:
+        """Lấy session từ bộ nhớ và loại bỏ session đã hết hạn."""
         state = self._sessions.get(session_id)
         if state and state.is_expired():
             self.delete(session_id)
@@ -135,6 +147,7 @@ class ConversationStateManager:
         session_id: str,
         user_id: Optional[str] = None,
     ) -> ConversationState:
+        """Lấy session hiện có hoặc tạo mới nếu chưa tồn tại."""
         state = self.get(session_id)
         if state is None:
             state = self.create(session_id, user_id=user_id)
@@ -145,9 +158,11 @@ class ConversationStateManager:
         return state
 
     def save(self, state: ConversationState) -> None:
+        """Lưu state vào kho bộ nhớ."""
         self._sessions[state.session_id] = state
 
     def delete(self, session_id: str) -> None:
+        """Xóa session khỏi kho bộ nhớ."""
         self._sessions.pop(session_id, None)
 
     def reset(
@@ -155,19 +170,23 @@ class ConversationStateManager:
         session_id: str,
         user_id: Optional[str] = None,
     ) -> ConversationState:
+        """Reset session bằng cách xóa state cũ và tạo state mới."""
         self.delete(session_id)
         return self.create(session_id, user_id=user_id)
 
     def purge_expired(self) -> int:
+        """Xóa toàn bộ session hết hạn và trả về số lượng đã xóa."""
         expired = [sid for sid, state in self._sessions.items() if state.is_expired()]
         for sid in expired:
             del self._sessions[sid]
         return len(expired)
 
     def active_count(self) -> int:
+        """Đếm số session hiện còn trong bộ nhớ."""
         return len(self._sessions)
 
     def all_summaries(self) -> List[Dict[str, Any]]:
+        """Trả về tóm tắt của tất cả session trong bộ nhớ."""
         return [state.summary() for state in self._sessions.values()]
 
     def list_user_sessions(
@@ -177,6 +196,7 @@ class ConversationStateManager:
         limit: int = 50,
         offset: int = 0,
     ) -> List[Dict[str, Any]]:
+        """Liệt kê session của một user từ kho bộ nhớ."""
         sessions = [
             {
                 **state.summary(),
@@ -209,6 +229,7 @@ class ConversationStateManager:
         model_used: str,
         rule_triggered: str,
     ) -> None:
+        """Ghi một bản log chat vào danh sách trong bộ nhớ."""
         self.chat_messages.append(
             {
                 "session_id": session_id,
@@ -232,6 +253,7 @@ class ConversationStateManager:
         limit: int = 50,
         offset: int = 0,
     ) -> List[Dict[str, Any]]:
+        """Liệt kê chat log của một session từ kho bộ nhớ."""
         messages = [
             dict(message)
             for message in self.chat_messages
@@ -252,6 +274,7 @@ class MongoConversationStateManager:
         sessions_collection: str = "ai_sessions",
         messages_collection: str = "ai_chat_messages",
     ):
+        """Khởi tạo cấu hình kết nối MongoDB cho session và chat log."""
         self.mongo_uri = mongo_uri or os.getenv("MONGO_URI", "mongodb://localhost:27017")
         self.db_name = db_name or os.getenv("MONGO_DB", "tayota_ai_db")
         self.sessions_collection = sessions_collection
@@ -260,6 +283,7 @@ class MongoConversationStateManager:
         self._db = None
 
     def _get_client(self):
+        """Khởi tạo lazy MongoClient và tái sử dụng cho các thao tác sau."""
         if MongoClient is None:
             raise MongoStateError(
                 "MongoDB dependency is not installed. Run `pip install -r requirements.txt`."
@@ -273,19 +297,23 @@ class MongoConversationStateManager:
         return self._client
 
     def _get_db(self):
+        """Lấy database MongoDB đã cấu hình."""
         if self._db is None:
             self._db = self._get_client()[self.db_name]
         return self._db
 
     @property
     def sessions(self):
+        """Trả về collection lưu session hội thoại."""
         return self._get_db()[self.sessions_collection]
 
     @property
     def messages(self):
+        """Trả về collection lưu lịch sử chat."""
         return self._get_db()[self.messages_collection]
 
     def ping(self) -> bool:
+        """Kiểm tra kết nối MongoDB bằng lệnh ping."""
         try:
             self._get_client().admin.command("ping")
             return True
@@ -299,12 +327,14 @@ class MongoConversationStateManager:
         session_id: Optional[str] = None,
         user_id: Optional[str] = None,
     ) -> ConversationState:
+        """Tạo session mới và lưu vào MongoDB."""
         sid = session_id or str(uuid.uuid4())
         state = ConversationState(session_id=sid, user_id=user_id)
         self.save(state)
         return state
 
     def get(self, session_id: str) -> Optional[ConversationState]:
+        """Tải một session từ MongoDB theo session_id."""
         try:
             payload = self.sessions.find_one({"_id": session_id})
         except PyMongoError as exc:
@@ -322,6 +352,7 @@ class MongoConversationStateManager:
         session_id: str,
         user_id: Optional[str] = None,
     ) -> ConversationState:
+        """Tải session từ MongoDB hoặc tạo mới nếu chưa có."""
         state = self.get(session_id)
         if state is None:
             return self.create(session_id, user_id=user_id)
@@ -332,6 +363,7 @@ class MongoConversationStateManager:
         return state
 
     def save(self, state: ConversationState) -> None:
+        """Ghi đè/upsert state hội thoại vào MongoDB."""
         document = self._state_to_document(state)
         try:
             self.sessions.replace_one(
@@ -345,6 +377,7 @@ class MongoConversationStateManager:
             ) from exc
 
     def delete(self, session_id: str) -> None:
+        """Xóa một session khỏi MongoDB."""
         try:
             self.sessions.delete_one({"_id": session_id})
         except PyMongoError as exc:
@@ -357,10 +390,12 @@ class MongoConversationStateManager:
         session_id: str,
         user_id: Optional[str] = None,
     ) -> ConversationState:
+        """Reset session MongoDB bằng cách xóa state cũ và tạo lại."""
         self.delete(session_id)
         return self.create(session_id, user_id=user_id)
 
     def active_count(self) -> int:
+        """Đếm số session đang active trong MongoDB."""
         try:
             return self.sessions.count_documents({"status": "active"})
         except PyMongoError as exc:
@@ -373,6 +408,7 @@ class MongoConversationStateManager:
         limit: int = 50,
         offset: int = 0,
     ) -> List[Dict[str, Any]]:
+        """Liệt kê các session của một user từ MongoDB theo thứ tự mới nhất."""
         try:
             cursor = (
                 self.sessions.find({"user_id": user_id})
@@ -400,6 +436,7 @@ class MongoConversationStateManager:
         model_used: str,
         rule_triggered: str,
     ) -> None:
+        """Lưu một lượt chat hoàn chỉnh vào MongoDB."""
         try:
             self.messages.insert_one(
                 {
@@ -428,6 +465,7 @@ class MongoConversationStateManager:
         limit: int = 50,
         offset: int = 0,
     ) -> List[Dict[str, Any]]:
+        """Lấy lịch sử chat của một session từ MongoDB."""
         try:
             cursor = (
                 self.messages.find({"session_id": session_id})
@@ -447,6 +485,7 @@ class MongoConversationStateManager:
             ) from exc
 
     def _state_to_document(self, state: ConversationState) -> Dict[str, Any]:
+        """Chuyển ConversationState thành document MongoDB."""
         payload = asdict(state)
         payload["_id"] = state.session_id
         payload["recent_history"] = payload.pop("history")
@@ -461,6 +500,7 @@ class MongoConversationStateManager:
         return payload
 
     def _state_from_document(self, document: Dict[str, Any]) -> ConversationState:
+        """Khôi phục ConversationState từ document MongoDB."""
         payload = dict(document)
         payload.pop("_id", None)
         payload.pop("created_at_iso", None)
@@ -471,6 +511,7 @@ class MongoConversationStateManager:
         return ConversationState(**{k: v for k, v in payload.items() if k in allowed})
 
     def _session_summary_from_document(self, document: Dict[str, Any]) -> Dict[str, Any]:
+        """Tạo session summary dạng API từ document MongoDB."""
         slots = document.get("slots") or {}
         history = document.get("recent_history") or []
         return {
@@ -488,6 +529,7 @@ class MongoConversationStateManager:
 
 
 def _build_state_manager():
+    """Chọn backend state manager theo biến môi trường STATE_BACKEND."""
     backend = os.getenv("STATE_BACKEND", "mongo").lower()
     if backend == "memory":
         return ConversationStateManager()

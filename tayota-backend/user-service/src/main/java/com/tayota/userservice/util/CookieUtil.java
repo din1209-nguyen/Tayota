@@ -8,11 +8,15 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class CookieUtil {
-    // Thời gian hết hạn của refresh-token, dùng để set maxAge cho cookie refresh_token
+    // Định nghĩa tên cookie dùng để lưu sessionId của phiên chat
+    public static final String CHAT_SESSION_COOKIE = "chat_session";
+    public static final int CHAT_SESSION_MAX_AGE_SEC = 24 * 60 * 60;
+
+    // Lưu thời gian hết hạn của refresh-token để set maxAge cho cookie refresh_token
     @Value("${jwt.refresh-token-expiration}")
     private long jwtRefreshTokenExpirationMs;
 
-    // Dùng cho Https nếu true, ngược lại Http
+    // Xác định cookie có dùng thuộc tính Secure hay không
     @Value("${cookie.secure}")
     private boolean secure;
 
@@ -36,26 +40,25 @@ public class CookieUtil {
 
     // Xóa Refresh Token khỏi Cookie khi Logout
     public void clearRefreshTokenCookie(HttpServletResponse response) {
-        // Ghi đè cookie cũ với giá trị null và maxAge = 0 để trình duyệt tự xóa
+        // Ghi đè cookie cũ với maxAge = 0 để trình duyệt tự xóa
         setCookie(response, "refresh_token", null, 0);
     }
 
     // Thiết lập Cookie vào HttpServletResponse
-    private void setCookie(HttpServletResponse response, String name, String value, int maxAgeSec) {
-        // Nếu value null → dùng chuỗi rỗng (cần khi xóa cookie)
+    public void setCookie(HttpServletResponse response, String name, String value, int maxAgeSec) {
+        // Chuyển giá trị null thành chuỗi rỗng khi cần xóa cookie
         String cookieValue = (value == null) ? "" : value;
 
         // Tạo chuỗi Secure nếu bật HTTPS
         String secureAttribute = secure ? "Secure; " : "";
 
-        /* Vì HttpServletResponse mặc định không hỗ trợ thuộc tính SameSite nên phải cấu hình Header thủ công */
+        /* Cấu hình Header thủ công vì HttpServletResponse mặc định không hỗ trợ thuộc tính SameSite */
 
         // Tạo header Cookie với các thuộc tính bảo mật:
-        // HttpOnly: Ngăn JavaScript truy cập cookie (chống XSS)
-        // Secure: Chỉ gửi cookie qua HTTPS (khuyến nghị bật ở production)
-        // SameSite=Lax: Giảm rủi ro CSRF cho refresh-token cookie nhưng vẫn phù hợp với luồng điều hướng thông thường
-        // Access-token không lưu cookie; client lưu phía mình và gửi qua header Authorization: Bearer <token>
-        // Path=/: Áp dụng cookie cho toàn bộ domain
+        // Ngăn JavaScript truy cập cookie bằng HttpOnly
+        // Chỉ gửi cookie qua HTTPS khi bật Secure
+        // Giảm rủi ro CSRF bằng SameSite=Lax
+        // Áp dụng cookie cho toàn bộ domain bằng Path=/
         String cookieHeader = String.format(
                 "%s=%s; Max-Age=%d; Path=/; HttpOnly; %sSameSite=Lax",
                 name,

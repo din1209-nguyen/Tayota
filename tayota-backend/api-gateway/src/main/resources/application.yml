@@ -13,6 +13,12 @@ spring:
       server:
         webflux:
           routes:
+            - id: user-service-ws-route
+              uri: ws://${USER_SERVICE_HOST:user-service}:${USER_SERVICE_PORT:8091}
+              predicates:
+                - Path=/user/chat/ws/**
+              filters:
+                - StripPrefix=1
             - id: user-service-route
               uri: http://${USER_SERVICE_HOST:user-service}:${USER_SERVICE_PORT:8091}
               predicates:

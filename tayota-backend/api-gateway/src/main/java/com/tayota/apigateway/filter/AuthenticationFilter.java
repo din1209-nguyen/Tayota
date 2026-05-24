@@ -60,14 +60,15 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             PublicEndpoint.of(HttpMethod.POST, "/user/forgot-password/verify-otp"),
             PublicEndpoint.of(HttpMethod.PATCH, "/user/forgot-password/reset-password"),
 
+            PublicEndpoint.of(HttpMethod.GET, "/user/chat/ws/*"),
+            PublicEndpoint.of(HttpMethod.POST, "/user/chat/sessions/current"),
+            PublicEndpoint.of(HttpMethod.GET, "/user/chat/sessions/current/messages"),
+            PublicEndpoint.of(HttpMethod.POST, "/user/chat/messages"),
+
             PublicEndpoint.of(HttpMethod.GET, "/car/catalog/**"),
-            PublicEndpoint.of(HttpMethod.GET, "/car/car-styles"),
             PublicEndpoint.of(HttpMethod.GET, "/car/car-styles/**"),
-            PublicEndpoint.of(HttpMethod.GET, "/car/car-series"),
             PublicEndpoint.of(HttpMethod.GET, "/car/car-series/**"),
-            PublicEndpoint.of(HttpMethod.GET, "/car/car-versions"),
             PublicEndpoint.of(HttpMethod.GET, "/car/car-versions/**"),
-            PublicEndpoint.of(HttpMethod.GET, "/car/accessories"),
             PublicEndpoint.of(HttpMethod.GET, "/car/accessories/**"),
 
             PublicEndpoint.of(HttpMethod.POST, "/operation/api/appointments/test-drive/guest")

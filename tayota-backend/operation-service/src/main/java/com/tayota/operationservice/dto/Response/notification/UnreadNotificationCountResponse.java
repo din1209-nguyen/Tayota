@@ -1,4 +1,4 @@
-package com.tayota.operationservice.dto.Response.notification;
+package com.tayota.operationservice.dto.response.notification;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

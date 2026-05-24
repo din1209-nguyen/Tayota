@@ -10,7 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableAsync
 @EnableCaching
 @EnableScheduling
-@SpringBootApplication(scanBasePackages = {"com.tayota.operationservice", "com.tayota.commoncore"})
+@SpringBootApplication
 public class OperationServiceApplication {
 
     public static void main(String[] args) {

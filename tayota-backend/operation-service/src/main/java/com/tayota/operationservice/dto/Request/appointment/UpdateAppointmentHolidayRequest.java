@@ -1,4 +1,4 @@
-package com.tayota.operationservice.dto.Request.appointment;
+package com.tayota.operationservice.dto.request.appointment;
 
 import jakarta.validation.constraints.Size;
 import lombok.Getter;

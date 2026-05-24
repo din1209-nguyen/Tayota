@@ -1,4 +1,4 @@
-package com.tayota.operationservice.dto.Response.appointment;
+package com.tayota.operationservice.dto.response.appointment;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

@@ -1,7 +1,7 @@
 package com.tayota.operationservice.util;
 
-import com.tayota.operationservice.dto.Response.DeviceResponseDTO;
-import com.tayota.operationservice.object.UserSession;
+import com.tayota.operationservice.dto.response.auth.DeviceResponseDTO;
+import com.tayota.operationservice.object.auth.UserSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

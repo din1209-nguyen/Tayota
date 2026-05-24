@@ -1,4 +1,4 @@
-package com.tayota.operationservice.dto.Response.workorder;
+package com.tayota.operationservice.dto.response.workorder;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

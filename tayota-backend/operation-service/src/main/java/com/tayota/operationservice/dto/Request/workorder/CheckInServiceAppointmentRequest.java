@@ -1,4 +1,4 @@
-package com.tayota.operationservice.dto.Request.workorder;
+package com.tayota.operationservice.dto.request.workorder;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;

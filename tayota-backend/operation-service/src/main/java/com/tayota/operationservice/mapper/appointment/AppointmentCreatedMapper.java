@@ -2,7 +2,7 @@ package com.tayota.operationservice.mapper.appointment;
 
 
 import com.tayota.operationservice.config.AppointmentBookingProperties;
-import com.tayota.operationservice.dto.Response.appointment.AppointmentCreatedResponse;
+import com.tayota.operationservice.dto.response.appointment.AppointmentCreatedResponse;
 import com.tayota.operationservice.entity.appointment.Appointment;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

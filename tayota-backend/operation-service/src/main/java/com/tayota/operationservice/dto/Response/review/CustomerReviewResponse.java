@@ -1,4 +1,4 @@
-package com.tayota.operationservice.dto.Response.review;
+package com.tayota.operationservice.dto.response.review;
 
 import com.tayota.operationservice.enums.review.ReviewType;
 import com.tayota.operationservice.enums.review.ReviewStatus;

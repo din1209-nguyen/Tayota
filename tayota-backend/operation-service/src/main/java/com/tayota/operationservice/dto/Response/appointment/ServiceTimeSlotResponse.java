@@ -1,4 +1,4 @@
-package com.tayota.operationservice.dto.Response.appointment;
+package com.tayota.operationservice.dto.response.appointment;
 
 import com.tayota.operationservice.enums.appointment.AppointmentType;
 import lombok.AllArgsConstructor;

@@ -1,4 +1,4 @@
-package com.tayota.operationservice.dto.Response.workorder;
+package com.tayota.operationservice.dto.response.workorder;
 
 import com.tayota.operationservice.enums.workorder.BillingType;
 import com.tayota.operationservice.enums.workorder.ServiceItemType;

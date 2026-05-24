@@ -1,6 +1,6 @@
-package com.tayota.operationservice.dto.Response.workorder;
+package com.tayota.operationservice.dto.response.workorder;
 
-import com.tayota.operationservice.dto.Response.appointment.AppointmentManagementDetailResponse;
+import com.tayota.operationservice.dto.response.appointment.AppointmentManagementDetailResponse;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 

@@ -1,7 +1,7 @@
 package com.tayota.operationservice.util;
 
-import com.tayota.operationservice.object.TokenPair;
-import com.tayota.operationservice.object.UserSession;
+import com.tayota.operationservice.object.auth.TokenPair;
+import com.tayota.operationservice.object.auth.UserSession;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;

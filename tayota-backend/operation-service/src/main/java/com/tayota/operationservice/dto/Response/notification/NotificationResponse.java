@@ -1,6 +1,6 @@
-package com.tayota.operationservice.dto.Response.notification;
+package com.tayota.operationservice.dto.response.notification;
 
-import com.tayota.operationservice.enums.NotificationType;
+import com.tayota.operationservice.enums.notification.NotificationType;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 

@@ -1,8 +1,8 @@
 package com.tayota.operationservice.mapper.workorder;
 
-import com.tayota.operationservice.dto.Response.workorder.ServiceItemResponse;
-import com.tayota.operationservice.dto.Response.workorder.ServiceTicketInfoResponse;
-import com.tayota.operationservice.dto.Response.workorder.ServiceTicketSummaryResponse;
+import com.tayota.operationservice.dto.response.workorder.ServiceItemResponse;
+import com.tayota.operationservice.dto.response.workorder.ServiceTicketInfoResponse;
+import com.tayota.operationservice.dto.response.workorder.ServiceTicketSummaryResponse;
 import com.tayota.operationservice.entity.workorder.ServiceItem;
 import com.tayota.operationservice.entity.workorder.ServiceTicket;
 import org.springframework.stereotype.Component;

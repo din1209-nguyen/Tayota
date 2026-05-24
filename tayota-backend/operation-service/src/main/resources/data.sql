@@ -1,75 +1,173 @@
-INSERT INTO "USER" (id, created_at, email, login_provider, password_hash, provider_user_id, role, status) VALUES
-('be15194d-2862-4cf9-adaf-18afeda6f586', '2026-04-26 08:04:11.052640+00', 'admin@tayota.com', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'ADMIN', 'ACTIVE'),
-('c57e3781-c3cb-4a1a-b58a-84049d99cf15', '2026-04-26 08:04:11.052640+00', 'manager@tayota.com', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'MANAGER', 'ACTIVE'),
-('d59b9f21-2236-402f-9c6f-6c37c5b51500', '2026-04-26 08:04:11.052640+00', 'assistant@tayota.com', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'ASSISTANT', 'ACTIVE'),
-('a477a131-b946-4533-95b4-41c29d241f42', '2026-04-26 08:04:11.052640+00', 'mechanic@tayota.com', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'MECHANIC', 'ACTIVE'),
-('df393a04-bef9-4afb-9858-32fb983264db', '2026-04-24 17:53:10.256696+00', 'n23dccn146@student.ptithcm.edu.vn', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'MANAGER', 'ACTIVE'),
-('49cfd883-59db-4817-9608-e356751bc29b', '2026-04-26 09:00:43.478499+00', 'admin.system@tayota.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'ADMIN', 'ACTIVE'),
-('f19cfc9c-6dd5-4602-99e1-38110f3a255c', '2026-04-26 09:00:43.478499+00', 'manager.sales@tayota.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'MANAGER', 'ACTIVE'),
-('4615e6ce-ae7f-43ee-a5f8-326178d79372', '2026-04-26 09:00:43.478499+00', 'manager.service@tayota.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'MANAGER', 'ACTIVE'),
-('5bd7d2b7-6337-4280-8437-93f4b951abb9', '2026-04-26 09:00:43.478499+00', 'assistant.jane@tayota.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'ASSISTANT', 'ACTIVE'),
-('7458db61-84bf-4bbd-b17f-edb6165ab1ed', '2026-04-26 09:00:43.478499+00', 'assistant.bob@tayota.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'ASSISTANT', 'ACTIVE'),
-('c1875718-dac5-4537-968c-b7b90ea1c734', '2026-04-26 09:00:43.478499+00', 'assistant.alice@tayota.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'ASSISTANT', 'ACTIVE'),
-('1b33ea6a-ca39-4960-8569-3c9b8a9f4a00', '2026-04-26 09:00:43.478499+00', 'assistant.mark@tayota.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'ASSISTANT', 'ACTIVE'),
-('bbe36a81-1c7f-4178-b4d5-ad3d06d9b462', '2026-04-26 09:00:43.478499+00', 'mechanic.mike@tayota.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'MECHANIC', 'ACTIVE'),
-('de6bb9e0-b872-4dea-9bab-e9d1d3e1bc64', '2026-04-26 09:00:43.478499+00', 'mechanic.tom@tayota.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'MECHANIC', 'ACTIVE'),
-('0f977e8a-4d18-4855-b3e4-333e0139f3cf', '2026-04-26 09:00:43.478499+00', 'mechanic.steve@tayota.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'MECHANIC', 'ACTIVE'),
-('48490f9d-b457-4b82-8d21-6ca88bd77ef9', '2026-04-26 09:00:43.478499+00', 'mechanic.jerry@tayota.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'MECHANIC', 'ACTIVE'),
-('436d32b1-f5dc-4808-b2c8-dc33d2217e98', '2026-04-26 09:00:43.478499+00', 'mechanic.paul@tayota.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'MECHANIC', 'ACTIVE'),
-('10bf55ed-c915-4144-8198-6fac59cd9631', '2026-04-26 09:00:43.478499+00', 'mechanic.david@tayota.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'MECHANIC', 'ACTIVE'),
-('46d6a821-cc2d-45fc-a2a3-7d7301662c07', '2026-04-26 09:00:43.478499+00', 'mechanic.john@tayota.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'MECHANIC', 'ACTIVE'),
-('d009af19-8982-4224-b025-b7f55dd1c5c0', '2026-04-26 09:00:43.478499+00', 'mechanic.chris@tayota.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'MECHANIC', 'ACTIVE'),
-('4e932a8f-e726-49aa-b6ad-30d1902762a9', '2026-04-26 09:00:43.478499+00', 'customer1@gmail.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'USER', 'ACTIVE'),
-('67bdf93e-404a-4dc2-95fb-0f9ec26895d2', '2026-04-26 09:00:43.478499+00', 'customer2@gmail.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'USER', 'ACTIVE'),
-('186b94ff-95f9-4d8a-b40c-d2b5cba151d1', '2026-04-26 09:00:43.478499+00', 'customer3@gmail.com', 'GOOGLE', NULL, '100123456789012345678', 'USER', 'ACTIVE'),
-('47630c03-41b5-4648-acc2-3397bb44da1e', '2026-04-26 09:00:43.478499+00', 'customer4@gmail.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'USER', 'ACTIVE'),
-('8f84952f-fbcd-4bd5-bb13-d041ad749291', '2026-04-26 09:00:43.478499+00', 'customer5@gmail.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'USER', 'ACTIVE'),
-('b7baedfe-b900-46ed-bf23-288b38b67a18', '2026-04-26 09:00:43.478499+00', 'customer6@gmail.com', 'GOOGLE', NULL, '100123456789012345679', 'USER', 'ACTIVE'),
-('f0efce8c-413a-481d-a757-901b8ecde4e8', '2026-04-26 09:00:43.478499+00', 'customer7@yahoo.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'USER', 'ACTIVE'),
-('902434d2-fedb-4fee-8a96-fbdd36d21660', '2026-04-26 09:00:43.478499+00', 'customer8@hotmail.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'USER', 'ACTIVE'),
-('922a77ed-3faf-4256-a1e0-6b737bd1f8da', '2026-04-26 09:00:43.478499+00', 'customer9@gmail.com', 'GOOGLE', NULL, '100123456789012345680', 'USER', 'ACTIVE'),
-('f4aecea9-0649-4eb2-92ff-82ebc7e3b419', '2026-04-26 09:00:43.478499+00', 'customer10@gmail.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'USER', 'ACTIVE'),
-('87ce7bfc-1ba7-4322-a247-c3e7c163c57b', '2026-04-26 09:00:43.478499+00', 'customer11@outlook.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'USER', 'ACTIVE'),
-('23822b63-b94e-41df-9cc7-575002287ae7', '2026-04-26 09:00:43.478499+00', 'customer12@gmail.com', 'GOOGLE', NULL, '100123456789012345681', 'USER', 'ACTIVE'),
-('0918921d-6935-4e51-b101-fd856df0d6a0', '2026-04-26 09:00:43.478499+00', 'customer13@gmail.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'USER', 'ACTIVE'),
-('bb7add4f-7975-4a14-9e95-4436145d0cf0', '2026-04-26 09:00:43.478499+00', 'cusstomer14@gmail.com', 'GOOGLE', NULL, '100123456789012345682', 'MANAGER', 'ACTIVE'),
-('a86222bb-169e-44d3-af14-255ecff9b823', '2026-04-26 09:00:43.478499+00', 'cusstomer15@gmail.com', 'LOCAL', '$2a$10$TKh8H1.PfQx37YgCzweVMe.eRzzv4qA1', NULL, 'USER', 'ACTIVE')
-ON CONFLICT (id) DO NOTHING;
+-- Operation service baseline seed.
+-- Password hash below is the existing project BCrypt hash used by local seed users.
+-- The insert style is compatible with PostgreSQL and H2 PostgreSQL mode.
 
-INSERT INTO "USER_PROFILE" (user_id, fullname, phone, gender, birth_date, address, avatar_url) VALUES
-('be15194d-2862-4cf9-adaf-18afeda6f586', 'Nguyễn Hoàng Admin', '0901112233', TRUE, '1985-03-15', '78 Nguyễn Huệ, Q.1, TP.HCM', '/default-avatar.png'),
-('c57e3781-c3cb-4a1a-b58a-84049d99cf15', 'Trần Minh Quản', '0901223344', TRUE, '1988-07-22', '12 Lê Duẩn, Q.1, TP.HCM', '/default-avatar.png'),
-('d59b9f21-2236-402f-9c6f-6c37c5b51500', 'Lê Thị Hỗ Trợ', '0901334455', FALSE, '1992-11-08', '45 Võ Văn Tần, Q.3, TP.HCM', '/default-avatar.png'),
-('a477a131-b946-4533-95b4-41c29d241f42', 'Phạm Văn Sửa Xe', '0901445566', TRUE, '1990-05-30', '9 Xô Viết Nghệ Tĩnh, Q.Bình Thạnh, TP.HCM', '/default-avatar.png'),
-('df393a04-bef9-4afb-9858-32fb983264db', 'Nguyễn Văn Sinh Viên', '0901556677', TRUE, '2002-01-20', 'Ký túc xá PTIT, TP.HCM', '/default-avatar.png'),
-('49cfd883-59db-4817-9608-e356751bc29b', 'Hệ thống Admin', '0901667788', TRUE, '1984-09-01', 'Tòa nhà Tayota, Q.7, TP.HCM', '/default-avatar.png'),
-('f19cfc9c-6dd5-4602-99e1-38110f3a255c', 'Hoàng Lan Sales', '0901778899', FALSE, '1991-04-12', '156 Nguyễn Văn Linh, Q.7, TP.HCM', '/default-avatar.png'),
-('4615e6ce-ae7f-43ee-a5f8-326178d79372', 'Đỗ Hải Service', '0901889900', TRUE, '1987-12-03', '200 Huỳnh Tấn Phát, Q.7, TP.HCM', '/default-avatar.png'),
-('5bd7d2b7-6337-4280-8437-93f4b951abb9', 'Jane Nguyễn', '0901990011', FALSE, '1995-06-18', '88 Pasteur, Q.1, TP.HCM', '/default-avatar.png'),
-('7458db61-84bf-4bbd-b17f-edb6165ab1ed', 'Bob Trần', '0902001122', TRUE, '1993-02-25', '15 Hai Bà Trưng, Q.1, TP.HCM', '/default-avatar.png'),
-('c1875718-dac5-4537-968c-b7b90ea1c734', 'Alice Lê', '0902112233', FALSE, '1994-08-07', '33 Điện Biên Phủ, Q.1, TP.HCM', '/default-avatar.png'),
-('1b33ea6a-ca39-4960-8569-3c9b8a9f4a00', 'Mark Phạm', '0902223344', TRUE, '1996-01-11', '7 Cách Mạng Tháng 8, Q.3, TP.HCM', '/default-avatar.png'),
-('bbe36a81-1c7f-4178-b4d5-ad3d06d9b462', 'Mike Võ', '0902334455', TRUE, '1989-10-14', '120 Phạm Văn Đồng, Q.Thủ Đức, TP.HCM', '/default-avatar.png'),
-('de6bb9e0-b872-4dea-9bab-e9d1d3e1bc64', 'Tom Đặng', '0902445566', TRUE, '1991-03-09', '55 Quang Trung, Q.Gò Vấp, TP.HCM', '/default-avatar.png'),
-('0f977e8a-4d18-4855-b3e4-333e0139f3cf', 'Steve Bùi', '0902556677', TRUE, '1988-11-21', '22 Nguyễn Oanh, Q.Gò Vấp, TP.HCM', '/default-avatar.png'),
-('48490f9d-b457-4b82-8d21-6ca88bd77ef9', 'Jerry Hoàng', '0902667788', TRUE, '1992-07-16', '18 Lê Văn Việt, Q.9, TP.HCM', '/default-avatar.png'),
-('436d32b1-f5dc-4808-b2c8-dc33d2217e98', 'Paul Ngô', '0902778899', TRUE, '1990-12-05', '60 Võ Văn Ngân, Q.Thủ Đức, TP.HCM', '/default-avatar.png'),
-('10bf55ed-c915-4144-8198-6fac59cd9631', 'David Lý', '0902889900', TRUE, '1993-05-28', '91 Hoàng Diệu 2, Q.Thủ Đức, TP.HCM', '/default-avatar.png'),
-('46d6a821-cc2d-45fc-a2a3-7d7301662c07', 'John Mai', '0902990011', TRUE, '1987-09-19', '44 Kha Vạn Cân, Q.Thủ Đức, TP.HCM', '/default-avatar.png'),
-('d009af19-8982-4224-b025-b7f55dd1c5c0', 'Chris Tăng', '0903001122', TRUE, '1994-04-02', '30 Phan Huy Ích, Q.Tân Bình, TP.HCM', '/default-avatar.png'),
-('4e932a8f-e726-49aa-b6ad-30d1902762a9', 'Nguyễn Văn An', '0903112233', TRUE, '1998-06-10', '105 Láng Hạ, Đống Đa, Hà Nội', '/default-avatar.png'),
-('67bdf93e-404a-4dc2-95fb-0f9ec26895d2', 'Trần Thị Bình', '0903223344', FALSE, '2000-02-14', '22 Kim Mã, Ba Đình, Hà Nội', '/default-avatar.png'),
-('186b94ff-95f9-4d8a-b40c-d2b5cba151d1', 'Lê Minh Cường', '0903334455', TRUE, '1997-09-25', 'Google user — Q.Cầu Giấy, Hà Nội', 'https://lh3.googleusercontent.com/a/default-user=s96-c'),
-('47630c03-41b5-4648-acc2-3397bb44da1e', 'Phạm Thu Dung', '0903445566', FALSE, '1999-11-30', '8 Trần Duy Hưng, Cầu Giấy, Hà Nội', '/default-avatar.png'),
-('8f84952f-fbcd-4bd5-bb13-d041ad749291', 'Hoàng Văn Em', '0903556677', TRUE, '2001-01-08', '45 Nguyễn Trãi, Thanh Xuân, Hà Nội', '/default-avatar.png'),
-('b7baedfe-b900-46ed-bf23-288b38b67a18', 'Đặng Thị Phương', '0903667788', FALSE, '1996-08-17', 'Google user — Hải Châu, Đà Nẵng', 'https://lh3.googleusercontent.com/a/default-user=s96-c'),
-('f0efce8c-413a-481d-a757-901b8ecde4e8', 'Võ Quốc Giang', '0903778899', TRUE, '1995-04-03', '12 Nguyễn Văn Linh, Hải Châu, Đà Nẵng', '/default-avatar.png'),
-('902434d2-fedb-4fee-8a96-fbdd36d21660', 'Bùi Thị Hoa', '0903889900', FALSE, '1994-12-22', '77 Lê Duẩn, Hải Châu, Đà Nẵng', '/default-avatar.png'),
-('922a77ed-3faf-4256-a1e0-6b737bd1f8da', 'Ngô Văn Kiên', '0903990011', TRUE, '2002-03-27', 'Google user — Nha Trang, Khánh Hòa', 'https://lh3.googleusercontent.com/a/default-user=s96-c'),
-('f4aecea9-0649-4eb2-92ff-82ebc7e3b419', 'Mai Thị Lan', '0904001122', FALSE, '1993-07-06', '5 Trần Phú, Nha Trang, Khánh Hòa', '/default-avatar.png'),
-('87ce7bfc-1ba7-4322-a247-c3e7c163c57b', 'Lý Văn Mạnh', '0904112233', TRUE, '1991-10-29', '60 Lê Hồng Phong, Q.Ninh Kiều, Cần Thơ', '/default-avatar.png'),
-('23822b63-b94e-41df-9cc7-575002287ae7', 'Tăng Thị Nga', '0904223344', FALSE, '1998-05-15', 'Google user — Ninh Kiều, Cần Thơ', 'https://lh3.googleusercontent.com/a/default-user=s96-c'),
-('0918921d-6935-4e51-b101-fd856df0d6a0', 'Phan Văn Oanh', '0904334455', TRUE, '2000-09-01', '101 Nguyễn Văn Cừ, Long Biên, Hà Nội', '/default-avatar.png'),
-('bb7add4f-7975-4a14-9e95-4436145d0cf0', 'Vũ Thị Phượng', '0904445566', FALSE, '1989-01-19', 'Google user — TP.HCM', 'https://lh3.googleusercontent.com/a/default-user=s96-c'),
-('a86222bb-169e-44d3-af14-255ecff9b823', 'Đinh Văn Quý', '0904556677', TRUE, '1997-06-24', '200 Võ Văn Kiệt, Q.5, TP.HCM', '/default-avatar.png')
-ON CONFLICT (user_id) DO NOTHING;
+INSERT INTO "USER" (id, created_at, email, login_provider, password_hash, provider_user_id, role, status)
+SELECT id, CURRENT_TIMESTAMP, email, login_provider, password_hash, provider_user_id, role, status
+FROM (VALUES
+    ('00000000-0000-0000-0000-000000000001', 'admin@tayota.com', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'ADMIN', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000002', 'manager@tayota.com', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'MANAGER', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000003', 'advisor@tayota.com', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'SERVICE_ADVISOR', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000004', 'mechanic@tayota.com', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'MECHANIC', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000005', 'customer@tayota.com', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'USER', 'ACTIVE')
+) AS seed(id, email, login_provider, password_hash, provider_user_id, role, status)
+WHERE NOT EXISTS (SELECT 1 FROM "USER" existing WHERE existing.id = seed.id);
+
+INSERT INTO "USER_PROFILE" (user_id, fullname, phone, gender, birth_date, address, avatar_url)
+SELECT user_id, fullname, phone, gender, birth_date, address, avatar_url
+FROM (VALUES
+    ('00000000-0000-0000-0000-000000000001', 'Tayota Admin', '0901000001', TRUE, DATE '1988-01-01', 'Tayota Head Office', '/default-avatar.png'),
+    ('00000000-0000-0000-0000-000000000002', 'Tayota Manager', '0901000002', TRUE, DATE '1990-01-01', 'Tayota Head Office', '/default-avatar.png'),
+    ('00000000-0000-0000-0000-000000000003', 'Tayota Service Advisor', '0901000003', TRUE, DATE '1992-01-01', 'Tayota District 1', '/default-avatar.png'),
+    ('00000000-0000-0000-0000-000000000004', 'Tayota Mechanic', '0901000004', TRUE, DATE '1993-01-01', 'Tayota District 1', '/default-avatar.png'),
+    ('00000000-0000-0000-0000-000000000005', 'Tayota Customer', '0901000005', TRUE, DATE '1998-01-01', 'Ho Chi Minh City', '/default-avatar.png')
+) AS seed(user_id, fullname, phone, gender, birth_date, address, avatar_url)
+WHERE NOT EXISTS (SELECT 1 FROM "USER_PROFILE" existing WHERE existing.user_id = seed.user_id);
+
+INSERT INTO "DEALERSHIP" (id, name, address, car_quantity, accessory_quantity, latitude, longitude, place_id, phone, operating_hours, is_active, created_at)
+SELECT id, name, address, car_quantity, accessory_quantity, latitude, longitude, place_id, phone, operating_hours, is_active, CURRENT_TIMESTAMP
+FROM (VALUES
+    ('10000000-0000-0000-0000-000000000001', 'Tayota District 1', '12 Le Duan, District 1, Ho Chi Minh City', 2, 2, 10.78123456, 106.70234567, 'tayota-district-1', '02811112222', '08:00 - 18:00', TRUE)
+) AS seed(id, name, address, car_quantity, accessory_quantity, latitude, longitude, place_id, phone, operating_hours, is_active)
+WHERE NOT EXISTS (SELECT 1 FROM "DEALERSHIP" existing WHERE existing.id = seed.id);
+
+INSERT INTO "SERVICE_ADVISOR" (id, dealership_id)
+SELECT id, dealership_id
+FROM (VALUES
+    ('00000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001')
+) AS seed(id, dealership_id)
+WHERE NOT EXISTS (SELECT 1 FROM "SERVICE_ADVISOR" existing WHERE existing.id = seed.id);
+
+INSERT INTO "MECHANIC" (id, dealership_id, specialty, average_rating, is_active)
+SELECT id, dealership_id, specialty, average_rating, is_active
+FROM (VALUES
+    ('00000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000001', 'General maintenance', 4.80, TRUE)
+) AS seed(id, dealership_id, specialty, average_rating, is_active)
+WHERE NOT EXISTS (SELECT 1 FROM "MECHANIC" existing WHERE existing.id = seed.id);
+
+INSERT INTO "CAR_STYLE" (id, name, description)
+SELECT id, name, description
+FROM (VALUES
+    ('20000000-0000-0000-0000-000000000001', 'Sedan', 'Comfortable passenger cars for city and family usage'),
+    ('20000000-0000-0000-0000-000000000002', 'SUV', 'High-clearance cars for family and long-distance trips')
+) AS seed(id, name, description)
+WHERE NOT EXISTS (SELECT 1 FROM "CAR_STYLE" existing WHERE existing.id = seed.id);
+
+INSERT INTO "CAR_SERIES" (id, car_style_id, name, description, created_at)
+SELECT id, car_style_id, name, description, CURRENT_TIMESTAMP
+FROM (VALUES
+    ('21000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'Vios', 'Compact sedan series'),
+    ('21000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000002', 'Corolla Cross', 'Urban SUV series')
+) AS seed(id, car_style_id, name, description)
+WHERE NOT EXISTS (SELECT 1 FROM "CAR_SERIES" existing WHERE existing.id = seed.id);
+
+INSERT INTO "CAR_VERSION" (id, car_series_id, name, sale_percent, model_year, video_url, created_at)
+SELECT id, car_series_id, name, sale_percent, model_year, video_url, CURRENT_TIMESTAMP
+FROM (VALUES
+    ('22000000-0000-0000-0000-000000000001', '21000000-0000-0000-0000-000000000001', 'Vios 1.5G CVT', 0.00, 2026, 'https://example.com/videos/vios-15g.mp4'),
+    ('22000000-0000-0000-0000-000000000002', '21000000-0000-0000-0000-000000000002', 'Corolla Cross 1.8V', 0.00, 2026, 'https://example.com/videos/corolla-cross-18v.mp4')
+) AS seed(id, car_series_id, name, sale_percent, model_year, video_url)
+WHERE NOT EXISTS (SELECT 1 FROM "CAR_VERSION" existing WHERE existing.id = seed.id);
+
+INSERT INTO "CAR_SPECIFICATION" (car_version_id, origin, fuel, number_of_seats, length, width, height, capacity, cylinder_capacity, cylinder, gearbox, maximum_speed, acceleration, torque, gross_weight_allowance, trademarks)
+SELECT car_version_id, origin, fuel, number_of_seats, length, width, height, capacity, cylinder_capacity, cylinder, gearbox, maximum_speed, acceleration, torque, gross_weight_allowance, trademarks
+FROM (VALUES
+    ('22000000-0000-0000-0000-000000000001', 'Vietnam', 'Gasoline', 5, 4425, 1730, 1475, 42, '1496 cc', 4, 'CVT', 180, '11.0s', '140 Nm', 1550, 'Toyota'),
+    ('22000000-0000-0000-0000-000000000002', 'Thailand', 'Gasoline', 5, 4460, 1825, 1620, 47, '1798 cc', 4, 'CVT', 185, '10.5s', '172 Nm', 1850, 'Toyota')
+) AS seed(car_version_id, origin, fuel, number_of_seats, length, width, height, capacity, cylinder_capacity, cylinder, gearbox, maximum_speed, acceleration, torque, gross_weight_allowance, trademarks)
+WHERE NOT EXISTS (SELECT 1 FROM "CAR_SPECIFICATION" existing WHERE existing.car_version_id = seed.car_version_id);
+
+INSERT INTO "EXTERIOR_COLOR" (id, color_name)
+SELECT id, color_name
+FROM (VALUES
+    ('23000000-0000-0000-0000-000000000001', 'White Pearl'),
+    ('23000000-0000-0000-0000-000000000002', 'Attitude Black')
+) AS seed(id, color_name)
+WHERE NOT EXISTS (SELECT 1 FROM "EXTERIOR_COLOR" existing WHERE existing.id = seed.id);
+
+INSERT INTO "INTERIOR_COLOR" (id, color_name)
+SELECT id, color_name
+FROM (VALUES
+    ('24000000-0000-0000-0000-000000000001', 'Black'),
+    ('24000000-0000-0000-0000-000000000002', 'Beige')
+) AS seed(id, color_name)
+WHERE NOT EXISTS (SELECT 1 FROM "INTERIOR_COLOR" existing WHERE existing.id = seed.id);
+
+INSERT INTO "CAR_PRICE" (car_version_id, exterior_color_id, interior_color_id, price, ex_image_url, in_image_url)
+SELECT car_version_id, exterior_color_id, interior_color_id, price, ex_image_url, in_image_url
+FROM (VALUES
+    ('22000000-0000-0000-0000-000000000001', '23000000-0000-0000-0000-000000000001', '24000000-0000-0000-0000-000000000001', 545000000.00, '/images/cars/vios-white.png', '/images/cars/interior-black.png'),
+    ('22000000-0000-0000-0000-000000000002', '23000000-0000-0000-0000-000000000002', '24000000-0000-0000-0000-000000000002', 860000000.00, '/images/cars/corolla-cross-black.png', '/images/cars/interior-beige.png')
+) AS seed(car_version_id, exterior_color_id, interior_color_id, price, ex_image_url, in_image_url)
+WHERE NOT EXISTS (
+    SELECT 1 FROM "CAR_PRICE" existing
+    WHERE existing.car_version_id = seed.car_version_id
+      AND existing.exterior_color_id = seed.exterior_color_id
+      AND existing.interior_color_id = seed.interior_color_id
+);
+
+INSERT INTO "CAR_GALLERY" (id, car_version_id, image_url)
+SELECT id, car_version_id, image_url
+FROM (VALUES
+    ('25000000-0000-0000-0000-000000000001', '22000000-0000-0000-0000-000000000001', '/images/cars/vios-gallery-1.png'),
+    ('25000000-0000-0000-0000-000000000002', '22000000-0000-0000-0000-000000000002', '/images/cars/corolla-cross-gallery-1.png')
+) AS seed(id, car_version_id, image_url)
+WHERE NOT EXISTS (SELECT 1 FROM "CAR_GALLERY" existing WHERE existing.id = seed.id);
+
+INSERT INTO "CAR_ARTICLE" (id, car_version_id, type, title, content, image_url)
+SELECT id, car_version_id, type, title, content, image_url
+FROM (VALUES
+    ('26000000-0000-0000-0000-000000000001', '22000000-0000-0000-0000-000000000001', 'FEATURE', 'Vios 1.5G CVT overview', 'Reliable sedan for daily commuting.', '/images/articles/vios-overview.png'),
+    ('26000000-0000-0000-0000-000000000002', '22000000-0000-0000-0000-000000000002', 'FEATURE', 'Corolla Cross 1.8V overview', 'Flexible SUV for family trips.', '/images/articles/corolla-cross-overview.png')
+) AS seed(id, car_version_id, type, title, content, image_url)
+WHERE NOT EXISTS (SELECT 1 FROM "CAR_ARTICLE" existing WHERE existing.id = seed.id);
+
+INSERT INTO "CAR" (vin_id, car_version_id, dealership_id, engine_number, owner_user_id, status, producted_year, created_at)
+SELECT vin_id, car_version_id, dealership_id, engine_number, owner_user_id, status, producted_year, CURRENT_TIMESTAMP
+FROM (VALUES
+    ('TAYOTA00000000001', '22000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'ENG-TAYOTA-0001', NULL, 'IN_STOCK', TIMESTAMP '2026-01-01 00:00:00'),
+    ('TAYOTA00000000002', '22000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', 'ENG-TAYOTA-0002', '00000000-0000-0000-0000-000000000005', 'SOLD', TIMESTAMP '2026-01-01 00:00:00')
+) AS seed(vin_id, car_version_id, dealership_id, engine_number, owner_user_id, status, producted_year)
+WHERE NOT EXISTS (SELECT 1 FROM "CAR" existing WHERE existing.vin_id = seed.vin_id);
+
+INSERT INTO "ACCESSORY" (id, model, brand, price, description, use_content, reminder_content, type)
+SELECT id, model, brand, price, description, use_content, reminder_content, type
+FROM (VALUES
+    ('30000000-0000-0000-0000-000000000001', 'Dash Camera Basic', 'Tayota', 2500000.00, 'Front dash camera package', 'Install on windshield and connect to vehicle power.', 'Check recording status monthly.', 'ELECTRONIC'),
+    ('30000000-0000-0000-0000-000000000002', 'Floor Mat Standard', 'Tayota', 1200000.00, 'Durable all-weather floor mat', 'Place mats in correct seating position.', 'Clean with water and dry before reuse.', 'INTERIOR')
+) AS seed(id, model, brand, price, description, use_content, reminder_content, type)
+WHERE NOT EXISTS (SELECT 1 FROM "ACCESSORY" existing WHERE existing.id = seed.id);
+
+INSERT INTO "CAR_ACCESSORY" (car_version_id, accessory_id)
+SELECT car_version_id, accessory_id
+FROM (VALUES
+    ('22000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001'),
+    ('22000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000002')
+) AS seed(car_version_id, accessory_id)
+WHERE NOT EXISTS (
+    SELECT 1 FROM "CAR_ACCESSORY" existing
+    WHERE existing.car_version_id = seed.car_version_id
+      AND existing.accessory_id = seed.accessory_id
+);
+
+INSERT INTO "ACCESSORY_INVENTORY" (dealership_id, accessory_id, quantity, last_updated)
+SELECT dealership_id, accessory_id, quantity, CURRENT_TIMESTAMP
+FROM (VALUES
+    ('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 10),
+    ('10000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002', 20)
+) AS seed(dealership_id, accessory_id, quantity)
+WHERE NOT EXISTS (
+    SELECT 1 FROM "ACCESSORY_INVENTORY" existing
+    WHERE existing.dealership_id = seed.dealership_id
+      AND existing.accessory_id = seed.accessory_id
+);
+
+INSERT INTO "SERVICE_TIME_SLOT" (id, dealership_id, appointment_type, start_time, end_time, is_active, created_at, updated_at)
+SELECT id, dealership_id, appointment_type, start_time, end_time, is_active, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM (VALUES
+    ('40000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'TEST_DRIVE', TIME '09:00:00', TIME '10:00:00', TRUE),
+    ('40000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001', 'TEST_DRIVE', TIME '14:00:00', TIME '15:00:00', TRUE),
+    ('40000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001', 'SERVICE', TIME '10:00:00', TIME '11:00:00', TRUE),
+    ('40000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000001', 'SERVICE', TIME '15:00:00', TIME '16:00:00', TRUE)
+) AS seed(id, dealership_id, appointment_type, start_time, end_time, is_active)
+WHERE NOT EXISTS (SELECT 1 FROM "SERVICE_TIME_SLOT" existing WHERE existing.id = seed.id);

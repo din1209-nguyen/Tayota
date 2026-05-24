@@ -1,4 +1,4 @@
-package com.tayota.operationservice.dto.Request.review;
+package com.tayota.operationservice.dto.request.review;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

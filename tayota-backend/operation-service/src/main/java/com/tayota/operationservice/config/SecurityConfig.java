@@ -1,7 +1,7 @@
 package com.tayota.operationservice.config;
 
-import com.tayota.commoncore.filter.HeaderAuthenticationFilter;
-import com.tayota.operationservice.service.CustomUserDetailsService;
+import com.tayota.operationservice.filter.HeaderAuthenticationFilter;
+import com.tayota.operationservice.service.auth.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

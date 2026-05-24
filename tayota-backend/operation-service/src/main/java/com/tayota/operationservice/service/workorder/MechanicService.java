@@ -1,10 +1,10 @@
 package com.tayota.operationservice.service.workorder;
 
-import com.tayota.commoncore.exception.CustomException;
-import com.tayota.commoncore.util.SecurityContextUtil;
-import com.tayota.operationservice.dto.Response.workorder.MechanicResponse;
-import com.tayota.operationservice.entity.ServiceAdvisor;
-import com.tayota.operationservice.repository.ServiceAdvisorRepository;
+import com.tayota.operationservice.exception.CustomException;
+import com.tayota.operationservice.util.SecurityContextUtil;
+import com.tayota.operationservice.dto.response.workorder.MechanicResponse;
+import com.tayota.operationservice.entity.user.ServiceAdvisor;
+import com.tayota.operationservice.repository.user.ServiceAdvisorRepository;
 import com.tayota.operationservice.repository.workorder.MechanicRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

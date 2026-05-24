@@ -1,4 +1,4 @@
-package com.tayota.operationservice.dto.Request.appointment;
+package com.tayota.operationservice.dto.request.appointment;
 
 import com.tayota.operationservice.enums.appointment.AppointmentType;
 import jakarta.validation.constraints.NotNull;

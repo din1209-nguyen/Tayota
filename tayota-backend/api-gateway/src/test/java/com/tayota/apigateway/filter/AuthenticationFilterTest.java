@@ -4,6 +4,7 @@ import com.tayota.apigateway.util.JwtUtil;
 import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.Test;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
@@ -45,7 +46,7 @@ class AuthenticationFilterTest {
     void aiChatGuestWithCookieReusesSessionAndDoesNotSetNewCookie() {
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.post("/ai/api/v1/chat")
-                        .header(HttpHeaders.COOKIE, "ai_session_id=existing-session")
+                        .cookie(new HttpCookie("ai_session_id", "existing-session"))
                         .header("X-AI-Session-Id", "spoofed-session")
                         .build()
         );
@@ -67,7 +68,7 @@ class AuthenticationFilterTest {
         when(jwtUtil.getClaims(eq("valid-token"))).thenReturn(claims);
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.post("/ai/api/v1/chat")
-                        .header(HttpHeaders.COOKIE, "ai_session_id=session-1")
+                        .cookie(new HttpCookie("ai_session_id", "session-1"))
                         .header(HttpHeaders.AUTHORIZATION, "Bearer valid-token")
                         .build()
         );

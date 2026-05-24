@@ -9,13 +9,7 @@ services:
       - OPERATION_SERVICE_PORT=${OPERATION_SERVICE_PORT:-8091}
       - AI_SERVICE_HOST=${AI_SERVICE_HOST:-ai-service}
       - AI_SERVICE_PORT=${AI_SERVICE_PORT:-8094}
-      - CHAT_SERVICE_HOST=${CHAT_SERVICE_HOST:-chat-service}
-      - CHAT_SERVICE_PORT=${CHAT_SERVICE_PORT:-8095}
-      - ANALYSIS_SERVICE_HOST=${ANALYSIS_SERVICE_HOST:-analysis-service}
-      - ANALYSIS_SERVICE_PORT=${ANALYSIS_SERVICE_PORT:-8096}
-      - NOTIFICATION_SERVICE_HOST=${NOTIFICATION_SERVICE_HOST:-notification-service}
-      - NOTIFICATION_SERVICE_PORT=${NOTIFICATION_SERVICE_PORT:-8097}
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-change-me-to-a-long-random-secret}
       - AI_CHAT_COOKIE_SECURE=${COOKIE_SECURE:-false}
       - AI_CHAT_SESSION_TTL_SECONDS=${AI_CHAT_SESSION_TTL_SECONDS:-21600}
     depends_on:
@@ -30,8 +24,8 @@ services:
   postgres-operation-service:
     image: postgres:17
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER:-tayota}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
       POSTGRES_DB: ${POSTGRES_OPERATION_DB:-tayota_operation_db}
     ports:
       - "5432:5432"
@@ -40,7 +34,7 @@ services:
     networks:
       - tayota-network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_OPERATION_DB:-tayota_operation_db}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tayota} -d ${POSTGRES_OPERATION_DB:-tayota_operation_db}" ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -103,14 +97,14 @@ services:
       - SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION=true # Chạy các file .sql sau Hibernate
       # --- Postgres ---
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-operation-service:5432/${POSTGRES_OPERATION_DB:-tayota_operation_db}
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-tayota}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-123456}
       # --- JWT ---
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_ACCESS_TOKEN_EXPIRATION=${JWT_ACCESS_TOKEN_EXPIRATION}
-      - JWT_REFRESH_TOKEN_EXPIRATION=${JWT_REFRESH_TOKEN_EXPIRATION}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_IDS=${GOOGLE_CLIENT_IDS:-${GOOGLE_CLIENT_ID}}
+      - JWT_SECRET=${JWT_SECRET:-change-me-to-a-long-random-secret}
+      - JWT_ACCESS_TOKEN_EXPIRATION=${JWT_ACCESS_TOKEN_EXPIRATION:-900000}
+      - JWT_REFRESH_TOKEN_EXPIRATION=${JWT_REFRESH_TOKEN_EXPIRATION:-604800000}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_IDS=${GOOGLE_CLIENT_IDS:-${GOOGLE_CLIENT_ID:-}}
       - GOOGLE_CSRF_REQUIRED=${GOOGLE_CSRF_REQUIRED:-false}
       # --- Redis ---
       - SPRING_DATA_REDIS_HOST=${REDIS_HOST:-redis}
@@ -123,9 +117,9 @@ services:
       # Cổng gửi mail (587 là cổng tiêu chuẩn cho TLS/STARTTLS)
       - SPRING_MAIL_PORT=${MAIL_PORT:-587}
       # Email dùng để gửi đi (Thay bằng email của bạn hoặc dùng biến .env)
-      - SPRING_MAIL_USERNAME=${MAIL_USERNAME}
+      - SPRING_MAIL_USERNAME=${MAIL_USERNAME:-}
       # QUAN TRỌNG: Mật khẩu ứng dụng (App Password), không phải mật khẩu đăng nhập email
-      - SPRING_MAIL_PASSWORD=${MAIL_PASSWORD}
+      - SPRING_MAIL_PASSWORD=${MAIL_PASSWORD:-}
       # Yêu cầu xác thực khi gửi mail (Luôn là true với Gmail)
       - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true
       # Bật bảo mật TLS (Bắt buộc để tránh bị lộ thông tin trên đường truyền)
@@ -157,7 +151,7 @@ services:
     environment:
       - AI_SERVICE_PORT=${AI_SERVICE_PORT:-8094}
       - LLM_PROVIDER=${LLM_PROVIDER:-groq}
-      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
       - GROQ_MODEL=${GROQ_MODEL:-llama-3.3-70b-versatile}
       - QDRANT_URL=http://qdrant:6333
       - QDRANT_API_KEY=${QDRANT_API_KEY:-}
@@ -173,18 +167,6 @@ services:
         condition: service_started
     networks:
       - tayota-network
-
-#  # --- Chat Service ---
-#  chat-service:
-#    build: chat-service
-#    environment:
-#      - SERVER_PORT=${CHAT_SERVICE_PORT:-8095}
-#      - SPRING_DATA_MONGODB_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_CHAT_DB}?authSource=admin
-#    depends_on:
-#      mongodb:
-#        condition: service_healthy
-#    networks:
-#      - tayota-network
 
 networks:
   tayota-network:

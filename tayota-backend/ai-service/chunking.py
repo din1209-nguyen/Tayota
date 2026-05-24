@@ -22,10 +22,12 @@ def clean_text(text: str) -> str:
 
 
 def _content_hash(text: str) -> str:
+    """Tạo hash ngắn ổn định cho nội dung chunk."""
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:CONTENT_HASH_LENGTH]
 
 
 def _stable_source_id(source: Any) -> str:
+    """Chuẩn hóa định danh nguồn để dùng trong chunk_id và lọc metadata."""
     source_id = str(source or "unknown").strip().lower()
     source_id = re.sub(r"\s+", "-", source_id)
     source_id = re.sub(r"[^a-z0-9._-]+", "-", source_id)
@@ -40,6 +42,7 @@ def _stable_chunk_id(
     char_start: int,
     content_hash: str,
 ) -> str:
+    """Ghép metadata nguồn, trang, vị trí và hash thành chunk_id ổn định."""
     try:
         page_part = f"{int(page):04d}"
     except (TypeError, ValueError):
@@ -55,6 +58,7 @@ def _stable_chunk_id(
 
 
 def _has_indexable_short_content(text: str) -> bool:
+    """Nhận diện đoạn ngắn nhưng vẫn đáng index vì chứa thông số kỹ thuật."""
     return TECHNICAL_SHORT_PATTERN.search(text) is not None
 
 
@@ -67,6 +71,7 @@ def _make_chunk(
     start: int,
     end: int,
 ) -> Dict[str, Any]:
+    """Tạo một chunk kèm metadata đầy đủ để lưu vào vector database."""
     content_hash = _content_hash(chunk_text)
     chunk_id = _stable_chunk_id(
         source_id,
@@ -91,6 +96,7 @@ def _make_chunk(
 
 
 def _same_source_page(chunk: Dict[str, Any], source_id: str, page: Any) -> bool:
+    """Kiểm tra chunk có cùng nguồn và cùng trang với đoạn đang xử lý không."""
     metadata = chunk.get("metadata", {})
     return metadata.get("source_id") == source_id and metadata.get("page") == page
 
@@ -102,6 +108,7 @@ def _merge_short_chunk(
     page: Any,
     end: int,
 ) -> None:
+    """Gộp đoạn quá ngắn vào chunk trước và cập nhật lại metadata vị trí/hash."""
     metadata = chunk["metadata"]
     merged_text = f"{chunk['content']}\n{chunk_text}".strip()
     content_hash = _content_hash(merged_text)
@@ -124,6 +131,7 @@ def chunk_documents(
     chunk_size: int = 800,
     chunk_overlap: int = 150,
 ) -> List[Dict[str, Any]]:
+    """Chia các trang tài liệu thành chunk có overlap để phục vụ embedding/RAG."""
     if not (0 <= chunk_overlap < chunk_size):
         raise ValueError(
             f"chunk_overlap phải trong khoảng [0, chunk_size): "

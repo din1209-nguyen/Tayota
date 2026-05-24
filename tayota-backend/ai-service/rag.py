@@ -223,6 +223,7 @@ Không áp dụng cấu trúc tư vấn trên cho câu hỏi chỉ yêu cầu gi
 
 
 def _ask_groq(messages: List[Dict]) -> str:
+    """Gọi Groq Chat Completions để sinh câu trả lời từ messages."""
     if not groq_client:
         raise RuntimeError("Groq client chưa được khởi tạo (thiếu API key)")
     resp = groq_client.chat.completions.create(
@@ -235,10 +236,12 @@ def _ask_groq(messages: List[Dict]) -> str:
 
 
 def _generate(messages: List[Dict]) -> tuple[str, str]:
+    """Sinh câu trả lời bằng provider LLM hiện được hỗ trợ và trả kèm tên model."""
     return _ask_groq(messages), GROQ_MODEL
 
 
 def _build_context(retrieved: List[Dict[str, Any]]) -> str:
+    """Ghép các chunk truy xuất thành block ngữ cảnh đưa vào prompt."""
     parts = []
     for i, r in enumerate(retrieved, 1):
         parts.append(
@@ -251,6 +254,7 @@ def _build_context(retrieved: List[Dict[str, Any]]) -> str:
 
 
 def _needs_history_for_retrieval(query: str) -> bool:
+    """Xác định query có cần thêm lịch sử gần đây để retrieve chính xác hơn không."""
     q = query.lower()
     toyota_names = [
         "fortuner",
@@ -289,6 +293,7 @@ def _build_retrieval_query(
     state: ConversationState,
     include_slots: bool,
 ) -> str:
+    """Tạo câu truy vấn retrieval từ câu hỏi hiện tại, lịch sử và slot đã biết."""
     parts = [f"Cau hoi hien tai: {query}"]
 
     if _needs_history_for_retrieval(query):
@@ -311,6 +316,7 @@ def _build_retrieval_query(
 
 
 def _normalize_lookup_text(text: str) -> str:
+    """Chuẩn hóa text về dạng không dấu, chữ thường để so khớp keyword."""
     normalized = unicodedata.normalize("NFD", text.lower().replace("đ", "d"))
     normalized = "".join(
         char for char in normalized if unicodedata.category(char) != "Mn"
@@ -319,12 +325,14 @@ def _normalize_lookup_text(text: str) -> str:
 
 
 def _contains_lookup_keyword(normalized_text: str, keyword: str) -> bool:
+    """Kiểm tra keyword xuất hiện như một token/phrase độc lập trong text đã normalize."""
     normalized_keyword = _normalize_lookup_text(keyword)
     pattern = rf"(?<![a-z0-9]){re.escape(normalized_keyword)}(?![a-z0-9])"
     return re.search(pattern, normalized_text) is not None
 
 
 def _mentions_vehicle_detail(query: str, state: ConversationState) -> bool:
+    """Nhận diện câu hỏi có nhắc tới mẫu xe hoặc dòng xe cụ thể không."""
     normalized_query = _normalize_lookup_text(query)
     if _contains_vehicle_keyword(normalized_query):
         return True
@@ -353,6 +361,7 @@ def _mentions_vehicle_detail(query: str, state: ConversationState) -> bool:
 
 
 def _contains_vehicle_keyword(normalized_text: str) -> bool:
+    """Kiểm tra text đã normalize có chứa keyword xe Toyota hoặc nhóm xe không."""
     if any(
         _contains_lookup_keyword(normalized_text, keyword)
         for keyword in TOYOTA_MODEL_KEYWORDS
@@ -379,6 +388,7 @@ def _contains_vehicle_keyword(normalized_text: str) -> bool:
 
 
 def _unique_sources(sources: List[str]) -> List[str]:
+    """Loại bỏ source trùng lặp nhưng vẫn giữ nguyên thứ tự ưu tiên."""
     unique = []
     seen = set()
     for source in sources:
@@ -389,6 +399,7 @@ def _unique_sources(sources: List[str]) -> List[str]:
 
 
 def _preferred_sources_for_query(query: str, state: ConversationState) -> List[str]:
+    """Suy ra danh sách tài liệu nên ưu tiên dựa trên keyword trong query/ngữ cảnh."""
     lookup_text = _normalize_lookup_text(query)
     previous_user_turns = [
         msg["content"]
@@ -469,6 +480,7 @@ def _preferred_sources_for_query(query: str, state: ConversationState) -> List[s
 
 
 def _mentioned_specific_models(query: str, state: ConversationState) -> List[str]:
+    """Trích các model Toyota cụ thể được nhắc trong query hoặc lịch sử gần."""
     lookup_text = _normalize_lookup_text(query)
     if _needs_history_for_retrieval(query):
         previous_user_turns = [
@@ -491,6 +503,7 @@ def _mentioned_specific_models(query: str, state: ConversationState) -> List[str
 
 
 def _is_overview_query(query: str) -> bool:
+    """Nhận diện câu hỏi yêu cầu giới thiệu/tổng quan/thông tin chung về xe."""
     normalized_text = _normalize_lookup_text(query)
     return any(marker in normalized_text for marker in OVERVIEW_QUERY_MARKERS)
 
@@ -502,6 +515,7 @@ def _lexical_support_docs(
     *,
     limit: int = 8,
 ) -> List[Dict[str, Any]]:
+    """Tìm thêm chunk bằng lexical match khi query nhắc rõ model xe."""
     mentioned_models = _mentioned_specific_models(query, state)
     if not mentioned_models:
         return []
@@ -546,6 +560,7 @@ def _merge_retrieval_candidates(
     semantic_docs: List[Dict[str, Any]],
     lexical_docs: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
+    """Gộp kết quả semantic và lexical theo khóa chunk, giữ bản có điểm cao hơn."""
     merged = []
     by_key = {}
     for doc in [*semantic_docs, *lexical_docs]:
@@ -561,6 +576,7 @@ def _merge_retrieval_candidates(
 
 
 def _is_need_based_query(query: str, state: ConversationState) -> bool:
+    """Nhận diện query tư vấn chọn xe theo nhu cầu hoặc slot đã thu thập."""
     normalized_text = _normalize_lookup_text(query)
     need_markers = [
         "tu van",
@@ -590,6 +606,7 @@ def _is_need_based_query(query: str, state: ConversationState) -> bool:
 
 
 def _is_general_catalog_query(query: str) -> bool:
+    """Nhận diện câu hỏi danh mục/danh sách xe tổng quát."""
     normalized_text = _normalize_lookup_text(query)
     catalog_markers = [
         "danh muc xe",
@@ -610,6 +627,7 @@ def _is_general_catalog_query(query: str) -> bool:
 
 
 def _is_general_information_query(query: str) -> bool:
+    """Nhận diện câu hỏi thông tin chung không gắn với mẫu/dòng xe cụ thể."""
     normalized_text = _normalize_lookup_text(query)
     if _contains_vehicle_keyword(normalized_text):
         return False
@@ -624,6 +642,7 @@ def _document_scope_for_query(
     query: str,
     state: ConversationState,
 ) -> tuple[str, List[str]]:
+    """Chọn scope tài liệu và danh sách source được phép retrieve cho query."""
     if _is_general_information_query(query):
         return "general", GENERAL_DOCUMENT_SOURCES
 
@@ -644,6 +663,7 @@ def _document_scope_for_query(
 
 
 def _is_offroad_need(query: str, state: ConversationState) -> bool:
+    """Xác định người dùng có nhu cầu đi địa hình/off-road không."""
     q = query.lower()
     if any(keyword in q for keyword in OFFROAD_KEYWORDS):
         return True
@@ -652,6 +672,7 @@ def _is_offroad_need(query: str, state: ConversationState) -> bool:
 
 
 def _expand_retrieval_query_for_domain(query: str, offroad_need: bool) -> str:
+    """Bổ sung keyword nghiệp vụ vào retrieval query cho nhu cầu off-road."""
     if not offroad_need:
         return query
     expansion = (
@@ -672,6 +693,7 @@ def _rerank_retrieved_docs(
     offroad_need: bool,
     limit: int,
 ) -> List[Dict[str, Any]]:
+    """Rerank chunk truy xuất theo source ưu tiên, model được nhắc và nhu cầu domain."""
     normalized_query = _normalize_lookup_text(query)
     preferred_sources = set(_preferred_sources_for_query(query, state))
     mentioned_models = _mentioned_specific_models(query, state)
@@ -747,6 +769,7 @@ def _rerank_retrieved_docs(
 
 
 def _retrieved_doc_key(doc: Dict[str, Any]) -> tuple[Any, Any, Any, Any]:
+    """Tạo khóa định danh một chunk retrieved để chống trùng lặp."""
     return (
         doc.get("chunk_id"),
         doc.get("source_id"),
@@ -762,6 +785,7 @@ def _add_context_doc(
     max_chunks: int,
     max_chars: int,
 ) -> bool:
+    """Thêm chunk vào context nếu chưa trùng và chưa vượt giới hạn dung lượng."""
     key = _retrieved_doc_key(doc)
     if key in seen:
         return True
@@ -781,6 +805,7 @@ def _expand_with_neighbor_context(
     max_chunks: int = MAX_CONTEXT_CHUNKS,
     max_chars: int = MAX_CONTEXT_CHARS,
 ) -> List[Dict[str, Any]]:
+    """Mở rộng context bằng chunk liền kề quanh các kết quả retrieve chính."""
     expanded = []
     seen = set()
 
@@ -821,6 +846,7 @@ def _expand_with_neighbor_context(
 
 
 def _domain_answer_instruction(offroad_need: bool) -> str:
+    """Tạo chỉ dẫn bổ sung cho LLM khi câu hỏi liên quan off-road."""
     if not offroad_need:
         return ""
     return (
@@ -840,6 +866,7 @@ def answer(
     session_id: str = "default",
     user_id: str | None = None,
 ) -> Dict[str, Any]:
+    """Chạy toàn bộ pipeline intent, rule, slot, retrieval và generation cho một query."""
 
     # ── Lấy / tạo conversation state ─────────────────────────────────────────
     state: ConversationState = state_manager.get_or_create(session_id, user_id=user_id)
@@ -1026,6 +1053,7 @@ def _make_result(
     user_id: str | None = None,
     question: str = "",
 ) -> Dict[str, Any]:
+    """Lưu state/chat log và đóng gói response chuẩn cho API."""
     state_manager.save(state)
     state_manager.log_chat_message(
         session_id=session_id,

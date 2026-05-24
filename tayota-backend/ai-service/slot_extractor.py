@@ -146,6 +146,7 @@ Quy tắc:
 # ── Regex fallback ────────────────────────────────────────────────────────────
 
 def _regex_extract_budget(text: str) -> Optional[float]:
+    """Trích ngân sách từ text bằng regex và quy đổi về triệu VND."""
     t = text.lower()
     m = re.search(r'(\d+(?:[.,]\d+)?)\s*tỷ\s*(\d+)?', t)
     if m:
@@ -162,11 +163,13 @@ def _regex_extract_budget(text: str) -> Optional[float]:
 
 
 def _regex_extract_seats(text: str) -> Optional[int]:
+    """Trích số chỗ ngồi từ text bằng regex."""
     m = re.search(r'(\d+)\s*chỗ', text.lower())
     return int(m.group(1)) if m else None
 
 
 def _regex_extract_fuel(text: str) -> Optional[str]:
+    """Trích loại nhiên liệu mong muốn từ text bằng keyword đơn giản."""
     t = text.lower()
     if any(k in t for k in ["hybrid", "xăng lai"]):        return "hybrid"
     if any(k in t for k in ["điện", "electric"]):          return "điện"
@@ -176,6 +179,7 @@ def _regex_extract_fuel(text: str) -> Optional[str]:
 
 
 def _regex_extract_region(text: str) -> Optional[str]:
+    """Trích khu vực/địa hình di chuyển từ text bằng keyword đơn giản."""
     t = text.lower()
     if any(k in t for k in ["off-road", "địa hình", "núi", "rừng", "đường xấu"]): return "địa hình"
     if any(k in t for k in ["đường dài", "cao tốc", "liên tỉnh", "đường trường"]): return "đường dài"
@@ -184,6 +188,7 @@ def _regex_extract_region(text: str) -> Optional[str]:
 
 
 def _regex_fallback(text: str) -> Dict[str, Any]:
+    """Tạo kết quả slot bằng regex khi LLM extractor lỗi hoặc không khả dụng."""
     return {
         "budget":           _regex_extract_budget(text),
         "seats":            _regex_extract_seats(text),
@@ -309,6 +314,7 @@ def merge_slots(existing: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]
 
 
 def _mentions_people_count_without_seat(text: str) -> bool:
+    """Nhận diện câu nhắc số người nhưng chưa chắc là yêu cầu số chỗ."""
     t = text.lower()
     has_people_count = (
         re.search(r"\d+\s*(?:ng\u01b0\u1eddi|th\u00e0nh vi\u00ean)", t)
@@ -328,6 +334,7 @@ def _drop_inferred_slots_without_evidence(
     text: str,
     slots: Dict[str, Any],
 ) -> Dict[str, Any]:
+    """Loại bỏ slot do LLM suy diễn khi text không có bằng chứng trực tiếp."""
     cleaned = dict(slots)
     for key in ("purpose", "region", "type_car"):
         value = cleaned.get(key)
@@ -340,6 +347,7 @@ def _drop_inferred_slots_without_evidence(
 
 
 def _has_slot_evidence(text: str, key: str, value: str) -> bool:
+    """Kiểm tra text có keyword chứng minh cho một slot cụ thể không."""
     t = text.lower()
     v = value.lower()
     evidence = {

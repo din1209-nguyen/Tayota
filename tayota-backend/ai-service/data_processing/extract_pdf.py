@@ -54,6 +54,7 @@ def _source_key(pdf_file: Path) -> str:
 
 
 def _slugify_source_key(source_key: str) -> str:
+    """Chuyển source key thành source_id ASCII ổn định kèm digest chống trùng."""
     ascii_text = (
         unicodedata.normalize("NFKD", source_key)
         .encode("ascii", "ignore")
@@ -69,6 +70,7 @@ def _slugify_source_key(source_key: str) -> str:
 
 
 def _source_id(pdf_file: Path) -> str:
+    """Tạo source_id ổn định cho một file PDF."""
     return _slugify_source_key(_source_key(pdf_file))
 
 
@@ -109,6 +111,7 @@ def _resolve_pdf_paths(
 
 
 def _update_registry_entry(registry: dict, pdf_file: Path, file_hash: str) -> None:
+    """Cập nhật một entry PDF đã xử lý vào registry runtime."""
     registry[str(pdf_file.resolve())] = {
         "filename": pdf_file.name,
         "hash": file_hash,
@@ -137,6 +140,7 @@ def mark_documents_processed(documents: list[dict]) -> None:
 
 
 def _metadata_for_path(pdf_file: Path, pdf_metadata_by_path: dict | None) -> dict:
+    """Tra metadata bổ sung cho PDF theo absolute path, raw path hoặc filename."""
     if not pdf_metadata_by_path:
         return {}
 
@@ -154,6 +158,7 @@ def extract_pdf_with_metadata(
     file_hash: str = None,
     extra_metadata: dict | None = None,
 ) -> list[dict]:
+    """Đọc một PDF thành danh sách document theo từng trang kèm metadata."""
     pdf_file = Path(pdf_path)
     source_key = _source_key(pdf_file)
     source_id = _source_id(pdf_file)

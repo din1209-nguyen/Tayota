@@ -15,28 +15,26 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @Table(name = "\"CHAT_MESSAGE\"")
-// Represents a single message in a chat session
-// Each message is linked to a ChatSession and contains information about the sender and content.
 public class ChatMessage {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;// Unique identifier for the chat message
+    private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "session_id", nullable = false)
-    private ChatSession session;// Many-to-one relationship with ChatSession, indicating which session this message belongs to
+    private ChatSession session;
 
     @Column(name = "sender_id")
-    private UUID senderId;// ID of the sender (could be a user or staff)
+    private UUID senderId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "sender_type", nullable = false, length = 30)
-    private ChatSenderType senderType;// Enum indicating the type of sender (CUSTOMER, STAFF, SYSTEM)
+    private ChatSenderType senderType;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String content;// The actual text content of the message
+    @Column(nullable = false)
+    private String content;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;// Timestamp indicating when the message was created
+    private Instant createdAt;
 }

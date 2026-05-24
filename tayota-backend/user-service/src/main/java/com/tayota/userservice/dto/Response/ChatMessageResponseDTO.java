@@ -9,12 +9,22 @@ import java.util.UUID;
 
 @Getter
 @Builder
-// Dữ liệu phản hồi cho một tin nhắn trong phiên chat, bao gồm thông tin về người gửi, nội dung và thời gian tạo.
 public class ChatMessageResponseDTO {
-    private UUID id; // ID của tin nhắn
-    private UUID sessionId; // ID của phiên chat mà tin nhắn này thuộc về
-    private UUID senderId; // ID của người gửi (có thể là user hoặc staff)
-    private ChatSenderType senderType; // Loại người gửi
-    private String content; // Nội dung tin nhắn
-    private Instant createdAt; // Thời gian tạo tin nhắn
+    // Trả về ID tin nhắn
+    private UUID id;
+
+    // Trả về ID phiên chat
+    private UUID sessionId;
+
+    // Trả về ID người gửi
+    private UUID senderId;
+
+    // Trả về loại người gửi
+    private ChatSenderType senderType;
+
+    // Trả về nội dung tin nhắn
+    private String content;
+
+    // Trả về thời điểm tạo tin nhắn
+    private Instant createdAt;
 }

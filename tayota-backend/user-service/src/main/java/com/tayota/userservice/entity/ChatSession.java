@@ -16,37 +16,35 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @Table(name = "\"CHAT_SESSION\"")
-// Represents a chat session between a user (customer) and staff.
-// Each session has a status (WAITING, CHATTING, RESOLVED, CLOSED) and can be associated with either a registered user (userId) or a guest (guestId).
 public class ChatSession {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;// Unique identifier for the chat session
+    private UUID id;
 
     @Column(name = "user_id")
-    private UUID userId;// ID of the registered user participating in the chat session (nullable if it's a guest session)
+    private UUID userId;
 
     @Column(name = "guest_id", length = 100)
-    private String guestId;// Identifier for guest users (nullable if it's a registered user session)
+    private String guestId;
 
     @Column(name = "assigned_staff_id")
-    private UUID assignedStaffId;// ID of the staff member assigned to this chat session (nullable if not yet assigned)
+    private UUID assignedAssistantId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private ChatSessionStatus status;// Enum indicating the current status of the chat session (WAITING, CHATTING, RESOLVED, CLOSED)
+    private ChatSessionStatus status;
 
     @Column(name = "closed_at")
-    private Instant closedAt;// Timestamp indicating when the chat session was closed (nullable if not yet closed)
+    private Instant closedAt;
 
     @Column(name = "resolved_at")
-    private Instant resolvedAt;// Timestamp indicating when the chat session was resolved (nullable if not yet resolved)
+    private Instant resolvedAt;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;// Timestamp indicating when the chat session was created
+    private Instant createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;// Timestamp indicating when the chat session was last updated
+    private Instant updatedAt;
 }

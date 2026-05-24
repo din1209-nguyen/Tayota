@@ -8,11 +8,15 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class CookieUtil {
-    // Thời gian hết hạn của refresh-token, dùng để set maxAge cho cookie refresh_token
+    // Định nghĩa tên cookie dùng để lưu sessionId của phiên chat
+    public static final String CHAT_SESSION_COOKIE = "chat_session";
+    public static final int CHAT_SESSION_MAX_AGE_SEC = 24 * 60 * 60;
+
+    // Lưu thời gian hết hạn của refresh-token để set maxAge cho cookie refresh_token
     @Value("${jwt.refresh-token-expiration}")
     private long jwtRefreshTokenExpirationMs;
 
-    // Dùng cho Https nếu true, ngược lại Http
+    // Xác định cookie có dùng thuộc tính Secure hay không
     @Value("${cookie.secure}")
     private boolean secure;
 
@@ -36,26 +40,25 @@ public class CookieUtil {
 
     // Xóa Refresh Token khỏi Cookie khi Logout
     public void clearRefreshTokenCookie(HttpServletResponse response) {
-        // Ghi đè cookie cũ với giá trị null và maxAge = 0 để trình duyệt tự xóa
+        // Ghi đè cookie cũ với maxAge = 0 để trình duyệt tự xóa
         setCookie(response, "refresh_token", null, 0);
     }
 
     // Thiết lập Cookie vào HttpServletResponse
-    private void setCookie(HttpServletResponse response, String name, String value, int maxAgeSec) {
-        // Nếu value null → dùng chuỗi rỗng (cần khi xóa cookie)
+    public void setCookie(HttpServletResponse response, String name, String value, int maxAgeSec) {
+        // Chuyển giá trị null thành chuỗi rỗng khi cần xóa cookie
         String cookieValue = (value == null) ? "" : value;
 
         // Tạo chuỗi Secure nếu bật HTTPS
         String secureAttribute = secure ? "Secure; " : "";
 
-        /* Vì HttpServletResponse mặc định không hỗ trợ thuộc tính SameSite nên phải cấu hình Header thủ công */
+        /* Cấu hình Header thủ công vì HttpServletResponse mặc định không hỗ trợ thuộc tính SameSite */
 
         // Tạo header Cookie với các thuộc tính bảo mật:
-        // HttpOnly: Ngăn JavaScript truy cập cookie (chống XSS)
-        // Secure: Chỉ gửi cookie qua HTTPS (khuyến nghị bật ở production)
-        // SameSite=Lax: Giảm rủi ro CSRF cho refresh-token cookie nhưng vẫn phù hợp với luồng điều hướng thông thường
-        // Access-token không lưu cookie; client lưu phía mình và gửi qua header Authorization: Bearer <token>
-        // Path=/: Áp dụng cookie cho toàn bộ domain
+        // Ngăn JavaScript truy cập cookie bằng HttpOnly
+        // Chỉ gửi cookie qua HTTPS khi bật Secure
+        // Giảm rủi ro CSRF bằng SameSite=Lax
+        // Áp dụng cookie cho toàn bộ domain bằng Path=/
         String cookieHeader = String.format(
                 "%s=%s; Max-Age=%d; Path=/; HttpOnly; %sSameSite=Lax",
                 name,
@@ -66,25 +69,5 @@ public class CookieUtil {
 
         // Thêm header Set-Cookie vào response
         response.addHeader("Set-Cookie", cookieHeader);
-    }
-
-
-    // Các hằng số và phương thức tiện ích cho cookie của phiên chat, giúp quản lý cookie lưu trữ sessionId của phiên chat giữa khách và hệ thống
-    // CHAT_SESSION_COOKIE: Tên cookie dùng để lưu sessionId của phiên chat
-    private static final String CHAT_SESSION_COOKIE = "chat-session";
-    // CHAT_SESSION_MAX_AGE_SEC: Thời gian sống tối đa của cookie phiên chat (24 giờ), sau đó cookie sẽ tự động hết hạn và bị trình duyệt xóa
-    private static final int CHAT_SESSION_MAX_AGE_SEC = 24 * 60 * 60;
-
-    // Thiết lập cookie cho phiên chat với sessionId, giúp duy trì trạng thái phiên chat giữa khách và hệ thống
-    // Khi khách bắt đầu một phiên chat mới, hệ thống sẽ tạo một sessionId duy nhất và lưu nó vào cookie để nhận diện phiên chat trong các yêu cầu tiếp theo
-    // Cookie này sẽ tồn tại trong 24 giờ hoặc cho đến khi khách đóng trình duyệt, giúp cải thiện trải nghiệm người dùng bằng cách giữ trạng thái phiên chat liên tục
-    public void setChatSessionCookie(HttpServletResponse response, String sessionId) {
-        // Thiết lập cookie với tên "chat-session", giá trị là sessionId của phiên chat, và thời gian sống tối đa là 24 giờ
-        setCookie(response, CHAT_SESSION_COOKIE, sessionId, CHAT_SESSION_MAX_AGE_SEC);
-    }
-
-    public void clearChatSessionCookie(HttpServletResponse response) {
-        // Xóa cookie phiên chat bằng cách ghi đè với giá trị null và maxAge = 0, yêu cầu trình duyệt xóa cookie ngay lập tức
-        setCookie(response, CHAT_SESSION_COOKIE, null, 0);
     }
 }

@@ -1,37 +1,24 @@
 """
-rag.py  —  RAG pipeline đầy đủ
+rag.py - Toyota RAG pipeline.
+
 Flow:
     query
-      ↓ Intent Classifier
-      ↓ Business Rules
-      ↓ Slot Extractor  (cập nhật state)
-      ↓ Conversation State Manager
-      ↓ Smart Car Consultant  (quyết định prompt + skip_rag)
-      ↓ [RAG Retrieve nếu cần]
-      ↓ LLM Generate  (Groq → Ollama → Gemini)
-      ↓ Compose final response
-
-LLM_PROVIDER (trong .env):
-    groq    → Groq API (default)
-    ollama  → Ollama local (gemma3:4b hoặc model bất kỳ)
-    gemini  → Google Gemini
-    auto    → Groq → fallback Ollama → fallback Gemini
+      -> Intent Classifier
+      -> Business Rules
+      -> Slot Extractor
+      -> Conversation State Manager
+      -> Smart Car Consultant
+      -> RAG Retrieve when needed
+      -> LLM Generate with Groq
+      -> Compose final response
 """
 
 import os
-import httpx
 import re
 import unicodedata
 from typing import List, Dict, Any
 
 from groq import Groq
-
-try:
-    from google import genai
-    from google.genai import types
-except ImportError:  # Gemini is optional; ai-service runs Groq-only by default.
-    genai = None
-    types = None
 
 from embed import embed_query
 from vector_database import search, scroll_chunks, search_neighbor_chunks
@@ -47,15 +34,11 @@ load_dotenv()
 
 # ── Cấu hình ──────────────────────────────────────────────────────────────────
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
-# Chọn provider: groq | ollama | gemini | auto
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()
+# Only Groq is supported for answer generation.
+LLM_PROVIDER = "groq"
 
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:e2b")
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/chat")
 
 TOP_K = 5
 RETRIEVAL_CANDIDATES_TOP_K = 30
@@ -196,11 +179,9 @@ OFFROAD_FEATURE_TERMS = [
     "đường xấu",
 ]
 
-# Validate API keys theo provider
-if LLM_PROVIDER in ("groq", "auto") and not GROQ_API_KEY:
-    print("⚠️  GROQ_API_KEY chưa set — Groq sẽ không dùng được")
-if LLM_PROVIDER in ("gemini",) and not GEMINI_API_KEY:
-    raise EnvironmentError("❌ Thiếu GEMINI_API_KEY trong .env")
+# Validate Groq API key.
+if not GROQ_API_KEY:
+    print("GROQ_API_KEY is not set; Groq calls will fail.")
 
 groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
@@ -237,40 +218,6 @@ Không áp dụng cấu trúc tư vấn trên cho câu hỏi chỉ yêu cầu gi
 """.strip()
 
 
-def _ollama_base_url() -> str:
-    base_url = OLLAMA_URL.rstrip("/")
-    for suffix in ("/api/chat", "/api/generate"):
-        if base_url.endswith(suffix):
-            return base_url[: -len(suffix)]
-    return base_url
-
-
-def _resolve_ollama_model(preferred_model: str) -> str:
-    """Return the preferred Ollama model if installed, otherwise a local fallback."""
-    try:
-        resp = httpx.get(f"{_ollama_base_url()}/api/tags", timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
-    except Exception:
-        return preferred_model
-
-    models = [
-        m.get("name")
-        for m in data.get("models", [])
-        if isinstance(m, dict) and m.get("name")
-    ]
-    if not models:
-        return preferred_model
-
-    if preferred_model in models:
-        return preferred_model
-
-    fallback_model = models[0]
-    print(
-        f"⚠️ Ollama model '{preferred_model}' not found, using '{fallback_model}' instead"
-    )
-    return fallback_model
-
 
 # ── LLM helpers ───────────────────────────────────────────────────────────────
 
@@ -287,137 +234,8 @@ def _ask_groq(messages: List[Dict]) -> str:
     return resp.choices[0].message.content
 
 
-def _ask_ollama(messages: List[Dict]) -> str:
-    """
-    Gọi Ollama local qua REST API.
-    Ollama nhận messages theo chuẩn OpenAI (role + content).
-    System prompt được inject vào đầu messages nếu chưa có.
-    """
-    # Đảm bảo có system message
-    if not messages or messages[0]["role"] != "system":
-        full_messages = [{"role": "system", "content": SYSTEM_PROMPT}] + messages
-    else:
-        full_messages = messages
-
-    model_name = _resolve_ollama_model(OLLAMA_MODEL)
-
-    payload = {
-        "model": model_name,
-        "messages": full_messages,
-        "stream": False,
-        "options": {
-            "temperature": 0.2,
-            "num_predict": 1024,
-            "num_ctx": 4096,  # giới hạn context để tiết kiệm RAM
-        },
-    }
-    try:
-        resp = httpx.post(OLLAMA_URL, json=payload, timeout=120)
-        resp.raise_for_status()
-    except httpx.HTTPStatusError as e:
-        status = None
-        try:
-            status = e.response.status_code if e.response is not None else None
-        except Exception:
-            status = None
-        if status == 404:
-            # Try common alternate endpoint (/api/generate)
-            alt_url = f"{_ollama_base_url()}/api/generate"
-            print(f"⚠️ Ollama endpoint returned 404, retrying {alt_url}")
-            resp = httpx.post(alt_url, json=payload, timeout=120)
-            resp.raise_for_status()
-        else:
-            body = ""
-            try:
-                body = e.response.text.strip() if e.response is not None else ""
-            except Exception:
-                body = ""
-            detail = body or str(e)
-            raise RuntimeError(f"Ollama HTTP {status}: {detail}") from e
-
-    # Parse known response shapes: /api/chat -> {"message": {"content": ...}}
-    # /api/generate  -> {"text": "..."} or similar. Fall back to raw text.
-    j = None
-    try:
-        j = resp.json()
-    except Exception:
-        return resp.text
-
-    if isinstance(j, dict):
-        if (
-            "message" in j
-            and isinstance(j["message"], dict)
-            and "content" in j["message"]
-        ):
-            return j["message"]["content"]
-        if "text" in j:
-            return j["text"]
-
-    return resp.text
-
-
-def _ask_gemini(messages: List[Dict]) -> str:
-    if genai is None or types is None:
-        raise RuntimeError("Google GenAI SDK chua duoc cai dat.")
-    client = genai.Client(api_key=GEMINI_API_KEY)
-    prompt = "\n\n".join(
-        f"{'User' if m['role'] == 'user' else 'Assistant'}: {m['content']}"
-        for m in messages
-        if m["role"] != "system"
-    )
-    resp = client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=f"{SYSTEM_PROMPT}\n\n{prompt}",
-        config=types.GenerateContentConfig(temperature=0.2, max_output_tokens=1024),
-    )
-    return resp.text
-
-
 def _generate(messages: List[Dict]) -> tuple[str, str]:
-    """
-    Gọi LLM theo LLM_PROVIDER.
-
-    Provider modes:
-        groq   → chỉ Groq, không fallback
-        ollama → chỉ Ollama local, không fallback
-        gemini → chỉ Gemini, không fallback
-        auto   → Groq → Ollama → Gemini (fallback theo thứ tự)
-    """
-    if LLM_PROVIDER == "ollama":
-        try:
-            return _ask_ollama(messages), OLLAMA_MODEL
-        except Exception as e:
-            print(f"⚠️  Ollama lỗi ({e}), thử provider dự phòng...")
-            if GROQ_API_KEY:
-                try:
-                    return _ask_groq(messages), GROQ_MODEL
-                except Exception as groq_error:
-                    print(f"⚠️  Groq lỗi ({groq_error}), thử Gemini...")
-            if GEMINI_API_KEY:
-                return _ask_gemini(messages), GEMINI_MODEL
-            raise RuntimeError(
-                "Ollama không khả dụng và không có provider dự phòng hợp lệ (GROQ_API_KEY/GEMINI_API_KEY)."
-            ) from e
-
-    if LLM_PROVIDER == "groq":
-        return _ask_groq(messages), GROQ_MODEL
-
-    if LLM_PROVIDER == "gemini":
-        return _ask_gemini(messages), GEMINI_MODEL
-
-    # auto — fallback chain
-    if GROQ_API_KEY:
-        try:
-            return _ask_groq(messages), GROQ_MODEL
-        except Exception as e:
-            print(f"⚠️  Groq lỗi ({e}), fallback Ollama...")
-
-    try:
-        return _ask_ollama(messages), OLLAMA_MODEL
-    except Exception as e:
-        print(f"⚠️  Ollama lỗi ({e}), fallback Gemini...")
-
-    return _ask_gemini(messages), GEMINI_MODEL
+    return _ask_groq(messages), GROQ_MODEL
 
 
 def _build_context(retrieved: List[Dict[str, Any]]) -> str:
@@ -638,7 +456,14 @@ def _preferred_sources_for_query(query: str, state: ConversationState) -> List[s
 
     preferred = []
     for keywords, source in source_rules:
-        if any(_contains_lookup_keyword(lookup_text, keyword) for keyword in keywords):
+        if any(
+            _contains_lookup_keyword(lookup_text, keyword)
+            for keyword in keywords
+            if not (
+                keyword == "corolla"
+                and _contains_lookup_keyword(lookup_text, "corolla cross")
+            )
+        ):
             preferred.append(source)
     return _unique_sources(preferred)
 
@@ -804,13 +629,12 @@ def _document_scope_for_query(
 
     preferred_sources = _preferred_sources_for_query(query, state)
     if _mentions_vehicle_detail(query, state):
+        if preferred_sources:
+            return "vehicle", preferred_sources
+
         return (
             "vehicle",
-            _unique_sources(
-                preferred_sources
-                + VEHICLE_DOCUMENT_SOURCES
-                + GENERAL_DOCUMENT_SOURCES
-            ),
+            VEHICLE_DOCUMENT_SOURCES,
         )
 
     if _is_offroad_need(query, state) or _is_need_based_query(query, state):
@@ -1233,15 +1057,7 @@ if __name__ == "__main__":
 
     SESSION_ID = str(uuid.uuid4())
     print(f"🤖 Toyota RAG Chatbot  |  session: {SESSION_ID}")
-    print(f"🧠 LLM provider: {LLM_PROVIDER.upper()}", end="")
-    if LLM_PROVIDER == "ollama":
-        print(f"  (model: {OLLAMA_MODEL})")
-    elif LLM_PROVIDER == "groq":
-        print(f"  (model: {GROQ_MODEL})")
-    elif LLM_PROVIDER == "gemini":
-        print(f"  (model: {GEMINI_MODEL})")
-    else:
-        print(f"  (Groq → Ollama:{OLLAMA_MODEL} → Gemini)")
+    print(f"🧠 LLM provider: {LLM_PROVIDER.upper()}  (model: {GROQ_MODEL})")
     print("Lệnh đặc biệt: 'reset' | 'state' | 'exit'\n")
 
     while True:

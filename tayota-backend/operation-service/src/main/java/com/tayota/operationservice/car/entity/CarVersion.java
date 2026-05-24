@@ -1,0 +1,47 @@
+package com.tayota.operationservice.car.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+
+@Entity
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(of = "id")
+@Table(name = "\"CAR_VERSION\"")
+@Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
+public class CarVersion {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(updatable = false)
+    UUID id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "car_series_id", nullable = false)
+    CarSeries carSeries;
+
+    @Column(nullable = false, length = 50)
+    String name;
+
+    @Column(name = "sale_percent", precision = 5, scale = 2)
+    @Builder.Default
+    BigDecimal salePercent = BigDecimal.ZERO;
+
+    @Column(name = "model_year", nullable = false)
+    Integer modelYear;
+
+    @Column(length = 255)
+    String videoUrl;
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    Instant createdAt;
+}

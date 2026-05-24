@@ -1,12 +1,12 @@
 # Tayota Backend AI Coding Guide
 
-Tài liệu này dùng để đưa cho AI/agent khi cần code tiếp trong dự án `tayota-backend`. Mục tiêu là giữ code mới giống cấu trúc, phong cách và quy ước hiện có của `user-service`, `car-service`, `common-core`, `api-gateway`.
+Tài liệu này dùng để đưa cho AI/agent khi cần code tiếp trong dự án `tayota-backend`. Mục tiêu là giữ code mới giống cấu trúc, phong cách và quy ước hiện có của `operation-service`, `api-gateway`.
 
 ## Tổng quan kiến trúc
 
-- Repo là dạng multi-service, mỗi service có thư mục riêng: `user-service`, `car-service`, `operation-service`, `api-gateway`, `common-core`, `chat-service`, `ai-service`.
+- Repo là dạng multi-service, mỗi service có thư mục riêng: `operation-service`, `api-gateway`, `chat-service`, `ai-service`.
 - Các service Java dùng Spring Boot, Maven, Java 21.
-- `common-core` là thư viện dùng chung cho các service Spring MVC:
+- Mã dùng chung nằm trực tiếp trong `operation-service` dưới package `com.tayota.commoncore`:
   - DTO response chuẩn: `ApiResponse<T>`
   - exception chuẩn: `CustomException`, `GlobalExceptionHandler`, `ErrorCode`
   - security header filter: `HeaderAuthenticationFilter`
@@ -15,12 +15,12 @@ Tài liệu này dùng để đưa cho AI/agent khi cần code tiếp trong dự
 - `api-gateway` dùng Spring Cloud Gateway WebFlux:
   - Verify JWT access token.
   - Gắn header `X-User-Id`, `X-User-Role` xuống service con.
-  - Strip prefix route như `/user/** -> user-service`, `/car/** -> car-service`.
+  - Strip prefix route như `/user/** -> operation-service`, `/car/** -> operation-service`.
 - Service con không tự decode JWT nếu dùng common security. Service con đọc user hiện tại từ security context đã được tạo bởi header filter.
 
 ## Cấu trúc package chuẩn cho service Java
 
-Ví dụ với `com.tayota.carservice` hoặc `com.tayota.userservice`:
+Ví dụ với `com.tayota.operationservice`:
 
 ```text
 src/main/java/com/tayota/<service>/
@@ -146,7 +146,7 @@ public class CarVersionService {
 
 ## Response và exception
 
-Luôn dùng `ApiResponse<T>` từ `common-core` cho API response.
+Luôn dùng `ApiResponse<T>` từ mã dùng chung cho API response.
 
 Success:
 
@@ -167,7 +167,7 @@ throw new CustomException(404, "Không tìm thấy dữ liệu");
 throw new CustomException(ErrorCode.USER_NOT_FOUND);
 ```
 
-Không tự try/catch lỗi validation trong controller. `GlobalExceptionHandler` của `common-core` đã xử lý:
+Không tự try/catch lỗi validation trong controller. `GlobalExceptionHandler` của mã dùng chung đã xử lý:
 
 - JSON body rỗng/sai format.
 - `MethodArgumentNotValidException`.
@@ -183,7 +183,7 @@ Không tự try/catch lỗi validation trong controller. `GlobalExceptionHandler
 - Request DTO ưu tiên dùng Lombok `@Getter`; chỉ thêm `@Setter` khi có nhu cầu mutate rõ ràng.
 - Dùng constructor DTO response khi response cố định.
 - Validate request bằng Jakarta Validation và luôn khai báo `message` tiếng Việt cho annotation validation.
-- Request body dùng camelCase theo tên field Java, giống request DTO của `user-service`; không dùng `@JsonProperty` trong request DTO chỉ để đổi sang snake_case.
+- Request body dùng camelCase theo tên field Java, giống request DTO của `operation-service`; không dùng `@JsonProperty` trong request DTO chỉ để đổi sang snake_case.
 - `@JsonProperty` chỉ dùng khi thật sự cần giữ contract bên ngoài hoặc cho response/event đã có format cố định.
 
 Mẫu request:
@@ -229,7 +229,7 @@ Entity dùng JPA annotation, Lombok, UUID:
 - Enum dùng `@Enumerated(EnumType.STRING)`.
 - Quan hệ dùng lazy fetch nếu phù hợp: `@ManyToOne(fetch = FetchType.LAZY)`.
 - Timestamp có thể dùng `Instant.now()` hoặc `@CreationTimestamp`, theo style file gần nhất.
-- Với entity mới trong `car-service`, có thể dùng `@Builder`, `@NoArgsConstructor`, `@AllArgsConstructor`, `@FieldDefaults(level = AccessLevel.PRIVATE)`.
+- Với entity mới trong nhóm API xe, có thể dùng `@Builder`, `@NoArgsConstructor`, `@AllArgsConstructor`, `@FieldDefaults(level = AccessLevel.PRIVATE)`.
 
 Mẫu:
 
@@ -300,7 +300,7 @@ Gateway là nơi xác thực JWT:
 - Request protected phải có `Authorization: Bearer <token>`.
 - Gateway parse JWT bằng `JwtUtil`.
 - Gateway xoá header giả mạo `X-User-Id`, `X-User-Role`, sau đó set lại từ claims.
-- Service con nhận header qua `common-core` `HeaderAuthenticationFilter`.
+- Service con nhận header qua `HeaderAuthenticationFilter` trong mã dùng chung.
 
 Trong service con:
 
@@ -329,8 +329,8 @@ Kafka/event:
 Route khai báo trong `api-gateway/src/main/resources/application.yml`:
 
 ```yaml
-- id: car-service-route
-  uri: http://${CAR_SERVICE_HOST:car-service}:${CAR_SERVICE_PORT:8092}
+- id: car-route
+  uri: http://${OPERATION_SERVICE_HOST:operation-service}:${OPERATION_SERVICE_PORT:8091}
   predicates:
     - Path=/car/**
   filters:
@@ -347,17 +347,8 @@ Nếu thêm service mới:
 
 - Service Java dùng parent `org.springframework.boot:spring-boot-starter-parent:4.0.5`.
 - Java version: `21`.
-- Service con nên depend vào:
-
-```xml
-<dependency>
-    <groupId>com.tayota</groupId>
-    <artifactId>common-core</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-</dependency>
-```
-
-- Không thêm dependency đã có trong `common-core` nếu service chỉ dùng transitive bình thường.
+- Mã dùng chung đã nằm trực tiếp trong `operation-service`, không thêm dependency nội bộ riêng cho module dùng chung cũ.
+- Nếu tách thêm service mới sau này, cân nhắc tách lại package chung thành dependency riêng trước khi dùng lại.
 - Lombok scope `provided`, compiler plugin có annotation processor.
 - gRPC chỉ thêm ở service thật sự cần proto/client/server.
 
@@ -382,7 +373,7 @@ Nếu thêm service mới:
 - Request DTO có validation đầy đủ.
 - Service ném `CustomException` cho lỗi nghiệp vụ.
 - Method ghi DB có `@Transactional`.
-- Không decode JWT trong service con nếu thông tin đã có từ gateway/common-core.
+- Không decode JWT trong service con nếu thông tin đã có từ gateway và mã dùng chung.
 - Không để business logic lớn trong controller.
 - Không trả entity JPA trực tiếp.
 - Query list có phân trang nếu dữ liệu có thể lớn.

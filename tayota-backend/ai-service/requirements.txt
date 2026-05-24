@@ -1,0 +1,14 @@
+fastapi==0.104.1  # app.py
+uvicorn[standard]==0.24.0 # Dockerfile CMD chạy uvicorn
+pydantic==2.5.0  # BaseModel, Field
+python-multipart==0.0.9 # FileResponse, UploadFile
+python-dotenv==1.0.0 # load_dotenv, .env
+pymongo==4.7.3     # MongoClient, gridfs, bson
+qdrant-client==1.7.3 # QdrantClient, models
+sentence-transformers==3.0.1 # SentenceTransformer, util
+httpx==0.25.2 # rag.py gọi Ollama
+groq==0.9.0 # Groq client
+PyMuPDF==1.22.3 # PDF processing
+pytest==8.2.2 # Testing
+
+ 

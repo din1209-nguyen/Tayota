@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, Literal
 
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, Header, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 
 from conversation_state_manager import MongoStateError, state_manager
@@ -15,7 +15,7 @@ from mongo_storage import (
     MongoStorageError,
 )
 from rag import GROQ_API_KEY, LLM_PROVIDER, answer
-from vector_database import get_collection_info, ingest_documents
+from vector_database import delete_document_chunks, get_collection_info, ingest_documents
 
 load_dotenv()
 
@@ -31,8 +31,6 @@ class Source(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    session_id: str = Field(..., min_length=1)
-    user_id: str = Field(..., min_length=1)
     message: str = Field(..., min_length=1)
 
 
@@ -43,6 +41,62 @@ class ChatResponse(BaseModel):
     stage: str
     slots: Dict[str, Any]
     session_id: str
+
+
+class ChatMessage(BaseModel):
+    session_id: str
+    user_id: str | None = None
+    question: str
+    answer: str
+    intent: str
+    stage: str
+    slots_snapshot: Dict[str, Any]
+    sources: list[Dict[str, Any]]
+    model_used: str
+    rule_triggered: str
+    created_at: Any = None
+
+
+class ChatMessagesResponse(BaseModel):
+    session_id: str
+    count: int
+    messages: list[ChatMessage]
+
+
+class UserSession(BaseModel):
+    session_id: str
+    user_id: str | None = None
+    stage: str | None = None
+    turn_count: int = 0
+    last_intent: str | None = None
+    filled_slots: Dict[str, Any]
+    history_len: int = 0
+    status: str = "active"
+    created_at: Any = None
+    updated_at: Any = None
+
+
+class UserSessionsResponse(BaseModel):
+    user_id: str
+    count: int
+    sessions: list[UserSession]
+
+
+class DocumentItem(BaseModel):
+    document_id: str
+    filename: str
+    status: str
+    content_type: str | None = None
+    size_bytes: int = 0
+    sha256: str | None = None
+    uploaded_by_user_id: str | None = None
+    uploaded_at: Any = None
+    updated_at: Any = None
+
+
+class DocumentsResponse(BaseModel):
+    count: int
+    documents: list[DocumentItem]
 
 
 class DocumentJobResponse(BaseModel):
@@ -57,6 +111,13 @@ class DocumentJobStatus(BaseModel):
     document_id: str | None = None
     indexed_pages: int = 0
     indexed_chunks: int = 0
+
+
+class DeleteDocumentResponse(BaseModel):
+    document_id: str
+    filename: str | None = None
+    status: Literal["deleted"]
+    deleted_chunks: int = 0
 
 
 class ResetSessionResponse(BaseModel):
@@ -76,6 +137,7 @@ mongo_connection = MongoConnection()
 document_store = MongoDocumentStore(mongo_connection)
 job_store = MongoDocumentJobStore(mongo_connection)
 app = FastAPI(title="Toyota RAG AI Service", version="1.0.0")
+DEFAULT_DOCUMENT_STATUSES = ("uploaded", "indexing", "indexed", "failed")
 
 
 def _service_unavailable(detail: str) -> HTTPException:
@@ -87,6 +149,22 @@ def _safe_filename(filename: str) -> str:
     if not name.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF uploads are supported.")
     return name
+
+
+def _has_admin_role(user_role: str | None) -> bool:
+    if not user_role:
+        return False
+    roles = {
+        role.strip().upper().removeprefix("ROLE_")
+        for role in user_role.split(",")
+        if role.strip()
+    }
+    return "ADMIN" in roles
+
+
+def _require_admin(user_role: str | None) -> None:
+    if not _has_admin_role(user_role):
+        raise HTTPException(status_code=403, detail="Admin role is required.")
 
 
 def _qdrant_metadata_for_path(path: Path, document: Dict[str, Any]) -> Dict[str, Any]:
@@ -166,12 +244,16 @@ def _run_ingest_job(job_id: str, document_id: str, rebuild: bool) -> None:
 
 
 @app.post("/api/v1/chat", response_model=ChatResponse)
-def chat(request: ChatRequest) -> ChatResponse:
+def chat(
+    request: ChatRequest,
+    session_id: str = Header(..., alias="X-AI-Session-Id", min_length=1),
+    user_id: str | None = Header(default=None, alias="X-User-Id"),
+) -> ChatResponse:
     try:
         result = answer(
             request.message,
-            session_id=request.session_id,
-            user_id=request.user_id,
+            session_id=session_id,
+            user_id=user_id,
         )
     except MongoStateError as exc:
         raise _service_unavailable(str(exc)) from exc
@@ -188,13 +270,59 @@ def chat(request: ChatRequest) -> ChatResponse:
     )
 
 
+@app.get("/api/v1/users/{user_id}/sessions", response_model=UserSessionsResponse)
+def get_user_sessions(
+    user_id: str,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> UserSessionsResponse:
+    try:
+        sessions = state_manager.list_user_sessions(
+            user_id=user_id,
+            limit=limit,
+            offset=offset,
+        )
+    except MongoStateError as exc:
+        raise _service_unavailable(str(exc)) from exc
+
+    return UserSessionsResponse(
+        user_id=user_id,
+        count=len(sessions),
+        sessions=[UserSession.model_validate(session) for session in sessions],
+    )
+
+
+@app.get("/api/v1/sessions/{session_id}/messages", response_model=ChatMessagesResponse)
+def get_session_messages(
+    session_id: str,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> ChatMessagesResponse:
+    try:
+        messages = state_manager.list_chat_messages(
+            session_id=session_id,
+            limit=limit,
+            offset=offset,
+        )
+    except MongoStateError as exc:
+        raise _service_unavailable(str(exc)) from exc
+
+    return ChatMessagesResponse(
+        session_id=session_id,
+        count=len(messages),
+        messages=[ChatMessage.model_validate(message) for message in messages],
+    )
+
+
 @app.post("/api/v1/documents", response_model=DocumentJobResponse)
 def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     rebuild: bool = False,
-    user_id: str | None = Form(default=None),
+    user_id: str | None = Header(default=None, alias="X-User-Id"),
+    user_role: str | None = Header(default=None, alias="X-User-Role"),
 ) -> DocumentJobResponse:
+    _require_admin(user_role)
     filename = _safe_filename(file.filename or "")
 
     job_id = str(uuid.uuid4())
@@ -219,6 +347,23 @@ def upload_document(
     return DocumentJobResponse(job_id=job_id, status="queued")
 
 
+@app.get("/api/v1/documents", response_model=DocumentsResponse)
+def list_documents(
+    status: list[str] | None = Query(default=None),
+) -> DocumentsResponse:
+    statuses = tuple(status) if status else DEFAULT_DOCUMENT_STATUSES
+    try:
+        documents = document_store.list_documents(statuses=statuses)
+    except MongoStorageError as exc:
+        raise _service_unavailable(str(exc)) from exc
+
+    documents.sort(key=lambda item: str(item.get("uploaded_at") or ""), reverse=True)
+    return DocumentsResponse(
+        count=len(documents),
+        documents=[DocumentItem.model_validate(document) for document in documents],
+    )
+
+
 @app.get("/api/v1/documents/jobs/{job_id}", response_model=DocumentJobStatus)
 def get_document_job(job_id: str) -> DocumentJobStatus:
     try:
@@ -228,6 +373,39 @@ def get_document_job(job_id: str) -> DocumentJobStatus:
     if status is None:
         raise HTTPException(status_code=404, detail="Document job not found.")
     return DocumentJobStatus.model_validate(status)
+
+
+@app.delete("/api/v1/documents/{document_id}", response_model=DeleteDocumentResponse)
+def delete_document(
+    document_id: str,
+    user_role: str | None = Header(default=None, alias="X-User-Role"),
+) -> DeleteDocumentResponse:
+    _require_admin(user_role)
+    try:
+        document = document_store.get_document(document_id)
+    except MongoStorageError as exc:
+        raise _service_unavailable(str(exc)) from exc
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    try:
+        deleted_chunks = delete_document_chunks(document_id)
+    except RuntimeError as exc:
+        raise _service_unavailable(str(exc)) from exc
+
+    try:
+        deleted_document = document_store.delete_document(document_id)
+    except MongoStorageError as exc:
+        raise _service_unavailable(str(exc)) from exc
+    if deleted_document is None:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    return DeleteDocumentResponse(
+        document_id=document_id,
+        filename=str(deleted_document.get("filename") or ""),
+        status="deleted",
+        deleted_chunks=deleted_chunks,
+    )
 
 
 @app.post("/api/v1/sessions/{session_id}/reset", response_model=ResetSessionResponse)

@@ -170,6 +170,31 @@ class ConversationStateManager:
     def all_summaries(self) -> List[Dict[str, Any]]:
         return [state.summary() for state in self._sessions.values()]
 
+    def list_user_sessions(
+        self,
+        *,
+        user_id: str,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
+        sessions = [
+            {
+                **state.summary(),
+                "created_at": datetime.fromtimestamp(
+                    state.created_at,
+                    tz=timezone.utc,
+                ),
+                "updated_at": datetime.fromtimestamp(
+                    state.updated_at,
+                    tz=timezone.utc,
+                ),
+            }
+            for state in self._sessions.values()
+            if state.user_id == user_id
+        ]
+        sessions.sort(key=lambda item: item.get("updated_at") or datetime.min, reverse=True)
+        return sessions[offset : offset + limit]
+
     def log_chat_message(
         self,
         *,
@@ -199,6 +224,21 @@ class ConversationStateManager:
                 "created_at": datetime.now(timezone.utc),
             }
         )
+
+    def list_chat_messages(
+        self,
+        *,
+        session_id: str,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
+        messages = [
+            dict(message)
+            for message in self.chat_messages
+            if message.get("session_id") == session_id
+        ]
+        messages.sort(key=lambda message: message.get("created_at") or datetime.min)
+        return messages[offset : offset + limit]
 
 
 class MongoConversationStateManager:
@@ -326,6 +366,26 @@ class MongoConversationStateManager:
         except PyMongoError as exc:
             raise MongoStateError(f"Cannot count MongoDB sessions: {exc}") from exc
 
+    def list_user_sessions(
+        self,
+        *,
+        user_id: str,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
+        try:
+            cursor = (
+                self.sessions.find({"user_id": user_id})
+                .sort("updated_at", -1)
+                .skip(offset)
+                .limit(limit)
+            )
+            return [self._session_summary_from_document(session) for session in cursor]
+        except PyMongoError as exc:
+            raise MongoStateError(
+                f"Cannot load sessions for user '{user_id}' from MongoDB: {exc}"
+            ) from exc
+
     def log_chat_message(
         self,
         *,
@@ -361,6 +421,31 @@ class MongoConversationStateManager:
                 f"Cannot save chat log for session '{session_id}' to MongoDB: {exc}"
             ) from exc
 
+    def list_chat_messages(
+        self,
+        *,
+        session_id: str,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
+        try:
+            cursor = (
+                self.messages.find({"session_id": session_id})
+                .sort("created_at", 1)
+                .skip(offset)
+                .limit(limit)
+            )
+            messages = []
+            for message in cursor:
+                payload = dict(message)
+                payload.pop("_id", None)
+                messages.append(payload)
+            return messages
+        except PyMongoError as exc:
+            raise MongoStateError(
+                f"Cannot load chat messages for session '{session_id}' from MongoDB: {exc}"
+            ) from exc
+
     def _state_to_document(self, state: ConversationState) -> Dict[str, Any]:
         payload = asdict(state)
         payload["_id"] = state.session_id
@@ -384,6 +469,22 @@ class MongoConversationStateManager:
             payload["history"] = payload.pop("recent_history")
         allowed = ConversationState.__dataclass_fields__.keys()
         return ConversationState(**{k: v for k, v in payload.items() if k in allowed})
+
+    def _session_summary_from_document(self, document: Dict[str, Any]) -> Dict[str, Any]:
+        slots = document.get("slots") or {}
+        history = document.get("recent_history") or []
+        return {
+            "session_id": document.get("session_id") or document.get("_id"),
+            "user_id": document.get("user_id"),
+            "stage": document.get("stage"),
+            "turn_count": document.get("turn_count", 0),
+            "last_intent": document.get("last_intent"),
+            "filled_slots": {key: value for key, value in slots.items() if value is not None},
+            "history_len": len(history),
+            "status": document.get("status", "active"),
+            "created_at": document.get("created_at_iso") or document.get("created_at"),
+            "updated_at": document.get("updated_at_iso") or document.get("updated_at"),
+        }
 
 
 def _build_state_manager():

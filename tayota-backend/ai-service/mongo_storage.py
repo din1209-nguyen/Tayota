@@ -12,6 +12,7 @@ load_dotenv()
 
 try:
     import gridfs
+    from gridfs.errors import NoFile
     from bson import ObjectId
     from pymongo import MongoClient
     from pymongo.errors import PyMongoError
@@ -21,6 +22,9 @@ except ImportError:  # pragma: no cover - only hit before dependencies are insta
     MongoClient = None
 
     class PyMongoError(Exception):
+        pass
+
+    class NoFile(Exception):
         pass
 
 
@@ -173,6 +177,24 @@ class MongoDocumentStore:
             raise MongoStorageError(
                 f"Cannot update document '{document_id}' status to '{status}': {exc}"
             ) from exc
+
+    def delete_document(self, document_id: str) -> Optional[Dict[str, object]]:
+        document = self.get_document(document_id)
+        if not document:
+            return None
+
+        try:
+            gridfs_file_id = document.get("gridfs_file_id")
+            if gridfs_file_id is not None:
+                try:
+                    self.bucket.delete(gridfs_file_id)
+                except NoFile:
+                    pass
+            self.documents.delete_one({"document_id": document_id})
+        except PyMongoError as exc:
+            raise MongoStorageError(f"Cannot delete document '{document_id}': {exc}") from exc
+
+        return document
 
     def materialize_pdf(self, document_id: str, target_dir: str | Path) -> Path:
         document = self.get_document(document_id)

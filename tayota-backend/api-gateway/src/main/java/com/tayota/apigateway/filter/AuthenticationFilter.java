@@ -4,14 +4,17 @@ import com.tayota.apigateway.util.JwtUtil;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
@@ -20,20 +23,33 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 public class AuthenticationFilter implements GlobalFilter, Ordered {
-    private final JwtUtil jwtUtil;
+    private static final String AI_CHAT_PATH = "/ai/api/v1/chat";
+    private static final String AI_SESSION_COOKIE = "ai_session_id";
+    private static final String AI_SESSION_HEADER = "X-AI-Session-Id";
+    private static final String USER_ID_HEADER = "X-User-Id";
+    private static final String USER_ROLE_HEADER = "X-User-Role";
+    private static final String USER_EMAIL_HEADER = "X-User-Email";
 
-    // AntPathMatcher là công cụ của Spring giúp so sánh chuỗi URI có chứa dấu * (wildcard)
+    private final JwtUtil jwtUtil;
+    private final boolean aiChatCookieSecure;
+    private final long aiChatSessionTtlSeconds;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
-    public AuthenticationFilter(JwtUtil jwtUtil) {
+    public AuthenticationFilter(
+            JwtUtil jwtUtil,
+            @Value("${ai.chat.cookie.secure:false}") boolean aiChatCookieSecure,
+            @Value("${ai.chat.session-ttl-seconds:21600}") long aiChatSessionTtlSeconds) {
         this.jwtUtil = jwtUtil;
+        this.aiChatCookieSecure = aiChatCookieSecure;
+        this.aiChatSessionTtlSeconds = aiChatSessionTtlSeconds;
     }
 
-    // Danh sách các đường dẫn không cần xác thực
     private final List<PublicEndpoint> whitelistUrls = List.of(
             PublicEndpoint.of(HttpMethod.POST, "/user/register"),
             PublicEndpoint.of(HttpMethod.POST, "/user/verify-account"),
@@ -54,102 +70,158 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
             PublicEndpoint.of(HttpMethod.GET, "/car/accessories"),
             PublicEndpoint.of(HttpMethod.GET, "/car/accessories/**"),
 
-            // operation service
             PublicEndpoint.of(HttpMethod.POST, "/operation/api/appointments/test-drive/guest")
     );
 
-    // Đây là hàm cốt lõi, mọi request đi qua Gateway đều phải chạy qua hàm này
-    // Mono<Void> đại diện cho một tác vụ bất đồng bộ (sẽ hoàn thành trong tương lai)
     @Override
     @NullMarked
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        // Lấy đối tượng Request (chứa dữ liệu người dùng gửi lên) từ Exchange
         ServerHttpRequest request = exchange.getRequest();
-
-        // Lấy đường dẫn API người dùng đang muốn gọi (VD: /api/users/profile)
         String path = request.getURI().getPath();
 
-        // Duyệt qua danh sách whitelist, nếu đường dẫn hiện tại khớp với bất kỳ pattern nào thì trả về true
+        if (isAiChatRequest(request.getMethod(), path)) {
+            return handleAiChat(exchange, chain);
+        }
+
         if (HttpMethod.OPTIONS.equals(request.getMethod())
                 || whitelistUrls.stream().anyMatch(endpoint -> isWhitelisted(endpoint, request.getMethod(), path))) {
             return chain.filter(exchange);
         }
-        
-        /* access-token từ header chuẩn Authorization: Bearer <token> */
-        // Tìm header có tên là "Authorization" (chứa access-token)
+
         String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-
-        // Nếu header không tồn tại hoặc không đúng chuẩn Bearer thì báo lỗi 401
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return unAuthorizedResponse(exchange.getResponse(), "Vui lòng đăng nhập để có thể truy cập!");
+            return unAuthorizedResponse(exchange.getResponse(), "Vui long dang nhap de co the truy cap!");
         }
-
-        // Cắt bỏ 7 ký tự đầu ("Bearer ") để lấy access-token
-        String token = authHeader.substring(7);
 
         try {
-            // Giải mã và xác thực, nếu lỗi sẽ ném xuống catch
-            Claims claims = jwtUtil.getClaims(token);
-
-            // Lấy userId và role từ Claim sau khi đuợc giải mã thành công
-            String userId = claims.getSubject();
-            List<String> roles = claims.get("role", List.class);
-            String email = claims.get("email", String.class);
-
-            // Nối các role thành chuỗi cách nhau bởi dấu phẩy để gắn vào header
-            String roleHeaderValue = (roles != null) ? String.join(",", roles) : "";
-
-            // Request trong Gateway là "Immutable" (Bất biến, không thể sửa đổi trực tiếp)
-            // Do đó ta phải dùng mutate() để tạo ra một bản sao mới của Request
-            ServerHttpRequest modifiedRequest = request.mutate()
-                    //  Xóa các header cũ đi trước để đề phòng Hacker cố tình gửi sẵn header "X-User-Id" để giả mạo (Header Spoofing)
-                    .headers(httpHeaders -> {
-                        httpHeaders.remove("X-User-Id");
-                        httpHeaders.remove("X-User-Role");
-                        httpHeaders.remove("X-User-Email");
-                    })
-                    // Gắn lại header mới từ chính token đã được xác thực
-                    .header("X-User-Id", userId)
-                    .header("X-User-Role", roleHeaderValue)
-                    .header("X-User-Email", email)
-                    .build(); // Hoàn tất tạo bản sao Request
-
-            // Cho phép Request (đã được chỉnh sửa) đi qua Filter này để đến Filter tiếp theo hoặc các Service con
+            ServerHttpRequest modifiedRequest = withAuthenticatedUserHeaders(
+                    request,
+                    jwtUtil.getClaims(authHeader.substring(7))
+            );
             return chain.filter(exchange.mutate().request(modifiedRequest).build());
-
         }
         catch (ExpiredJwtException e) {
-            // Bắt lỗi Token hết hạn để Client gọi API Refresh Token
-            return unAuthorizedResponse(exchange.getResponse(), "Access-token đã hết hạn");
+            return unAuthorizedResponse(exchange.getResponse(), "Access-token da het han");
         }
         catch (Exception e) {
-            // Bắt lỗi trong quá trình giải mã (sai chữ ký, token bị can thiệp, sai thuật toán...)
-            return unAuthorizedResponse(exchange.getResponse(), "Access-token không hợp lệ");
+            return unAuthorizedResponse(exchange.getResponse(), "Access-token khong hop le");
         }
     }
 
-    // Xử lý trả về lỗi client
-    private Mono<Void> unAuthorizedResponse(ServerHttpResponse response, String message) {
-        // Thiết lập lỗi 401 (Unauthorized - Chưa xác thực)
-        response.setStatusCode(HttpStatus.UNAUTHORIZED);
+    private Mono<Void> handleAiChat(ServerWebExchange exchange, GatewayFilterChain chain) {
+        ServerHttpRequest request = exchange.getRequest();
+        ServerHttpResponse response = exchange.getResponse();
 
-        // Báo cho Frontend biết đây là chuỗi JSON
+        String sessionId = getAiSessionId(request);
+        boolean shouldSetSessionCookie = false;
+        if (sessionId == null) {
+            sessionId = UUID.randomUUID().toString();
+            shouldSetSessionCookie = true;
+        }
+        final String resolvedSessionId = sessionId;
+
+        String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        if (authHeader == null || authHeader.isBlank()) {
+            if (shouldSetSessionCookie) {
+                response.addCookie(buildAiSessionCookie(resolvedSessionId));
+            }
+            ServerHttpRequest modifiedRequest = request.mutate()
+                    .headers(this::removeTrustedHeaders)
+                    .header(AI_SESSION_HEADER, resolvedSessionId)
+                    .build();
+            return chain.filter(exchange.mutate().request(modifiedRequest).build());
+        }
+
+        if (!authHeader.startsWith("Bearer ")) {
+            return unAuthorizedResponse(response, "Access-token khong hop le");
+        }
+
+        try {
+            Claims claims = jwtUtil.getClaims(authHeader.substring(7));
+            if (shouldSetSessionCookie) {
+                response.addCookie(buildAiSessionCookie(resolvedSessionId));
+            }
+            ServerHttpRequest modifiedRequest = withAuthenticatedUserHeaders(
+                    request,
+                    claims
+            ).mutate()
+                    .headers(headers -> {
+                        headers.remove(AI_SESSION_HEADER);
+                        headers.set(AI_SESSION_HEADER, resolvedSessionId);
+                    })
+                    .build();
+
+            return chain.filter(exchange.mutate().request(modifiedRequest).build());
+        }
+        catch (ExpiredJwtException e) {
+            return unAuthorizedResponse(response, "Access-token da het han");
+        }
+        catch (Exception e) {
+            return unAuthorizedResponse(response, "Access-token khong hop le");
+        }
+    }
+
+    private ServerHttpRequest withAuthenticatedUserHeaders(ServerHttpRequest request, Claims claims) {
+        String userId = claims.getSubject();
+        List<String> roles = claims.get("role", List.class);
+        String email = claims.get("email", String.class);
+        String roleHeaderValue = roles != null ? String.join(",", roles) : "";
+
+        return request.mutate()
+                .headers(headers -> {
+                    removeTrustedHeaders(headers);
+                    if (userId != null && !userId.isBlank()) {
+                        headers.set(USER_ID_HEADER, userId);
+                    }
+                    headers.set(USER_ROLE_HEADER, roleHeaderValue);
+                    if (email != null && !email.isBlank()) {
+                        headers.set(USER_EMAIL_HEADER, email);
+                    }
+                })
+                .build();
+    }
+
+    private String getAiSessionId(ServerHttpRequest request) {
+        HttpCookie cookie = request.getCookies().getFirst(AI_SESSION_COOKIE);
+        if (cookie == null || cookie.getValue() == null || cookie.getValue().isBlank()) {
+            return null;
+        }
+        return cookie.getValue();
+    }
+
+    private ResponseCookie buildAiSessionCookie(String sessionId) {
+        return ResponseCookie.from(AI_SESSION_COOKIE, sessionId)
+                .httpOnly(true)
+                .secure(aiChatCookieSecure)
+                .path("/")
+                .sameSite("Lax")
+                .maxAge(Duration.ofSeconds(aiChatSessionTtlSeconds))
+                .build();
+    }
+
+    private void removeTrustedHeaders(HttpHeaders httpHeaders) {
+        httpHeaders.remove(USER_ID_HEADER);
+        httpHeaders.remove(USER_ROLE_HEADER);
+        httpHeaders.remove(USER_EMAIL_HEADER);
+        httpHeaders.remove(AI_SESSION_HEADER);
+    }
+
+    private Mono<Void> unAuthorizedResponse(ServerHttpResponse response, String message) {
+        response.setStatusCode(HttpStatus.UNAUTHORIZED);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
-        // Kết quả sẽ có dạng: {"status": 401, "message": "Lỗi gì đó..."}
         String jsonString = String.format("{\"status\": 401, \"message\": \"%s\"}", message);
-
-        // Đóng gói mảng byte thành DataBuffer (Kiểu dữ liệu đặc thù của Spring WebFlux/Reactive)
-        // StandardCharsets.UTF_8 đảm bảo đúng Tiếng Việt
         byte[] bytes = jsonString.getBytes(StandardCharsets.UTF_8);
         DataBuffer buffer = response.bufferFactory().wrap(bytes);
-
-        // Viết dữ liệu vào Response và trả về cho người dùng
         return response.writeWith(Mono.just(buffer));
     }
 
     private boolean isWhitelisted(PublicEndpoint endpoint, HttpMethod method, String path) {
         return endpoint.method().equals(method) && pathMatcher.match(endpoint.pattern(), path);
+    }
+
+    private boolean isAiChatRequest(HttpMethod method, String path) {
+        return HttpMethod.POST.equals(method) && AI_CHAT_PATH.equals(path);
     }
 
     private record PublicEndpoint(HttpMethod method, String pattern) {
@@ -158,8 +230,6 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         }
     }
 
-    // Xác định thứ tự chạy của Filter này
-    // Số càng nhỏ thì Filter càng được chạy sớm
     @Override
     public int getOrder() {
         return -1;

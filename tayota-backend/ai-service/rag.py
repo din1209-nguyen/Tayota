@@ -115,6 +115,33 @@ OVERVIEW_QUERY_MARKERS = [
     "chi tiet",
     "cho toi biet",
 ]
+GENERAL_INFORMATION_QUERY_MARKERS = [
+    "thong tin chung",
+    "thong tin co ban",
+    "tu van co ban",
+    "quy trinh",
+    "thu tuc",
+    "ho so",
+    "giay to",
+    "dat lich",
+    "lai thu",
+    "bao duong",
+    "bao hanh",
+    "tra gop",
+    "vay mua xe",
+    "tai chinh",
+    "dang ky",
+    "dang ki",
+    "lien he",
+    "showroom",
+    "dai ly",
+    "khuyen mai",
+    "uu dai",
+    "cham soc khach hang",
+    "kinh nghiem",
+    "luu y",
+    "an toan",
+]
 HIGH_VALUE_VEHICLE_TERMS = [
     "gia",
     "gia khoi diem",
@@ -757,13 +784,23 @@ def _is_general_catalog_query(query: str) -> bool:
     return any(marker in normalized_text for marker in catalog_markers)
 
 
+def _is_general_information_query(query: str) -> bool:
+    normalized_text = _normalize_lookup_text(query)
+    if _contains_vehicle_keyword(normalized_text):
+        return False
+
+    if _is_general_catalog_query(query):
+        return True
+
+    return any(marker in normalized_text for marker in GENERAL_INFORMATION_QUERY_MARKERS)
+
+
 def _document_scope_for_query(
     query: str,
     state: ConversationState,
 ) -> tuple[str, List[str]]:
-    normalized_query = _normalize_lookup_text(query)
-    if _is_general_catalog_query(query) and not _contains_vehicle_keyword(normalized_query):
-        return "hybrid", HYBRID_DOCUMENT_SOURCES
+    if _is_general_information_query(query):
+        return "general", GENERAL_DOCUMENT_SOURCES
 
     preferred_sources = _preferred_sources_for_query(query, state)
     if _mentions_vehicle_detail(query, state):

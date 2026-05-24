@@ -12,6 +12,7 @@ from qdrant_client.models import (
     Distance,
     FieldCondition,
     Filter,
+    FilterSelector,
     MatchAny,
     MatchValue,
     PointStruct,
@@ -281,6 +282,52 @@ def collection_point_count() -> int:
     ).count
 
 
+def _document_filter(document_id: str) -> Filter:
+    return Filter(
+        must=[
+            FieldCondition(
+                key="document_id",
+                match=MatchValue(value=document_id),
+            )
+        ]
+    )
+
+
+def delete_document_chunks(document_id: str) -> int:
+    client = get_client()
+    query_filter = _document_filter(document_id)
+    count = _qdrant_call(
+        f"count chunks for document '{document_id}'",
+        lambda: client.count(
+            collection_name=COLLECTION,
+            count_filter=query_filter,
+            exact=True,
+        ),
+    ).count
+    _qdrant_call(
+        f"delete chunks for document '{document_id}'",
+        lambda: client.delete(
+            collection_name=COLLECTION,
+            points_selector=FilterSelector(filter=query_filter),
+            wait=True,
+        ),
+    )
+    try:
+        refresh_summary_chunk()
+    except Exception as exc:
+        print(f"[WARN] Khong cap nhat duoc summary chunk sau khi xoa document: {exc}")
+    return count
+
+
+def refresh_summary_chunk() -> None:
+    chunks = [
+        chunk
+        for chunk in scroll_chunks(limit=10000)
+        if chunk.get("source") != "summary"
+    ]
+    upsert_summary_chunk(_car_names_from_chunks(chunks))
+
+
 def upsert_summary_chunk(car_names: List[str]) -> None:
     """Upsert one summary chunk for listing all available cars."""
     from embed import embed_texts
@@ -322,7 +369,7 @@ def upsert_summary_chunk(car_names: List[str]) -> None:
 def _car_names_from_chunks(chunks: List[Dict[str, Any]]) -> List[str]:
     names = []
     for chunk in chunks:
-        source = chunk.get("metadata", {}).get("source")
+        source = chunk.get("metadata", {}).get("source") or chunk.get("source")
         if source:
             names.append(source.removesuffix(".pdf"))
     return sorted(set(names))

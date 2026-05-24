@@ -11,6 +11,10 @@ class FakeUpdateResult:
     pass
 
 
+class FakeDeleteResult:
+    pass
+
+
 class FakeCollection:
     def __init__(self):
         self.data = {}
@@ -45,6 +49,11 @@ class FakeCollection:
         self.data[key] = current
         return FakeUpdateResult()
 
+    def delete_one(self, query):
+        key = query.get("document_id") or query.get("job_id")
+        self.data.pop(key, None)
+        return FakeDeleteResult()
+
 
 class FakeBucket:
     def __init__(self):
@@ -57,6 +66,9 @@ class FakeBucket:
             "kwargs": kwargs,
         }
         return file_id
+
+    def delete(self, file_id):
+        self.files.pop(file_id, None)
 
 
 class FakeDocumentStore(MongoDocumentStore):
@@ -99,6 +111,28 @@ def test_document_store_saves_pdf_metadata_and_gridfs_file():
     assert document["size_bytes"] == len(b"%PDF-test")
     assert document["uploaded_by_user_id"] == "u1"
     assert store.fake_bucket.files["grid-1"]["content"] == b"%PDF-test"
+
+
+def test_document_store_deletes_metadata_and_gridfs_file():
+    store = FakeDocumentStore()
+    document = store.save_pdf(
+        filename="toyota.pdf",
+        content_type="application/pdf",
+        file_obj=BytesIO(b"%PDF-test"),
+        uploaded_by_user_id="u1",
+    )
+
+    deleted = store.delete_document(document["document_id"])
+
+    assert deleted["document_id"] == document["document_id"]
+    assert store.get_document(document["document_id"]) is None
+    assert store.fake_bucket.files == {}
+
+
+def test_document_store_delete_missing_document_returns_none():
+    store = FakeDocumentStore()
+
+    assert store.delete_document("missing") is None
 
 
 def test_document_job_store_round_trips_status_dict():

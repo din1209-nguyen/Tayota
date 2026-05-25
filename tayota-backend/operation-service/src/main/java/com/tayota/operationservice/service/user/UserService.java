@@ -29,7 +29,13 @@ public class UserService {
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         // Trả về thông tin cơ bản
-        return new BasicInformationResponseDTO(userProfile.getFullname(), userProfile.getAvatarUrl());
+        return new BasicInformationResponseDTO(
+                userProfile.getId(),
+                userProfile.getFullname(),
+                userProfile.getAvatarUrl(),
+                userProfile.getUser().getEmail(),
+                userProfile.getUser().getRole().name()
+        );
     }
 
     // Lấy hồ sơ

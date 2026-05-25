@@ -16,6 +16,14 @@ export function register(payload) {
   });
 }
 
+export function verifyAccount(payload) {
+  return apiFetch("/user/verify-account", {
+    method: "POST",
+    body: JSON.stringify(payload),
+    skipAuthRefresh: true,
+  });
+}
+
 export function logout() {
   return apiFetch("/user/logout", {
     method: "POST",

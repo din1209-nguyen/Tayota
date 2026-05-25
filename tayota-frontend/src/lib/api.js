@@ -1,4 +1,4 @@
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8090";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9090";
 const TOKEN_KEY = "tayota_access_token";
 
 export class ApiError extends Error {
@@ -68,10 +68,10 @@ function unwrapResponse(data) {
 
 function getErrorMessage(data, status) {
   if (data && typeof data === "object") {
-    return data.message || data.error || `Yeu cau that bai: ${status}`;
+    return data.message || data.error || `Yêu cầu thất bại: ${status}`;
   }
 
-  return data || `Yeu cau that bai: ${status}`;
+  return data || `Yêu cầu thất bại: ${status}`;
 }
 
 async function refreshAccessToken() {

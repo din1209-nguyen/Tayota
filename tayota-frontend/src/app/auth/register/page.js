@@ -4,9 +4,9 @@ export default function RegisterPage() {
   return (
     <section className="section auth-page">
       <div className="shell-container auth-layout">
-        <div>
+        <div className="auth-copy">
           <p className="eyebrow">Thành viên mới</p>
-          <h1>Tạo tài khoản TAYOTA</h1>
+          <h1>Tạo tài khoản Tayota</h1>
           <p>Đăng ký để lưu thông tin liên hệ, theo dõi lịch hẹn và nhận tư vấn liền mạch hơn.</p>
         </div>
         <AuthForm mode="register" />

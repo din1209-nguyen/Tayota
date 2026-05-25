@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
-import { getAccessories, getCarVersions } from "@/lib/services/car";
+import { getAccessories, getAllCarVersions, getCarStylesWithVersions } from "@/lib/services/car";
 import { unwrapList } from "@/lib/format";
+import { EMPTY_VEHICLE_FILTERS, filterVehicleItems } from "@/lib/vehicle-filters";
+import VehicleFilterControls from "@/components/vehicles/VehicleFilterControls";
 
 export default function AdminDashboard() {
   const [vehicles, setVehicles] = useState([]);
+  const [vehicleStyles, setVehicleStyles] = useState([]);
+  const [vehicleFilters, setVehicleFilters] = useState(EMPTY_VEHICLE_FILTERS);
   const [accessories, setAccessories] = useState([]);
   const [accountForm, setAccountForm] = useState({
     email: "",
@@ -19,14 +23,12 @@ export default function AdminDashboard() {
   useEffect(() => {
     let active = true;
 
-    Promise.all([
-      getCarVersions({ page: 0, size: 8 }),
-      getAccessories({ page: 0, size: 8 }),
-    ])
-      .then(([nextVehicles, nextAccessories]) => {
+    Promise.all([getAllCarVersions(), getAccessories({ page: 0, size: 8 }), getCarStylesWithVersions()])
+      .then(([nextVehicles, nextAccessories, nextStyles]) => {
         if (!active) return;
-        setVehicles(unwrapList(nextVehicles));
+        setVehicles(nextVehicles);
         setAccessories(unwrapList(nextAccessories));
+        setVehicleStyles(unwrapList(nextStyles));
       })
       .catch((error) => {
         if (active) setMessage(error.message);
@@ -36,6 +38,8 @@ export default function AdminDashboard() {
       active = false;
     };
   }, []);
+
+  const filteredVehicles = useMemo(() => filterVehicleItems(vehicles, vehicleFilters), [vehicleFilters, vehicles]);
 
   function updateField(event) {
     setAccountForm((current) => ({ ...current, [event.target.name]: event.target.value }));
@@ -57,7 +61,13 @@ export default function AdminDashboard() {
 
   return (
     <div className="ops-grid">
-      <section className="ops-panel">
+      <nav className="role-tabs wide" aria-label="Admin sections">
+        <a href="#admin-accounts">Tài khoản</a>
+        <a href="#admin-catalog">Xe</a>
+        <a href="#admin-accessories">Phụ kiện</a>
+      </nav>
+
+      <section className="ops-panel" id="admin-accounts">
         <p className="eyebrow">Admin</p>
         <h2>Tạo tài khoản nội bộ</h2>
         <form className="ops-form" onSubmit={createAccount}>
@@ -76,20 +86,29 @@ export default function AdminDashboard() {
         {message ? <div className="status-box">{message}</div> : null}
       </section>
 
-      <section className="ops-panel">
+      <section className="ops-panel" id="admin-catalog">
         <p className="eyebrow">Catalog</p>
         <h2>Phiên bản xe</h2>
+        <VehicleFilterControls
+          filters={vehicleFilters}
+          onChange={setVehicleFilters}
+          onReset={() => setVehicleFilters(EMPTY_VEHICLE_FILTERS)}
+          styles={vehicleStyles}
+          variant="compact"
+          advanced={false}
+        />
         <div className="ops-list">
-          {vehicles.map((vehicle) => (
+          {filteredVehicles.map((vehicle) => (
             <article key={vehicle.id || vehicle.carVersionId}>
               <strong>{vehicle.versionName || vehicle.name || vehicle.carVersionName}</strong>
-              <span>{vehicle.status || vehicle.modelYear}</span>
+              <span>{vehicle.carSeriesName || "Tayota"} - {vehicle.modelYear || "Đang cập nhật"}</span>
             </article>
           ))}
+          {!filteredVehicles.length ? <div className="status-box">Không có phiên bản xe phù hợp bộ lọc.</div> : null}
         </div>
       </section>
 
-      <section className="ops-panel">
+      <section className="ops-panel" id="admin-accessories">
         <p className="eyebrow">Accessories</p>
         <h2>Phụ kiện</h2>
         <div className="ops-list">

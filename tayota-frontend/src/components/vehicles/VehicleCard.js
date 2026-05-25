@@ -1,36 +1,41 @@
 import Link from "next/link";
 import {
   formatVnd,
+  getVehicleHighlights,
   getVehicleId,
+  getVehicleImage,
   getVehicleName,
   getVehiclePrice,
+  getVehicleSeriesName,
+  getVehicleStyleName,
 } from "@/lib/format";
 
 export default function VehicleCard({ vehicle }) {
   const id = getVehicleId(vehicle);
   const name = getVehicleName(vehicle);
-  const year = vehicle?.modelYear || vehicle?.year || "Mới nhất";
-  const style = vehicle?.styleName || vehicle?.bodyStyle || vehicle?.style || "Cao cấp";
-  const fuel = vehicle?.fuelType || vehicle?.engineType || "Toyota Hybrid";
+  const imageUrl = getVehicleImage(vehicle);
+  const highlights = getVehicleHighlights(vehicle);
 
   return (
     <article className="vehicle-card card">
       <div className="vehicle-media" aria-hidden="true">
-        <div className="vehicle-silhouette" />
+        {imageUrl ? <div className="vehicle-image" style={{ backgroundImage: `url(${imageUrl})` }} /> : <div className="vehicle-silhouette" />}
       </div>
       <div className="vehicle-body">
-        <p className="eyebrow">{style}</p>
+        <p className="eyebrow">{getVehicleStyleName(vehicle)}</p>
         <h3>{name}</h3>
-        <p className="vehicle-price">{formatVnd(getVehiclePrice(vehicle))}</p>
-        <dl className="vehicle-meta">
-          <div>
-            <dt>Năm</dt>
-            <dd>{year}</dd>
-          </div>
-          <div>
-            <dt>Động cơ</dt>
-            <dd>{fuel}</dd>
-          </div>
+        <p className="vehicle-series">{getVehicleSeriesName(vehicle)}</p>
+        <p className="vehicle-price">
+          <span>Giá từ</span>
+          <strong>{formatVnd(getVehiclePrice(vehicle))}</strong>
+        </p>
+        <dl className="vehicle-meta vehicle-meta-rich">
+          {highlights.slice(0, 6).map((item) => (
+            <div key={item.label}>
+              <dt>{item.label}</dt>
+              <dd>{item.value}</dd>
+            </div>
+          ))}
         </dl>
         <div className="vehicle-actions">
           <Link className="btn btn-primary" href={id ? `/vehicles/${id}` : "/vehicles"}>
@@ -38,6 +43,9 @@ export default function VehicleCard({ vehicle }) {
           </Link>
           <Link className="btn btn-ghost" href={`/compare${id ? `?ids=${id}` : ""}`}>
             So sánh
+          </Link>
+          <Link className="btn btn-ghost" href="/dealerships">
+            Xem đại lý
           </Link>
         </div>
       </div>

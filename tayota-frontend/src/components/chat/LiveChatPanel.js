@@ -10,6 +10,7 @@ import {
   sendAssistantChatMessage,
   sendCustomerChatMessage,
 } from "@/lib/services/chat";
+import { statusLabel } from "@/lib/format";
 
 function appendUnique(messages, nextMessage) {
   if (!nextMessage) return messages;
@@ -17,7 +18,14 @@ function appendUnique(messages, nextMessage) {
   return [...messages, nextMessage];
 }
 
-export default function LiveChatPanel({ mode = "customer", sessionId: providedSessionId = "" }) {
+function senderLabel(type) {
+  if (type === "ASSISTANT" || type === "STAFF") return "Tayota";
+  if (type === "SYSTEM") return "Hệ thống";
+  return "Khách hàng";
+}
+
+export default function LiveChatPanel({ mode = "customer", sessionId: providedSessionId = "", variant = "dashboard" }) {
+  const isAssistant = mode === "assistant";
   const [sessionId, setSessionId] = useState(providedSessionId);
   const [messages, setMessages] = useState([]);
   const [content, setContent] = useState("");
@@ -34,7 +42,7 @@ export default function LiveChatPanel({ mode = "customer", sessionId: providedSe
       setStatus("connecting");
 
       try {
-        const session = mode === "customer" ? await getCurrentChatSession() : { id: providedSessionId };
+        const session = isAssistant ? { id: providedSessionId } : await getCurrentChatSession();
         const resolvedSessionId = session?.id;
         if (!resolvedSessionId) {
           setStatus("idle");
@@ -44,9 +52,7 @@ export default function LiveChatPanel({ mode = "customer", sessionId: providedSe
         if (cancelled) return;
         setSessionId(resolvedSessionId);
 
-        const history = mode === "customer"
-          ? await getCurrentChatMessages()
-          : await getAssistantChatMessages(resolvedSessionId);
+        const history = isAssistant ? await getAssistantChatMessages(resolvedSessionId) : await getCurrentChatMessages();
         if (!cancelled) setMessages(Array.isArray(history) ? history : []);
 
         client = new Client({
@@ -74,7 +80,7 @@ export default function LiveChatPanel({ mode = "customer", sessionId: providedSe
       } catch (caughtError) {
         if (!cancelled) {
           setStatus("error");
-          setError(caughtError.message);
+          setError(caughtError.message || "Không thể mở live chat.");
         }
       }
     }
@@ -86,48 +92,55 @@ export default function LiveChatPanel({ mode = "customer", sessionId: providedSe
       clientRef.current = null;
       if (client) client.deactivate();
     };
-  }, [mode, providedSessionId]);
+  }, [isAssistant, providedSessionId]);
 
   async function send(event) {
     event.preventDefault();
     const text = content.trim();
     if (!text || !sessionId) return;
+
     setContent("");
+    setError("");
 
-    const client = clientRef.current;
-    if (client?.connected) {
-      client.publish({
-        destination: mode === "assistant" ? "/app/assistant.chat.send" : "/app/chat.send",
-        headers: { chat_session: sessionId },
-        body: JSON.stringify({ content: text }),
-      });
-      return;
+    try {
+      const savedMessage = isAssistant
+        ? await sendAssistantChatMessage(sessionId, text)
+        : await sendCustomerChatMessage(text);
+      setMessages((current) => appendUnique(current, savedMessage));
+    } catch (caughtError) {
+      setError(caughtError.message || "Không gửi được tin nhắn. Vui lòng thử lại.");
     }
-
-    const savedMessage = mode === "assistant"
-      ? await sendAssistantChatMessage(sessionId, text)
-      : await sendCustomerChatMessage(text);
-    setMessages((current) => appendUnique(current, savedMessage));
   }
 
   return (
-    <section className="ops-panel live-chat-panel">
+    <section className={`ops-panel live-chat-panel ${variant === "widget" ? "live-chat-widget-panel" : ""}`}>
       <div className="ops-panel-head">
         <div>
           <p className="eyebrow">Live chat</p>
-          <h2>{sessionId ? `Session ${sessionId}` : "Chưa có phiên chat"}</h2>
+          <h2>{isAssistant ? "Hỗ trợ khách hàng" : "Tư vấn trực tiếp"}</h2>
+          {sessionId && variant !== "widget" ? <p className="muted-text">Phiên {sessionId}</p> : null}
         </div>
-        <span className={`status-pill ${status}`}>{status}</span>
+        <span className={`status-pill ${status}`}>{statusLabel(status.toUpperCase())}</span>
       </div>
+
       {error ? <div className="status-box">{error}</div> : null}
+
       <div className="live-chat-messages">
-        {messages.length ? messages.map((message) => (
-          <div className="live-chat-message" key={message.id || `${message.senderType}-${message.createdAt}`}>
-            <strong>{message.senderType || "USER"}</strong>
-            <p>{message.content}</p>
-          </div>
-        )) : <div className="status-box">Chưa có tin nhắn.</div>}
+        {messages.length ? (
+          messages.map((message) => (
+            <div
+              className={`live-chat-message ${message.senderType === "CUSTOMER" ? "customer" : "assistant"}`}
+              key={message.id || `${message.senderType}-${message.createdAt}-${message.content}`}
+            >
+              <strong>{senderLabel(message.senderType)}</strong>
+              <p>{message.content}</p>
+            </div>
+          ))
+        ) : (
+          <div className="status-box">Chưa có tin nhắn.</div>
+        )}
       </div>
+
       <form className="live-chat-form" onSubmit={send}>
         <input
           className="field"

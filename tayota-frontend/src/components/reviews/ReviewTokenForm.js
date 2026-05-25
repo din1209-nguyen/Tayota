@@ -44,11 +44,7 @@ export default function ReviewTokenForm({ token }) {
   return (
     <form className="form-panel" onSubmit={submit}>
       {loading ? <p>Đang tải đánh giá...</p> : null}
-      {review ? (
-        <div className="status-box">
-          {review.reviewType || "REVIEW"} · {review.status || "PENDING"}
-        </div>
-      ) : null}
+      {review ? <div className="status-box">{review.reviewType || "REVIEW"} · {review.status || "PENDING"}</div> : null}
       <label className="label">
         Điểm dịch vụ
         <input className="field" type="number" min="1" max="5" name="serviceRating" value={form.serviceRating} onChange={updateField} />

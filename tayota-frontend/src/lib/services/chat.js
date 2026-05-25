@@ -47,10 +47,9 @@ export function sendAssistantChatMessage(sessionId, content) {
   });
 }
 
-export function sendAiChatMessage({ message, sessionId }) {
+export function sendAiChatMessage({ message }) {
   return apiFetch("/ai/api/v1/chat", {
     method: "POST",
-    headers: sessionId ? { "X-AI-Session-Id": sessionId } : undefined,
     body: JSON.stringify({ message }),
   });
 }

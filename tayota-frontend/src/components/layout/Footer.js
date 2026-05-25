@@ -8,10 +8,7 @@ export default function Footer() {
           <Link className="brand footer-brand" href="/">
             TAYOTA
           </Link>
-          <p>
-            Không gian số dành cho việc khám phá xe, đặt lịch lái thử và chăm
-            sóc sở hữu một cách riêng tư.
-          </p>
+          <p>Không gian số dành cho khám phá xe, đặt lịch lái thử và chăm sóc sở hữu theo cách riêng tư.</p>
         </div>
         <div>
           <h2>Trải nghiệm</h2>
@@ -22,7 +19,7 @@ export default function Footer() {
         <div>
           <h2>Hỗ trợ</h2>
           <Link href="/appointments/service">Dịch vụ</Link>
-          <Link href="/auth/login">Tài khoản</Link>
+          <Link href="/support/live-chat">Live chat</Link>
           <Link href="#ai-chat">AI tư vấn</Link>
         </div>
       </div>

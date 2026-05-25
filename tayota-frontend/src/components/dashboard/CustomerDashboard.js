@@ -47,14 +47,22 @@ export default function CustomerDashboard() {
 
   return (
     <div className="ops-grid">
-      <section className="ops-panel">
+      <nav className="role-tabs wide" aria-label="User sections">
+        <a href="#user-profile">Tài khoản</a>
+        <a href="#user-appointments">Lịch của tôi</a>
+        <a href="#user-notifications">Thông báo</a>
+        <a href="#user-reviews">Đánh giá</a>
+        <a href="#user-live-chat">Live chat</a>
+      </nav>
+
+      <section className="ops-panel" id="user-profile">
         <p className="eyebrow">Customer</p>
         <h2>{data.me?.fullname || "Tài khoản của tôi"}</h2>
         {loading ? <p>Đang tải...</p> : null}
         {error ? <div className="status-box">{error}</div> : null}
       </section>
 
-      <section className="ops-panel">
+      <section className="ops-panel" id="user-appointments">
         <div className="ops-panel-head">
           <div>
             <p className="eyebrow">Appointments</p>
@@ -73,7 +81,7 @@ export default function CustomerDashboard() {
         </div>
       </section>
 
-      <section className="ops-panel">
+      <section className="ops-panel" id="user-notifications">
         <div className="ops-panel-head">
           <div>
             <p className="eyebrow">Notifications</p>
@@ -93,7 +101,7 @@ export default function CustomerDashboard() {
         </div>
       </section>
 
-      <section className="ops-panel">
+      <section className="ops-panel" id="user-reviews">
         <p className="eyebrow">Reviews</p>
         <h2>Đánh giá của tôi</h2>
         <div className="ops-list">
@@ -107,7 +115,9 @@ export default function CustomerDashboard() {
         </div>
       </section>
 
-      <LiveChatPanel />
+      <div id="user-live-chat">
+        <LiveChatPanel />
+      </div>
     </div>
   );
 }

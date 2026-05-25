@@ -1,7 +1,7 @@
 import AdvisorDashboard from "@/components/dashboard/AdvisorDashboard";
 
 export const metadata = {
-  title: "Advisor Dashboard | TAYOTA",
+  title: "Advisor Dashboard | Tayota",
 };
 
 export default function AdvisorDashboardPage() {

@@ -1,4 +1,3 @@
-import AiChatWidget from "@/components/chat/AiChatWidget";
 import ConciergeTools from "@/components/home/ConciergeTools";
 import FeaturedVehicles from "@/components/home/FeaturedVehicles";
 import HeroSection from "@/components/home/HeroSection";
@@ -11,7 +10,6 @@ export default function HomePage() {
       <FeaturedVehicles />
       <ConciergeTools />
       <OwnershipServices />
-      <AiChatWidget />
     </>
   );
 }

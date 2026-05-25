@@ -1,7 +1,7 @@
 import AdminDashboard from "@/components/dashboard/AdminDashboard";
 
 export const metadata = {
-  title: "Admin Dashboard | TAYOTA",
+  title: "Admin Dashboard | Tayota",
 };
 
 export default function AdminDashboardPage() {

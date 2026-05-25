@@ -8,11 +8,10 @@ export default function HeroSection() {
         <p className="eyebrow">Showroom số cao cấp</p>
         <h1>TAYOTA</h1>
         <p>
-          Chuẩn mực mới của chuyển động sang trọng, từ việc khám phá dòng xe đến
-          lịch lái thử riêng tư trong vài thao tác.
+          Chuẩn mực mới của chuyển động sang trọng, từ khám phá dòng xe đến lịch lái thử riêng tư trong vài thao tác.
         </p>
         <div className="hero-actions">
-          <Link className="btn btn-secondary" href="/vehicles">
+          <Link className="btn btn-secondary hero-dark" href="/vehicles">
             Khám phá dòng xe
           </Link>
           <Link className="btn btn-primary hero-dark" href="/appointments/test-drive">

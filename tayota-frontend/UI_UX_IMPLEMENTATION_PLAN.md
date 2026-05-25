@@ -27,7 +27,7 @@ Frontend:
 
 Backend:
 
-- API Gateway: Spring Cloud Gateway, mac dinh port `8090`.
+- API Gateway: Spring Cloud Gateway, mac dinh port `9090`.
 - Operation service: Spring Boot, mac dinh port `8091`.
 - AI service: FastAPI, mac dinh port `8094`.
 - Gateway route prefixes:
@@ -44,13 +44,13 @@ Backend:
 Tao `.env.local` trong `tayota-frontend` khi can chay local:
 
 ```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8090
+NEXT_PUBLIC_API_BASE_URL=http://localhost:9090
 ```
 
 Khi frontend chay trong Docker cung network voi gateway, dung URL noi bo phu hop voi compose, vi du:
 
 ```env
-NEXT_PUBLIC_API_BASE_URL=http://api-gateway:8090
+NEXT_PUBLIC_API_BASE_URL=http://api-gateway:9090
 ```
 
 ### Quy tac goi API
@@ -80,7 +80,7 @@ Trong Java field la `isSuccess`; JSON co the serialize thanh `success`. Khi viet
 Nen tao helper o `src/lib/api.js`:
 
 ```js
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8090";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9090";
 
 export async function apiFetch(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {

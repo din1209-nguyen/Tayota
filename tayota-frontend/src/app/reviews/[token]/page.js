@@ -1,7 +1,7 @@
 import ReviewTokenForm from "@/components/reviews/ReviewTokenForm";
 
 export const metadata = {
-  title: "Review | TAYOTA",
+  title: "Review | Tayota",
 };
 
 export default async function ReviewTokenPage({ params }) {

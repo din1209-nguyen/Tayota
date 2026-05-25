@@ -274,13 +274,23 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
             </label>
           ) : (
             <>
-              <VehicleFilterControls
-                filters={vehicleFilters}
-                onChange={setVehicleFilters}
-                onReset={() => setVehicleFilters(EMPTY_VEHICLE_FILTERS)}
-                styles={vehicleStyles}
-                variant="chooser"
-              />
+              <div className="appointment-vehicle-filter">
+                <div className="appointment-filter-head">
+                  <div>
+                    <strong>Lọc xe</strong>
+                    <span>{filteredVehicles.length} mẫu phù hợp</span>
+                  </div>
+                  <button className="filter-clear" type="button" onClick={() => setVehicleFilters(EMPTY_VEHICLE_FILTERS)}>
+                    Xóa lọc
+                  </button>
+                </div>
+                <VehicleFilterControls
+                  filters={vehicleFilters}
+                  onChange={setVehicleFilters}
+                  styles={vehicleStyles}
+                  variant="chooser"
+                />
+              </div>
               <div className="appointment-options vehicle-options">
                 {filteredVehicles.map((vehicle) => {
                   const id = getVehicleId(vehicle);

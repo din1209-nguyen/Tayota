@@ -35,10 +35,6 @@ public class AccessoryService {
     private final AccessoryMapper accessoryMapper;
 
     // Lấy tất cả phụ kiện theo điều kiện lọc
-    @Cacheable(
-            value = "accessorySearch",
-            key = "{#keyword, #type, #seriesId, #versionId, #page, #size}"
-    )
     public PaginationResponseDTO<AccessoryResponseDTO> searchAccessories(
             String keyword,
             String type,
@@ -52,8 +48,8 @@ public class AccessoryService {
 
         // Lọc phụ kiện theo keyword, loại, dòng xe hoặc phiên bản xe
         Page<Accessory> result = accessoryRepository.search(
-                normalizeText(keyword),
-                normalizeText(type),
+                toLikePattern(keyword),
+                toExactPattern(type),
                 parseNullableUuid(seriesId, "Id dòng xe không hợp lệ."),
                 parseNullableUuid(versionId, "Id phiên bản xe không hợp lệ."),
                 pageable
@@ -209,6 +205,16 @@ public class AccessoryService {
     private String normalizeText(String value) {
         // Trả null nếu chuỗi không có nội dung
         return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private String toLikePattern(String value) {
+        String normalized = normalizeText(value);
+        return normalized == null ? "%" : "%" + normalized.toLowerCase() + "%";
+    }
+
+    private String toExactPattern(String value) {
+        String normalized = normalizeText(value);
+        return normalized == null ? "%" : normalized.toLowerCase();
     }
 
     // Chuẩn hóa kích thước trang phụ kiện

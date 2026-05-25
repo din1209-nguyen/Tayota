@@ -30,10 +30,9 @@ public interface CarVersionRepository extends JpaRepository<CarVersion, UUID>, J
             join cv.carSeries cs
             join cs.carStyle st
             left join CarPrice cp on cp.carVersion = cv
-            where (:keyword is null
-                or lower(cv.name) like lower(concat('%', :keyword, '%'))
-                or lower(cs.name) like lower(concat('%', :keyword, '%'))
-                or lower(st.name) like lower(concat('%', :keyword, '%')))
+            where (lower(cv.name) like :keywordPattern
+                or lower(cs.name) like :keywordPattern
+                or lower(st.name) like :keywordPattern)
             and (:styleId is null or st.id = :styleId)
             and (:seriesId is null or cs.id = :seriesId)
             and (:modelYear is null or cv.modelYear = :modelYear)
@@ -41,7 +40,7 @@ public interface CarVersionRepository extends JpaRepository<CarVersion, UUID>, J
             and (:maxPrice is null or cp.price <= :maxPrice)
             """)
     Page<CarVersion> search(
-            @Param("keyword") String keyword,
+            @Param("keywordPattern") String keywordPattern,
             @Param("styleId") UUID styleId,
             @Param("seriesId") UUID seriesId,
             @Param("modelYear") Integer modelYear,

@@ -1,86 +1,149 @@
 import Link from "next/link";
 
+const PRICE_OPTIONS = [
+  { value: "", label: "Chọn" },
+  { value: "0-600000000", label: "Dưới 600 triệu" },
+  { value: "600000000-900000000", label: "600 - 900 triệu" },
+  { value: "900000000-1200000000", label: "900 triệu - 1.2 tỷ" },
+  { value: "1200000000-", label: "Trên 1.2 tỷ" },
+];
+
 function normalizeValue(value) {
   return Array.isArray(value) ? value[0] : value || "";
+}
+
+function getSpecValue(vehicle, keys = []) {
+  const spec = vehicle?.specification || vehicle?.spec || {};
+  for (const key of keys) {
+    const value = vehicle?.[key] || spec?.[key];
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+  return "";
+}
+
+function uniqueOptions(items = [], getValue) {
+  const seen = new Map();
+  items.forEach((item) => {
+    const value = getValue(item);
+    if (value === undefined || value === null || value === "") return;
+    const key = String(value);
+    if (!seen.has(key)) seen.set(key, { value: key, label: key });
+  });
+  return Array.from(seen.values());
+}
+
+function getSeriesVersions(series = [], selectedSeriesId = "") {
+  const scopedSeries = selectedSeriesId
+    ? series.filter((item) => String(item.id) === String(selectedSeriesId))
+    : series;
+
+  return scopedSeries.flatMap((item) => item.versions || item.carVersions || []);
+}
+
+function SelectField({ label, name, value, placeholder = "Chọn", options = [] }) {
+  return (
+    <label className="label catalog-select-field">
+      {label}
+      <select className="field" name={name} defaultValue={value}>
+        <option value="">{placeholder}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }
 
 export default function VehicleFilters({ searchParams = {}, styles = [] }) {
   const selectedStyleId = normalizeValue(searchParams.styleId);
   const selectedSeriesId = normalizeValue(searchParams.seriesId);
+  const selectedPriceRange = normalizeValue(searchParams.priceRange);
+  const selectedVersionKeyword = normalizeValue(searchParams.versionKeyword);
+  const selectedSeats = normalizeValue(searchParams.numberOfSeats);
+  const selectedFuel = normalizeValue(searchParams.fuel);
+  const selectedOrigin = normalizeValue(searchParams.origin);
   const selectedStyle = styles.find((style) => String(style.id) === String(selectedStyleId));
-  const seriesOptions = selectedStyle ? selectedStyle.series || [] : styles.flatMap((style) => style.series || []);
+  const allSeries = styles.flatMap((style) => style.series || []);
+  const seriesOptions = allSeries;
+  const versionSeries = selectedSeriesId ? allSeries : selectedStyle?.series || allSeries;
+  const versions = getSeriesVersions(versionSeries, selectedSeriesId);
+  const priceLabel = PRICE_OPTIONS.find((option) => option.value === selectedPriceRange)?.label;
+
   const activeFilters = [
-    normalizeValue(searchParams.keyword) && `Từ khóa: ${normalizeValue(searchParams.keyword)}`,
     selectedStyle?.name,
     seriesOptions.find((series) => String(series.id) === String(selectedSeriesId))?.name,
-    normalizeValue(searchParams.modelYear) && `Năm ${normalizeValue(searchParams.modelYear)}`,
-    normalizeValue(searchParams.minPrice) && "Có giá tối thiểu",
-    normalizeValue(searchParams.maxPrice) && "Có giá tối đa",
+    selectedPriceRange && priceLabel,
+    selectedVersionKeyword && `Phiên bản: ${selectedVersionKeyword}`,
+    selectedSeats && `${selectedSeats} chỗ`,
+    selectedFuel,
+    selectedOrigin,
   ].filter(Boolean);
-
-  function styleHref(styleId) {
-    const query = new URLSearchParams();
-    Object.entries(searchParams).forEach(([key, value]) => {
-      const normalized = normalizeValue(value);
-      if (normalized && key !== "styleId" && key !== "seriesId" && key !== "page") query.set(key, normalized);
-    });
-    if (styleId) query.set("styleId", styleId);
-    return query.size ? `/vehicles?${query}` : "/vehicles";
-  }
 
   return (
     <form className="filter-panel catalog-filter">
       <div className="catalog-filter-head">
         <div>
-        <p className="eyebrow">Bộ lọc</p>
-          <h2>Khám phá theo kiểu dáng</h2>
+          <p className="eyebrow">Bộ lọc</p>
+          <h2>Khám phá theo nhu cầu</h2>
         </div>
         <Link className="filter-reset" href="/vehicles">
           Xóa lọc
         </Link>
       </div>
 
-      <nav className="catalog-tabs" aria-label="Kiểu dáng xe">
-        <Link className={!selectedStyleId ? "active" : ""} href={styleHref("")}>Tất cả</Link>
-        {styles.map((style) => (
-          <Link className={String(style.id) === String(selectedStyleId) ? "active" : ""} href={styleHref(style.id)} key={style.id}>
-            {style.name}
-          </Link>
-        ))}
-      </nav>
+      <div className="catalog-filter-grid">
+        <SelectField
+          label="Kiểu dáng"
+          name="styleId"
+          value={selectedStyleId}
+          options={styles.map((style) => ({ value: style.id, label: style.name }))}
+        />
+        <SelectField
+          label="Giá"
+          name="priceRange"
+          value={selectedPriceRange}
+          options={PRICE_OPTIONS.slice(1)}
+        />
+        <SelectField
+          label="Số chỗ ngồi"
+          name="numberOfSeats"
+          value={selectedSeats}
+          options={uniqueOptions(versions, (version) => getSpecValue(version, ["numberOfSeats", "seats", "seatCount"]))}
+        />
+        <SelectField
+          label="Dòng xe"
+          name="seriesId"
+          value={selectedSeriesId}
+          placeholder="Tất cả"
+          options={seriesOptions.map((series) => ({ value: series.id, label: series.name }))}
+        />
+        <SelectField
+          label="Phiên bản"
+          name="versionKeyword"
+          value={selectedVersionKeyword}
+          options={uniqueOptions(versions, (version) => version.name || version.versionName || version.carVersionName)}
+        />
+        <SelectField
+          label="Nhiên liệu"
+          name="fuel"
+          value={selectedFuel}
+          options={uniqueOptions(versions, (version) => getSpecValue(version, ["fuel", "fuelType", "engineType"]))}
+        />
+        <SelectField
+          label="Xuất xứ"
+          name="origin"
+          value={selectedOrigin}
+          options={uniqueOptions(versions, (version) => getSpecValue(version, ["origin", "madeIn", "assembly"]))}
+        />
+      </div>
 
-      <details className="catalog-filter-more" open={activeFilters.length > 0}>
-        <summary>Lọc thêm theo phiên bản và khoảng giá</summary>
-        <div className="catalog-filter-fields">
-          <label className="label">
-            Từ khóa
-            <input className="field" name="keyword" defaultValue={normalizeValue(searchParams.keyword)} placeholder="Camry, Cross, Vios..." />
-          </label>
-          <label className="label">
-            Dòng xe
-            <select className="field" name="seriesId" defaultValue={selectedSeriesId}>
-              <option value="">Tất cả dòng xe</option>
-              {seriesOptions.map((series) => (
-                <option key={series.id} value={series.id}>{series.name}</option>
-              ))}
-            </select>
-          </label>
-          <label className="label">
-            Năm model
-            <input className="field" name="modelYear" defaultValue={normalizeValue(searchParams.modelYear)} inputMode="numeric" placeholder="2026" />
-          </label>
-          <label className="label">
-            Giá từ
-            <input className="field" name="minPrice" defaultValue={normalizeValue(searchParams.minPrice)} inputMode="numeric" placeholder="500000000" />
-          </label>
-          <label className="label">
-            Giá đến
-            <input className="field" name="maxPrice" defaultValue={normalizeValue(searchParams.maxPrice)} inputMode="numeric" placeholder="2500000000" />
-          </label>
-          <button className="btn btn-primary" type="submit">Áp dụng</button>
-        </div>
-        <input name="styleId" type="hidden" value={selectedStyleId} />
-      </details>
+      <div className="catalog-filter-actions">
+        <button className="btn btn-primary" type="submit">
+          Áp dụng
+        </button>
+      </div>
 
       {activeFilters.length ? (
         <div className="filter-chips" aria-label="Bộ lọc đang áp dụng">

@@ -81,10 +81,6 @@ public class CarCatalogService {
     }
 
     // Lấy danh sách phiên bản xe theo điều kiện lọc
-    @Cacheable(
-            value = "catalogVersionSearch",
-            key = "{#keyword, #styleId, #seriesId, #modelYear, #minPrice, #maxPrice, #page, #size}"
-    )
     public PaginationResponseDTO<CarVersionItemResponseDTO> searchCarVersions(
             String keyword,
             String styleId,
@@ -100,7 +96,7 @@ public class CarCatalogService {
 
         // Lọc danh sách phiên bản xe theo các điều kiện truyền vào
         Page<CarVersion> result = carVersionRepository.search(
-                normalizeText(keyword),
+                toLikePattern(keyword),
                 parseNullableUuid(styleId, "Id kiểu dáng không hợp lệ."),
                 parseNullableUuid(seriesId, "Id dòng xe không hợp lệ."),
                 modelYear,
@@ -207,7 +203,10 @@ public class CarCatalogService {
                         .orElse(null));
 
         // Trả về response rút gọn cho danh sách phiên bản xe
-        return carVersionMapper.toItem(carVersion, minPrice, imageUrl);
+        CarSpecificationResponseDTO specification = carSpecificationRepository.findById(carVersion.getId())
+                .map(carSpecificationMapper::toResponse)
+                .orElse(null);
+        return carVersionMapper.toItem(carVersion, minPrice, imageUrl, specification);
     }
 
     // Chuyển phiên bản xe sang response chi tiết
@@ -292,6 +291,11 @@ public class CarCatalogService {
     private String normalizeText(String value) {
         // Trả null nếu chuỗi không có nội dung
         return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private String toLikePattern(String value) {
+        String normalized = normalizeText(value);
+        return normalized == null ? "%" : "%" + normalized.toLowerCase() + "%";
     }
 
     // Chuẩn hóa kích thước trang

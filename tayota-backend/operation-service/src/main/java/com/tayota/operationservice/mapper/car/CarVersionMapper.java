@@ -21,6 +21,15 @@ public class CarVersionMapper {
 
     // Chuyển phiên bản xe sang response danh sách
     public CarVersionItemResponseDTO toItem(CarVersion carVersion, BigDecimal minPrice, String imageUrl) {
+        return toItem(carVersion, minPrice, imageUrl, null);
+    }
+
+    public CarVersionItemResponseDTO toItem(
+            CarVersion carVersion,
+            BigDecimal minPrice,
+            String imageUrl,
+            CarSpecificationResponseDTO specification
+    ) {
         CarSeries carSeries = carVersion.getCarSeries();
         CarStyle carStyle = carSeries.getCarStyle();
 
@@ -34,7 +43,8 @@ public class CarVersionMapper {
                 carStyle.getId(),
                 carStyle.getName(),
                 minPrice,
-                imageUrl
+                imageUrl,
+                specification
         );
     }
 

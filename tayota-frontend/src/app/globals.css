@@ -1088,9 +1088,13 @@ textarea.field {
 .test-drive-layout {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 470px);
+  grid-template-columns: minmax(260px, 0.78fr) minmax(640px, 1.22fr);
   align-items: center;
   gap: 42px;
+}
+
+.test-drive-layout-large {
+  max-width: 1380px;
 }
 
 .test-drive-copy {
@@ -1098,13 +1102,14 @@ textarea.field {
 }
 
 .test-drive-form {
-  width: min(100%, 470px);
+  width: min(100%, 780px);
   justify-self: end;
 }
 
 .test-drive-form .form-panel {
   max-height: calc(100vh - 148px);
   overflow: auto;
+  overflow-x: hidden;
   background: rgba(255, 255, 255, 0.94);
   color: var(--ink);
   backdrop-filter: blur(18px);
@@ -1119,7 +1124,7 @@ textarea.field {
 }
 
 .appointment-wizard-large {
-  padding: 28px;
+  padding: 32px;
 }
 
 .appointment-success h2 {
@@ -1167,6 +1172,7 @@ textarea.field {
 .wizard-panel {
   display: grid;
   gap: 16px;
+  min-width: 0;
 }
 
 .wizard-panel h2 {
@@ -1178,6 +1184,39 @@ textarea.field {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.appointment-vehicle-filter {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 16px;
+}
+
+.appointment-filter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.appointment-filter-head > div {
+  display: grid;
+  gap: 3px;
+}
+
+.appointment-filter-head strong {
+  font-size: 0.92rem;
+  text-transform: uppercase;
+}
+
+.appointment-filter-head span {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 650;
 }
 
 .choice-card,
@@ -1742,12 +1781,53 @@ textarea.field {
 .vehicle-filter-controls {
   display: grid;
   gap: 14px;
+  min-width: 0;
 }
 
 .vehicle-filter-primary {
   display: grid;
   grid-template-columns: minmax(180px, 1.5fr) minmax(180px, 1fr) auto;
   gap: 10px;
+}
+
+.vehicle-filter-chooser {
+  gap: 16px;
+}
+
+.vehicle-filter-chooser .vehicle-tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 8px;
+  overflow: visible;
+  border-bottom: 0;
+}
+
+.vehicle-filter-chooser .vehicle-tabs button {
+  min-height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0 12px;
+  text-transform: none;
+}
+
+.vehicle-filter-chooser .vehicle-tabs button.active {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #ffffff;
+}
+
+.vehicle-filter-chooser .vehicle-filter-primary {
+  grid-template-columns: minmax(220px, 1.35fr) minmax(180px, 0.9fr);
+}
+
+.vehicle-filter-chooser .vehicle-filter-more {
+  border-top: 1px solid var(--border);
+  padding-top: 2px;
+}
+
+.vehicle-filter-chooser .vehicle-filter-fields {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .filter-clear,
@@ -1809,6 +1889,45 @@ textarea.field {
   align-items: end;
   gap: 12px;
   padding-top: 18px;
+}
+
+.catalog-filter-grid {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: end;
+  gap: 20px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+}
+
+.catalog-select-field {
+  flex: 0 0 172px;
+  gap: 12px;
+  color: var(--ink);
+  font-size: 1.03rem;
+  font-weight: 500;
+}
+
+.catalog-select-field:nth-child(2) {
+  flex-basis: 190px;
+}
+
+.catalog-select-field:nth-child(3),
+.catalog-select-field:nth-child(7) {
+  flex-basis: 150px;
+}
+
+.catalog-select-field .field {
+  min-height: 52px;
+  border-radius: 0;
+  background-color: #ffffff;
+  font-size: 0.98rem;
+}
+
+.catalog-filter-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .filter-chips {
@@ -2129,6 +2248,19 @@ textarea.field {
 }
 
 @media (max-width: 1040px) {
+  .test-drive-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .test-drive-copy {
+    max-width: 720px;
+  }
+
+  .test-drive-form {
+    width: 100%;
+    justify-self: stretch;
+  }
+
   .series-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2143,9 +2275,28 @@ textarea.field {
   .series-grid,
   .compare-slots,
   .vehicle-filter-primary,
+  .vehicle-filter-chooser .vehicle-filter-primary,
   .vehicle-filter-fields,
+  .vehicle-filter-chooser .vehicle-filter-fields,
   .vehicle-filter-compact .vehicle-filter-primary {
     grid-template-columns: 1fr;
+  }
+
+  .appointment-wizard-large {
+    padding: 18px;
+  }
+
+  .appointment-vehicle-filter {
+    padding: 12px;
+  }
+
+  .appointment-filter-head {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .vehicle-filter-chooser .vehicle-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .catalog-filter-head,

@@ -1,17 +1,36 @@
 import { apiFetch, buildQuery } from "@/lib/api";
 import { unwrapList } from "@/lib/format";
-import { groupVehiclesBySeries } from "@/lib/vehicle-filters";
+import { filterVehicleItems, groupVehiclesBySeries } from "@/lib/vehicle-filters";
 import VehicleFilters from "@/components/vehicles/VehicleFilters";
 import VehicleSeriesCard from "@/components/vehicles/VehicleSeriesCard";
 
+function normalizeParam(value) {
+  return Array.isArray(value) ? value[0] : value || "";
+}
+
+function parsePriceRange(value) {
+  const normalized = normalizeParam(value);
+  if (!normalized) return {};
+  const [minPrice, maxPrice] = normalized.split("-");
+  return {
+    minPrice: minPrice || "",
+    maxPrice: maxPrice || "",
+  };
+}
+
 async function getVehicles(searchParams) {
+  const priceRange = parsePriceRange(searchParams.priceRange);
   const filters = {
-    keyword: searchParams.keyword,
+    keyword: searchParams.versionKeyword || searchParams.keyword,
     styleId: searchParams.styleId,
     seriesId: searchParams.seriesId,
     modelYear: searchParams.modelYear,
-    minPrice: searchParams.minPrice,
-    maxPrice: searchParams.maxPrice,
+    minPrice: priceRange.minPrice || searchParams.minPrice,
+    maxPrice: priceRange.maxPrice || searchParams.maxPrice,
+  };
+  const localFilters = {
+    ...searchParams,
+    ...priceRange,
   };
   try {
     const firstPage = await apiFetch(`/car/catalog/car-versions${buildQuery({ ...filters, page: 0, size: 50 })}`, { cache: "no-store" });
@@ -23,7 +42,8 @@ async function getVehicles(searchParams) {
           )
         )
       : [];
-    return { vehicles: [firstPage, ...nextPages].flatMap((page) => unwrapList(page)), error: null };
+    const vehicles = [firstPage, ...nextPages].flatMap((page) => unwrapList(page));
+    return { vehicles: filterVehicleItems(vehicles, localFilters), error: null };
   } catch (error) {
     return { vehicles: [], error: error.message };
   }

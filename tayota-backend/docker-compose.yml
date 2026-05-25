@@ -2,9 +2,9 @@ services:
   api-gateway:
     build: api-gateway
     ports:
-      - "${API_GATEWAY_PORT:-8090}:${API_GATEWAY_PORT:-8090}"
+      - "${API_GATEWAY_PORT:-9090}:${API_GATEWAY_PORT:-9090}"
     environment:
-      - API_GATEWAY_PORT=${API_GATEWAY_PORT:-8090}
+      - API_GATEWAY_PORT=${API_GATEWAY_PORT:-9090}
       - FRONTEND_ORIGINS=${FRONTEND_ORIGINS:-http://localhost:3000}
       - OPERATION_SERVICE_HOST=${OPERATION_SERVICE_HOST:-operation-service}
       - OPERATION_SERVICE_PORT=${OPERATION_SERVICE_PORT:-8091}

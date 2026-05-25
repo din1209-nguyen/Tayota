@@ -116,3 +116,116 @@ VALUES
     ('40000000-0000-0000-0000-000000000003'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, 'SERVICE', TIME '10:00:00', TIME '11:00:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     ('40000000-0000-0000-0000-000000000004'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, 'SERVICE', TIME '15:00:00', TIME '16:00:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "USER" (id, created_at, email, login_provider, password_hash, provider_user_id, role, status)
+VALUES
+    ('00000000-0000-0000-0000-000000000006'::uuid, CURRENT_TIMESTAMP, 'assistant@tayota.vn', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'ASSISTANT', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000007'::uuid, CURRENT_TIMESTAMP, 'admin@tayota.vn', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'ADMIN', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000008'::uuid, CURRENT_TIMESTAMP, 'mechanic@tayota.vn', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'MECHANIC', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000009'::uuid, CURRENT_TIMESTAMP, 'user@tayota.vn', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'USER', 'ACTIVE')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "USER_PROFILE" (user_id, fullname, phone, gender, birth_date, address, avatar_url)
+VALUES
+    ('00000000-0000-0000-0000-000000000006'::uuid, 'Tayota Assistant', '0902000006', TRUE, DATE '1994-02-02', 'Tayota Phu My Hung', '/default-avatar.png'),
+    ('00000000-0000-0000-0000-000000000007'::uuid, 'Tayota Admin VN', '0902000007', TRUE, DATE '1987-02-02', 'Tayota Head Office', '/default-avatar.png'),
+    ('00000000-0000-0000-0000-000000000008'::uuid, 'Tayota Mechanic VN', '0902000008', TRUE, DATE '1991-02-02', 'Tayota Thu Duc', '/default-avatar.png'),
+    ('00000000-0000-0000-0000-000000000009'::uuid, 'Tayota User', '0902000009', TRUE, DATE '1999-02-02', 'Ho Chi Minh City', '/default-avatar.png')
+ON CONFLICT (user_id) DO NOTHING;
+
+INSERT INTO "DEALERSHIP" (id, name, address, car_quantity, accessory_quantity, latitude, longitude, place_id, phone, operating_hours, is_active, created_at)
+VALUES
+    ('10000000-0000-0000-0000-000000000002'::uuid, 'Tayota Phu My Hung', '105 Nguyen Luong Bang, District 7, Ho Chi Minh City', 18, 40, 10.72981234, 106.70381234, 'tayota-phu-my-hung', '02822223333', '08:00 - 18:30', TRUE, CURRENT_TIMESTAMP),
+    ('10000000-0000-0000-0000-000000000003'::uuid, 'Tayota Thu Duc', '22 Vo Van Ngan, Thu Duc City, Ho Chi Minh City', 22, 34, 10.85061234, 106.77131234, 'tayota-thu-duc', '02833334444', '08:00 - 18:00', TRUE, CURRENT_TIMESTAMP),
+    ('10000000-0000-0000-0000-000000000004'::uuid, 'Tayota Hanoi West', '68 Le Van Luong, Thanh Xuan, Hanoi', 16, 36, 21.00761234, 105.80161234, 'tayota-hanoi-west', '02444445555', '08:00 - 18:00', TRUE, CURRENT_TIMESTAMP),
+    ('10000000-0000-0000-0000-000000000005'::uuid, 'Tayota Da Nang', '09 Nguyen Van Linh, Hai Chau, Da Nang', 14, 28, 16.06041234, 108.22191234, 'tayota-da-nang', '02365556666', '08:00 - 17:30', TRUE, CURRENT_TIMESTAMP),
+    ('10000000-0000-0000-0000-000000000006'::uuid, 'Tayota Can Tho', '188 30/4 Street, Ninh Kieu, Can Tho', 12, 24, 10.03321234, 105.78361234, 'tayota-can-tho', '02926667777', '08:00 - 17:30', TRUE, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "MECHANIC" (id, dealership_id, specialty, average_rating, is_active)
+VALUES
+    ('00000000-0000-0000-0000-000000000008'::uuid, '10000000-0000-0000-0000-000000000003'::uuid, 'Hybrid diagnostics', 4.90, TRUE)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "CAR_STYLE" (id, name, description)
+VALUES
+    ('20000000-0000-0000-0000-000000000003'::uuid, 'Hybrid', 'Efficient electrified driving for city and long-distance usage'),
+    ('20000000-0000-0000-0000-000000000004'::uuid, 'MPV', 'Flexible multi-purpose cars for families and business transport'),
+    ('20000000-0000-0000-0000-000000000005'::uuid, 'Luxury', 'Premium technology, comfort and executive presence')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "CAR_SERIES" (id, car_style_id, name, description, created_at)
+VALUES
+    ('21000000-0000-0000-0000-000000000003'::uuid, '20000000-0000-0000-0000-000000000001'::uuid, 'Camry', 'Executive sedan series', CURRENT_TIMESTAMP),
+    ('21000000-0000-0000-0000-000000000004'::uuid, '20000000-0000-0000-0000-000000000002'::uuid, 'Fortuner', 'Seven-seat SUV series', CURRENT_TIMESTAMP),
+    ('21000000-0000-0000-0000-000000000005'::uuid, '20000000-0000-0000-0000-000000000003'::uuid, 'Yaris Cross', 'Compact hybrid crossover series', CURRENT_TIMESTAMP),
+    ('21000000-0000-0000-0000-000000000006'::uuid, '20000000-0000-0000-0000-000000000004'::uuid, 'Innova Cross', 'Family MPV series', CURRENT_TIMESTAMP),
+    ('21000000-0000-0000-0000-000000000007'::uuid, '20000000-0000-0000-0000-000000000005'::uuid, 'Land Cruiser Prado', 'Premium adventure SUV series', CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "CAR_VERSION" (id, car_series_id, name, sale_percent, model_year, video_url, created_at)
+VALUES
+    ('22000000-0000-0000-0000-000000000003'::uuid, '21000000-0000-0000-0000-000000000003'::uuid, 'Camry 2.0Q', 0.00, 2026, 'https://example.com/videos/camry-20q.mp4', CURRENT_TIMESTAMP),
+    ('22000000-0000-0000-0000-000000000004'::uuid, '21000000-0000-0000-0000-000000000003'::uuid, 'Camry 2.5HV', 0.00, 2026, 'https://example.com/videos/camry-25hv.mp4', CURRENT_TIMESTAMP),
+    ('22000000-0000-0000-0000-000000000005'::uuid, '21000000-0000-0000-0000-000000000004'::uuid, 'Fortuner Legender 2.4AT', 0.00, 2026, 'https://example.com/videos/fortuner-legender.mp4', CURRENT_TIMESTAMP),
+    ('22000000-0000-0000-0000-000000000006'::uuid, '21000000-0000-0000-0000-000000000005'::uuid, 'Yaris Cross Hybrid', 0.00, 2026, 'https://example.com/videos/yaris-cross-hybrid.mp4', CURRENT_TIMESTAMP),
+    ('22000000-0000-0000-0000-000000000007'::uuid, '21000000-0000-0000-0000-000000000006'::uuid, 'Innova Cross 2.0V', 0.00, 2026, 'https://example.com/videos/innova-cross.mp4', CURRENT_TIMESTAMP),
+    ('22000000-0000-0000-0000-000000000008'::uuid, '21000000-0000-0000-0000-000000000007'::uuid, 'Land Cruiser Prado VX', 0.00, 2026, 'https://example.com/videos/prado-vx.mp4', CURRENT_TIMESTAMP),
+    ('22000000-0000-0000-0000-000000000009'::uuid, '21000000-0000-0000-0000-000000000002'::uuid, 'Corolla Cross HEV', 0.00, 2026, 'https://example.com/videos/corolla-cross-hev.mp4', CURRENT_TIMESTAMP),
+    ('22000000-0000-0000-0000-000000000010'::uuid, '21000000-0000-0000-0000-000000000001'::uuid, 'Vios 1.5E CVT', 0.00, 2026, 'https://example.com/videos/vios-15e.mp4', CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "CAR_SPECIFICATION" (car_version_id, origin, fuel, number_of_seats, length, width, height, capacity, cylinder_capacity, cylinder, gearbox, maximum_speed, acceleration, torque, gross_weight_allowance, trademarks)
+VALUES
+    ('22000000-0000-0000-0000-000000000003'::uuid, 'Thailand', 'Gasoline', 5, 4885, 1840, 1445, 60, '1987 cc', 4, 'CVT', 210, '9.5s', '206 Nm', 2100, 'Toyota'),
+    ('22000000-0000-0000-0000-000000000004'::uuid, 'Thailand', 'Hybrid', 5, 4885, 1840, 1445, 50, '2487 cc', 4, 'e-CVT', 220, '8.3s', '221 Nm', 2140, 'Toyota'),
+    ('22000000-0000-0000-0000-000000000005'::uuid, 'Indonesia', 'Diesel', 7, 4795, 1855, 1835, 80, '2393 cc', 4, '6AT', 180, '11.2s', '400 Nm', 2610, 'Toyota'),
+    ('22000000-0000-0000-0000-000000000006'::uuid, 'Indonesia', 'Hybrid', 5, 4310, 1770, 1615, 36, '1490 cc', 3, 'e-CVT', 170, '11.0s', '121 Nm', 1690, 'Toyota'),
+    ('22000000-0000-0000-0000-000000000007'::uuid, 'Indonesia', 'Gasoline', 7, 4755, 1850, 1795, 52, '1987 cc', 4, 'CVT', 180, '10.8s', '205 Nm', 2210, 'Toyota'),
+    ('22000000-0000-0000-0000-000000000008'::uuid, 'Japan', 'Gasoline', 7, 4925, 1980, 1935, 80, '2393 cc', 4, '8AT', 190, '9.7s', '430 Nm', 2950, 'Toyota'),
+    ('22000000-0000-0000-0000-000000000009'::uuid, 'Thailand', 'Hybrid', 5, 4460, 1825, 1620, 43, '1798 cc', 4, 'e-CVT', 180, '10.0s', '142 Nm', 1850, 'Toyota'),
+    ('22000000-0000-0000-0000-000000000010'::uuid, 'Vietnam', 'Gasoline', 5, 4425, 1730, 1475, 42, '1496 cc', 4, 'CVT', 180, '11.5s', '140 Nm', 1550, 'Toyota')
+ON CONFLICT (car_version_id) DO NOTHING;
+
+INSERT INTO "CAR_PRICE" (car_version_id, exterior_color_id, interior_color_id, price, ex_image_url, in_image_url)
+VALUES
+    ('22000000-0000-0000-0000-000000000003'::uuid, '23000000-0000-0000-0000-000000000001'::uuid, '24000000-0000-0000-0000-000000000001'::uuid, 1220000000.00, '/images/cars/camry-white.png', '/images/cars/interior-black.png'),
+    ('22000000-0000-0000-0000-000000000004'::uuid, '23000000-0000-0000-0000-000000000002'::uuid, '24000000-0000-0000-0000-000000000002'::uuid, 1530000000.00, '/images/cars/camry-hybrid-black.png', '/images/cars/interior-beige.png'),
+    ('22000000-0000-0000-0000-000000000005'::uuid, '23000000-0000-0000-0000-000000000002'::uuid, '24000000-0000-0000-0000-000000000001'::uuid, 1350000000.00, '/images/cars/fortuner-black.png', '/images/cars/interior-black.png'),
+    ('22000000-0000-0000-0000-000000000006'::uuid, '23000000-0000-0000-0000-000000000001'::uuid, '24000000-0000-0000-0000-000000000002'::uuid, 765000000.00, '/images/cars/yaris-cross-white.png', '/images/cars/interior-beige.png'),
+    ('22000000-0000-0000-0000-000000000007'::uuid, '23000000-0000-0000-0000-000000000001'::uuid, '24000000-0000-0000-0000-000000000001'::uuid, 995000000.00, '/images/cars/innova-cross-white.png', '/images/cars/interior-black.png'),
+    ('22000000-0000-0000-0000-000000000008'::uuid, '23000000-0000-0000-0000-000000000002'::uuid, '24000000-0000-0000-0000-000000000001'::uuid, 3480000000.00, '/images/cars/prado-black.png', '/images/cars/interior-black.png'),
+    ('22000000-0000-0000-0000-000000000009'::uuid, '23000000-0000-0000-0000-000000000001'::uuid, '24000000-0000-0000-0000-000000000002'::uuid, 955000000.00, '/images/cars/corolla-cross-hev-white.png', '/images/cars/interior-beige.png'),
+    ('22000000-0000-0000-0000-000000000010'::uuid, '23000000-0000-0000-0000-000000000001'::uuid, '24000000-0000-0000-0000-000000000001'::uuid, 498000000.00, '/images/cars/vios-e-white.png', '/images/cars/interior-black.png')
+ON CONFLICT (car_version_id, exterior_color_id, interior_color_id) DO NOTHING;
+
+INSERT INTO "CAR_GALLERY" (id, car_version_id, image_url)
+VALUES
+    ('25000000-0000-0000-0000-000000000003'::uuid, '22000000-0000-0000-0000-000000000003'::uuid, '/images/cars/camry-gallery-1.png'),
+    ('25000000-0000-0000-0000-000000000004'::uuid, '22000000-0000-0000-0000-000000000004'::uuid, '/images/cars/camry-hybrid-gallery-1.png'),
+    ('25000000-0000-0000-0000-000000000005'::uuid, '22000000-0000-0000-0000-000000000005'::uuid, '/images/cars/fortuner-gallery-1.png'),
+    ('25000000-0000-0000-0000-000000000006'::uuid, '22000000-0000-0000-0000-000000000006'::uuid, '/images/cars/yaris-cross-gallery-1.png'),
+    ('25000000-0000-0000-0000-000000000007'::uuid, '22000000-0000-0000-0000-000000000007'::uuid, '/images/cars/innova-cross-gallery-1.png'),
+    ('25000000-0000-0000-0000-000000000008'::uuid, '22000000-0000-0000-0000-000000000008'::uuid, '/images/cars/prado-gallery-1.png')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "CAR" (vin_id, car_version_id, dealership_id, engine_number, owner_user_id, status, producted_year, created_at)
+VALUES
+    ('TAYOTA00000000003', '22000000-0000-0000-0000-000000000003'::uuid, '10000000-0000-0000-0000-000000000002'::uuid, 'ENG-TAYOTA-0003', NULL, 'IN_STOCK', TIMESTAMP '2026-01-01 00:00:00', CURRENT_TIMESTAMP),
+    ('TAYOTA00000000004', '22000000-0000-0000-0000-000000000004'::uuid, '10000000-0000-0000-0000-000000000003'::uuid, 'ENG-TAYOTA-0004', NULL, 'IN_STOCK', TIMESTAMP '2026-01-01 00:00:00', CURRENT_TIMESTAMP),
+    ('TAYOTA00000000005', '22000000-0000-0000-0000-000000000005'::uuid, '10000000-0000-0000-0000-000000000004'::uuid, 'ENG-TAYOTA-0005', NULL, 'IN_STOCK', TIMESTAMP '2026-01-01 00:00:00', CURRENT_TIMESTAMP),
+    ('TAYOTA00000000006', '22000000-0000-0000-0000-000000000006'::uuid, '10000000-0000-0000-0000-000000000005'::uuid, 'ENG-TAYOTA-0006', NULL, 'IN_STOCK', TIMESTAMP '2026-01-01 00:00:00', CURRENT_TIMESTAMP),
+    ('TAYOTA00000000007', '22000000-0000-0000-0000-000000000007'::uuid, '10000000-0000-0000-0000-000000000006'::uuid, 'ENG-TAYOTA-0007', NULL, 'IN_STOCK', TIMESTAMP '2026-01-01 00:00:00', CURRENT_TIMESTAMP)
+ON CONFLICT (vin_id) DO NOTHING;
+
+INSERT INTO "SERVICE_TIME_SLOT" (id, dealership_id, appointment_type, start_time, end_time, is_active, created_at, updated_at)
+VALUES
+    ('40000000-0000-0000-0000-000000000005'::uuid, '10000000-0000-0000-0000-000000000002'::uuid, 'TEST_DRIVE', TIME '08:30:00', TIME '09:30:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('40000000-0000-0000-0000-000000000006'::uuid, '10000000-0000-0000-0000-000000000002'::uuid, 'TEST_DRIVE', TIME '10:30:00', TIME '11:30:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('40000000-0000-0000-0000-000000000007'::uuid, '10000000-0000-0000-0000-000000000002'::uuid, 'SERVICE', TIME '13:30:00', TIME '14:30:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('40000000-0000-0000-0000-000000000008'::uuid, '10000000-0000-0000-0000-000000000003'::uuid, 'TEST_DRIVE', TIME '09:30:00', TIME '10:30:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('40000000-0000-0000-0000-000000000009'::uuid, '10000000-0000-0000-0000-000000000003'::uuid, 'SERVICE', TIME '14:30:00', TIME '15:30:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('40000000-0000-0000-0000-000000000010'::uuid, '10000000-0000-0000-0000-000000000004'::uuid, 'TEST_DRIVE', TIME '09:00:00', TIME '10:00:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('40000000-0000-0000-0000-000000000011'::uuid, '10000000-0000-0000-0000-000000000005'::uuid, 'SERVICE', TIME '10:00:00', TIME '11:00:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('40000000-0000-0000-0000-000000000012'::uuid, '10000000-0000-0000-0000-000000000006'::uuid, 'TEST_DRIVE', TIME '15:00:00', TIME '16:00:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;

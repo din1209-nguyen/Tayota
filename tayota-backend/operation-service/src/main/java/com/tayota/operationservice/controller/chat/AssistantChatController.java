@@ -19,7 +19,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/assistant/chat")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') or hasRole('ASSISTANT')")
+@PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER') or hasRole('ASSISTANT') or hasRole('SERVICE_ADVISOR')")
 public class AssistantChatController {
     private final ChatService chatService;
 

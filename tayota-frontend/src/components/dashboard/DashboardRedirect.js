@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getMe } from "@/lib/services/auth";
-import { getAccessToken, getDashboardPath, setCurrentUser } from "@/lib/session";
+import { getDashboardPath, setCurrentUser } from "@/lib/session";
 
 export default function DashboardRedirect() {
   const router = useRouter();
@@ -14,18 +14,15 @@ export default function DashboardRedirect() {
     let alive = true;
 
     async function run() {
-      if (!getAccessToken()) {
-        router.replace("/auth/login");
-        return;
-      }
-
       try {
         const user = await getMe();
         if (!alive) return;
         setCurrentUser(user);
         router.replace(getDashboardPath(user?.role));
       } catch (error) {
-        if (alive) setMessage(error.message || "Không thể xác định vai trò tài khoản.");
+        if (!alive) return;
+        setMessage(error.message || "Phiên đăng nhập đã hết hạn.");
+        router.replace("/auth/login");
       }
     }
 

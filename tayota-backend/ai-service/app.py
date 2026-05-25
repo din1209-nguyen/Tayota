@@ -375,8 +375,10 @@ def upload_document(
 @app.get("/api/v1/documents", response_model=DocumentsResponse)
 def list_documents(
     status: list[str] | None = Query(default=None),
+    user_role: str | None = Header(default=None, alias="X-User-Role"),
 ) -> DocumentsResponse:
     """Liệt kê tài liệu đã upload theo trạng thái được yêu cầu."""
+    _require_admin(user_role)
     statuses = tuple(status) if status else DEFAULT_DOCUMENT_STATUSES
     try:
         documents = document_store.list_documents(statuses=statuses)
@@ -391,8 +393,12 @@ def list_documents(
 
 
 @app.get("/api/v1/documents/jobs/{job_id}", response_model=DocumentJobStatus)
-def get_document_job(job_id: str) -> DocumentJobStatus:
+def get_document_job(
+    job_id: str,
+    user_role: str | None = Header(default=None, alias="X-User-Role"),
+) -> DocumentJobStatus:
     """Tra cứu trạng thái hiện tại của một job ingest tài liệu."""
+    _require_admin(user_role)
     try:
         status = job_store.get(job_id)
     except MongoStorageError as exc:

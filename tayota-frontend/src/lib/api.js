@@ -1,5 +1,6 @@
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9090";
 const TOKEN_KEY = "tayota_access_token";
+let activeRefreshPromise = null;
 
 export class ApiError extends Error {
   constructor(message, { status, data } = {}) {
@@ -74,7 +75,7 @@ function getErrorMessage(data, status) {
   return data || `Yêu cầu thất bại: ${status}`;
 }
 
-async function refreshAccessToken() {
+async function requestRefreshedAccessToken() {
   if (!canUseBrowserStorage()) return "";
 
   const response = await fetch(`${API_BASE_URL}/user/refresh-token`, {
@@ -93,6 +94,18 @@ async function refreshAccessToken() {
   const accessToken = data?.result?.accessToken || data?.accessToken || "";
   if (accessToken) setStoredAccessToken(accessToken);
   return accessToken;
+}
+
+async function refreshAccessToken() {
+  if (!canUseBrowserStorage()) return "";
+
+  if (!activeRefreshPromise) {
+    activeRefreshPromise = requestRefreshedAccessToken().finally(() => {
+      activeRefreshPromise = null;
+    });
+  }
+
+  return activeRefreshPromise;
 }
 
 async function send(path, options = {}, token) {

@@ -26,6 +26,7 @@ function mergeSessions(...groups) {
 }
 
 export default function AdvisorDashboard() {
+  const [tab, setTab] = useState("appointments");
   const [appointments, setAppointments] = useState([]);
   const [slots, setSlots] = useState([]);
   const [holidays, setHolidays] = useState([]);
@@ -120,17 +121,17 @@ export default function AdvisorDashboard() {
   }
 
   return (
-    <div className="ops-grid">
-      <nav className="role-tabs wide" aria-label="Assistant sections">
-        <a href="#assistant-appointments">Lịch hẹn</a>
-        <a href="#assistant-slots">Khung giờ</a>
-        <a href="#assistant-holidays">Ngày nghỉ</a>
-        <a href="#assistant-chat">Live chat</a>
+    <div className="ops-grid workspace-tabs-layout">
+      <nav className="role-tabs wide" aria-label="Các mục cố vấn dịch vụ">
+        <button className={tab === "appointments" ? "active" : ""} type="button" onClick={() => setTab("appointments")}>Lịch hẹn</button>
+        <button className={tab === "slots" ? "active" : ""} type="button" onClick={() => setTab("slots")}>Khung giờ</button>
+        <button className={tab === "holidays" ? "active" : ""} type="button" onClick={() => setTab("holidays")}>Ngày nghỉ</button>
+        <button className={tab === "chat" ? "active" : ""} type="button" onClick={() => setTab("chat")}>Live chat</button>
       </nav>
 
       {error ? <div className="status-box wide">{error}</div> : null}
 
-      <section className="ops-panel wide" id="assistant-appointments">
+      {tab === "appointments" ? <section className="ops-panel wide" id="assistant-appointments">
         <div className="ops-panel-head">
           <div>
             <p className="eyebrow">Advisor</p>
@@ -152,9 +153,9 @@ export default function AdvisorDashboard() {
             </article>
           )) : <div className="status-box">Chưa có lịch hẹn trong trạng thái này.</div>}
         </div>
-      </section>
+      </section> : null}
 
-      <section className="ops-panel" id="assistant-slots">
+      {tab === "slots" ? <section className="ops-panel wide" id="assistant-slots">
         <p className="eyebrow">Time slots</p>
         <h2>Khung giờ</h2>
         <div className="ops-list">
@@ -165,9 +166,9 @@ export default function AdvisorDashboard() {
             </article>
           ))}
         </div>
-      </section>
+      </section> : null}
 
-      <section className="ops-panel" id="assistant-holidays">
+      {tab === "holidays" ? <section className="ops-panel wide" id="assistant-holidays">
         <p className="eyebrow">Holidays</p>
         <h2>Ngày nghỉ</h2>
         <div className="ops-list">
@@ -178,9 +179,9 @@ export default function AdvisorDashboard() {
             </article>
           ))}
         </div>
-      </section>
+      </section> : null}
 
-      <section className="ops-panel" id="assistant-chat">
+      {tab === "chat" ? <section className={`ops-panel ${activeSessionId ? "" : "wide"}`} id="assistant-chat">
         <p className="eyebrow">Assistant chat</p>
         <h2>Inbox tư vấn</h2>
         <div className="ops-list">
@@ -197,9 +198,9 @@ export default function AdvisorDashboard() {
             </article>
           )) : <div className="status-box">Chưa có phiên chat đang chờ.</div>}
         </div>
-      </section>
+      </section> : null}
 
-      {activeSessionId ? <LiveChatPanel mode="assistant" sessionId={activeSessionId} /> : null}
+      {tab === "chat" && activeSessionId ? <LiveChatPanel mode="assistant" sessionId={activeSessionId} /> : null}
     </div>
   );
 }

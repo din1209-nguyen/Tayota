@@ -9,6 +9,7 @@ import { getMyReviews } from "@/lib/services/reviews";
 import { unwrapList } from "@/lib/format";
 
 export default function CustomerDashboard() {
+  const [tab, setTab] = useState("profile");
   const [data, setData] = useState({ me: null, appointments: [], notifications: [], reviews: [] });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -46,23 +47,23 @@ export default function CustomerDashboard() {
   }
 
   return (
-    <div className="ops-grid">
-      <nav className="role-tabs wide" aria-label="User sections">
-        <a href="#user-profile">Tài khoản</a>
-        <a href="#user-appointments">Lịch của tôi</a>
-        <a href="#user-notifications">Thông báo</a>
-        <a href="#user-reviews">Đánh giá</a>
-        <a href="#user-live-chat">Live chat</a>
+    <div className="ops-grid workspace-tabs-layout">
+      <nav className="role-tabs wide" aria-label="Các mục người dùng">
+        <button className={tab === "profile" ? "active" : ""} type="button" onClick={() => setTab("profile")}>Tài khoản</button>
+        <button className={tab === "appointments" ? "active" : ""} type="button" onClick={() => setTab("appointments")}>Lịch của tôi</button>
+        <button className={tab === "notifications" ? "active" : ""} type="button" onClick={() => setTab("notifications")}>Thông báo</button>
+        <button className={tab === "reviews" ? "active" : ""} type="button" onClick={() => setTab("reviews")}>Đánh giá</button>
+        <button className={tab === "chat" ? "active" : ""} type="button" onClick={() => setTab("chat")}>Live chat</button>
       </nav>
 
-      <section className="ops-panel" id="user-profile">
+      {tab === "profile" ? <section className="ops-panel wide" id="user-profile">
         <p className="eyebrow">Customer</p>
         <h2>{data.me?.fullname || "Tài khoản của tôi"}</h2>
         {loading ? <p>Đang tải...</p> : null}
         {error ? <div className="status-box">{error}</div> : null}
-      </section>
+      </section> : null}
 
-      <section className="ops-panel" id="user-appointments">
+      {tab === "appointments" ? <section className="ops-panel wide" id="user-appointments">
         <div className="ops-panel-head">
           <div>
             <p className="eyebrow">Appointments</p>
@@ -79,9 +80,9 @@ export default function CustomerDashboard() {
           ))}
           {!data.appointments.length && !loading ? <p>Chưa có lịch hẹn.</p> : null}
         </div>
-      </section>
+      </section> : null}
 
-      <section className="ops-panel" id="user-notifications">
+      {tab === "notifications" ? <section className="ops-panel wide" id="user-notifications">
         <div className="ops-panel-head">
           <div>
             <p className="eyebrow">Notifications</p>
@@ -99,9 +100,9 @@ export default function CustomerDashboard() {
           ))}
           {!data.notifications.length && !loading ? <p>Không có thông báo.</p> : null}
         </div>
-      </section>
+      </section> : null}
 
-      <section className="ops-panel" id="user-reviews">
+      {tab === "reviews" ? <section className="ops-panel wide" id="user-reviews">
         <p className="eyebrow">Reviews</p>
         <h2>Đánh giá của tôi</h2>
         <div className="ops-list">
@@ -113,11 +114,11 @@ export default function CustomerDashboard() {
           ))}
           {!data.reviews.length && !loading ? <p>Chưa có đánh giá.</p> : null}
         </div>
-      </section>
+      </section> : null}
 
-      <div id="user-live-chat">
+      {tab === "chat" ? <div className="wide workspace-chat-panel" id="user-live-chat">
         <LiveChatPanel />
-      </div>
+      </div> : null}
     </div>
   );
 }

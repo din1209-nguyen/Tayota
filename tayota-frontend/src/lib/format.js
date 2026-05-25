@@ -87,7 +87,7 @@ export function roleLabel(role) {
     ADMIN: "Quản trị viên",
     MANAGER: "Quản lý",
     SERVICE_ADVISOR: "Cố vấn dịch vụ",
-    ASSISTANT: "Tư vấn viên live chat",
+    ASSISTANT: "Nhân viên tư vấn",
     MECHANIC: "Kỹ thuật viên",
     USER: "Khách hàng",
   };
@@ -96,6 +96,12 @@ export function roleLabel(role) {
 
 export function statusLabel(status) {
   const labels = {
+    ACTIVE: "Hoạt động",
+    BANNED: "Đã khóa",
+    uploaded: "Đã tải lên",
+    indexing: "Đang lập chỉ mục",
+    indexed: "Sẵn sàng",
+    failed: "Thất bại",
     PENDING: "Chờ xác nhận",
     CONFIRMED: "Đã xác nhận",
     COMPLETED: "Hoàn tất",

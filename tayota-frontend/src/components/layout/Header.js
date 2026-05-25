@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getMe, logout } from "@/lib/services/auth";
-import { clearSession, getAccessToken, getCurrentUser, getDashboardPath, onSessionChange, setCurrentUser } from "@/lib/session";
+import { clearSession, getCurrentUser, getDashboardPath, onSessionChange, setCurrentUser } from "@/lib/session";
 
 const navItems = [
   ["Dòng xe", "/vehicles"],
@@ -19,6 +19,7 @@ export default function Header() {
   const [open, setOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [sessionReady, setSessionReady] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -26,11 +27,6 @@ export default function Header() {
     async function syncUser() {
       const cachedUser = getCurrentUser();
       if (cachedUser && alive) setUser(cachedUser);
-
-      if (!getAccessToken()) {
-        if (alive) setUser(null);
-        return;
-      }
 
       try {
         const nextUser = await getMe();
@@ -41,6 +37,8 @@ export default function Header() {
         if (!alive) return;
         clearSession();
         setUser(null);
+      } finally {
+        if (alive) setSessionReady(true);
       }
     }
 
@@ -107,11 +105,11 @@ export default function Header() {
               </div>
             ) : null}
           </div>
-        ) : (
+        ) : sessionReady ? (
           <Link className="btn btn-primary header-cta" href="/auth/login">
             Đăng nhập
           </Link>
-        )}
+        ) : null}
 
         <button
           className="menu-button"

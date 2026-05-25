@@ -123,7 +123,9 @@ export default function LiveChatPanel({ mode = "customer", sessionId: providedSe
         <span className={`status-pill ${status}`}>{statusLabel(status.toUpperCase())}</span>
       </div>
 
-      {error ? <div className="status-box">{error}</div> : null}
+      <div className="live-chat-feedback" aria-live="polite">
+        {error ? <div className="status-box">{error}</div> : null}
+      </div>
 
       <div className="live-chat-messages">
         {messages.length ? (

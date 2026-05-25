@@ -15,12 +15,14 @@ export function getAccessToken() {
 
 export function setAccessToken(token) {
   if (!canUseStorage()) return;
-  if (token) localStorage.setItem(TOKEN_KEY, token);
+  if (!token || localStorage.getItem(TOKEN_KEY) === token) return;
+  localStorage.setItem(TOKEN_KEY, token);
   window.dispatchEvent(new Event(SESSION_EVENT));
 }
 
 export function clearAccessToken() {
   if (!canUseStorage()) return;
+  if (!localStorage.getItem(TOKEN_KEY)) return;
   localStorage.removeItem(TOKEN_KEY);
   window.dispatchEvent(new Event(SESSION_EVENT));
 }
@@ -39,25 +41,30 @@ export function getCurrentUser() {
 
 export function setCurrentUser(user) {
   if (!canUseStorage()) return;
-  if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+  if (!user) return;
+  const serializedUser = JSON.stringify(user);
+  if (localStorage.getItem(USER_KEY) === serializedUser) return;
+  localStorage.setItem(USER_KEY, serializedUser);
   window.dispatchEvent(new Event(SESSION_EVENT));
 }
 
 export function clearCurrentUser() {
   if (!canUseStorage()) return;
+  if (!localStorage.getItem(USER_KEY)) return;
   localStorage.removeItem(USER_KEY);
   window.dispatchEvent(new Event(SESSION_EVENT));
 }
 
 export function clearSession() {
   if (!canUseStorage()) return;
+  if (!localStorage.getItem(TOKEN_KEY) && !localStorage.getItem(USER_KEY)) return;
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   window.dispatchEvent(new Event(SESSION_EVENT));
 }
 
 export function getDashboardPath(role) {
-  if (role === "ADMIN" || role === "MANAGER") return "/dashboard/admin";
+  if (role === "ADMIN") return "/dashboard/admin";
   if (role === "SERVICE_ADVISOR") return "/dashboard/advisor";
   if (role === "ASSISTANT") return "/dashboard/assistant";
   if (role === "MECHANIC") return "/dashboard/mechanic";

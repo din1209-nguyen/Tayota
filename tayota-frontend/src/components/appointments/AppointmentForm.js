@@ -254,8 +254,6 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
         ))}
       </div>
 
-      {loadingInitial ? <div className="status-box">Đang tải dữ liệu đặt lịch...</div> : null}
-
       {step === 0 ? (
         <section className="wizard-panel">
           <span className="eyebrow">{isService ? "Bảo dưỡng và sửa chữa" : "Trải nghiệm xe"}</span>
@@ -401,7 +399,11 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
         </section>
       ) : null}
 
-      {message ? <div className="status-box">{message}</div> : null}
+      <div className="wizard-feedback" aria-live="polite">
+        {loadingInitial || message ? (
+          <div className="status-box">{loadingInitial ? "Đang tải dữ liệu đặt lịch..." : message}</div>
+        ) : null}
+      </div>
 
       <div className="wizard-actions">
         <button className="btn btn-secondary" type="button" onClick={back} disabled={step === 0 || submitting}>

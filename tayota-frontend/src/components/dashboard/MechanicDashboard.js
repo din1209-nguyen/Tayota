@@ -31,6 +31,7 @@ function TicketList({ tickets, onRun }) {
 }
 
 export default function MechanicDashboard() {
+  const [tab, setTab] = useState("tickets");
   const [tickets, setTickets] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -60,14 +61,14 @@ export default function MechanicDashboard() {
   }
 
   return (
-    <div className="ops-grid">
-      <nav className="role-tabs wide" aria-label="Mechanic sections">
-        <a href="#mechanic-tickets">Tất cả phiếu</a>
-        <a href="#mechanic-active">Đang xử lý</a>
-        <a href="#mechanic-done">Hoàn tất</a>
+    <div className="ops-grid workspace-tabs-layout">
+      <nav className="role-tabs wide" aria-label="Các mục kỹ thuật viên">
+        <button className={tab === "tickets" ? "active" : ""} type="button" onClick={() => setTab("tickets")}>Tất cả phiếu</button>
+        <button className={tab === "active" ? "active" : ""} type="button" onClick={() => setTab("active")}>Đang xử lý</button>
+        <button className={tab === "done" ? "active" : ""} type="button" onClick={() => setTab("done")}>Hoàn tất</button>
       </nav>
 
-      <section className="ops-panel wide" id="mechanic-tickets">
+      {tab === "tickets" ? <section className="ops-panel wide" id="mechanic-tickets">
         <div className="ops-panel-head">
           <div>
             <p className="eyebrow">Mechanic</p>
@@ -78,19 +79,19 @@ export default function MechanicDashboard() {
         {loading ? <p>Đang tải...</p> : null}
         {error ? <div className="status-box">{error}</div> : null}
         <TicketList tickets={tickets} onRun={run} />
-      </section>
+      </section> : null}
 
-      <section className="ops-panel" id="mechanic-active">
+      {tab === "active" ? <section className="ops-panel wide" id="mechanic-active">
         <p className="eyebrow">Active</p>
         <h2>Đang xử lý</h2>
         <TicketList tickets={activeTickets} onRun={run} />
-      </section>
+      </section> : null}
 
-      <section className="ops-panel" id="mechanic-done">
+      {tab === "done" ? <section className="ops-panel wide" id="mechanic-done">
         <p className="eyebrow">Done</p>
         <h2>Hoàn tất</h2>
         <TicketList tickets={doneTickets} onRun={run} />
-      </section>
+      </section> : null}
     </div>
   );
 }

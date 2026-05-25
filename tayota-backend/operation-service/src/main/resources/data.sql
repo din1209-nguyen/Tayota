@@ -1,10 +1,10 @@
 INSERT INTO "USER" (id, created_at, email, login_provider, password_hash, provider_user_id, role, status)
 VALUES
-    ('00000000-0000-0000-0000-000000000001'::uuid, CURRENT_TIMESTAMP, 'admin@tayota.com', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'ADMIN', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000002'::uuid, CURRENT_TIMESTAMP, 'manager@tayota.com', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'MANAGER', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000003'::uuid, CURRENT_TIMESTAMP, 'advisor@tayota.com', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'SERVICE_ADVISOR', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000004'::uuid, CURRENT_TIMESTAMP, 'mechanic@tayota.com', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'MECHANIC', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000005'::uuid, CURRENT_TIMESTAMP, 'customer@tayota.com', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'USER', 'ACTIVE')
+    ('00000000-0000-0000-0000-000000000001'::uuid, CURRENT_TIMESTAMP, 'admin@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'ADMIN', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000002'::uuid, CURRENT_TIMESTAMP, 'manager@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'MANAGER', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000003'::uuid, CURRENT_TIMESTAMP, 'advisor@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'SERVICE_ADVISOR', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000004'::uuid, CURRENT_TIMESTAMP, 'mechanic@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'MECHANIC', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000005'::uuid, CURRENT_TIMESTAMP, 'customer@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'USER', 'ACTIVE')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO "USER_PROFILE" (user_id, fullname, phone, gender, birth_date, address, avatar_url)
@@ -119,10 +119,16 @@ ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO "USER" (id, created_at, email, login_provider, password_hash, provider_user_id, role, status)
 VALUES
-    ('00000000-0000-0000-0000-000000000006'::uuid, CURRENT_TIMESTAMP, 'assistant@tayota.vn', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'ASSISTANT', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000007'::uuid, CURRENT_TIMESTAMP, 'admin@tayota.vn', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'ADMIN', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000008'::uuid, CURRENT_TIMESTAMP, 'mechanic@tayota.vn', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'MECHANIC', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000009'::uuid, CURRENT_TIMESTAMP, 'user@tayota.vn', 'LOCAL', '$2a$10$IfWx2TdC1dE3SiLalrnWme3XWtVe3ZBAIfoQQrAsO0XAVOJhgTAWK', NULL, 'USER', 'ACTIVE')
+    ('00000000-0000-0000-0000-000000000006'::uuid, CURRENT_TIMESTAMP, 'assistant@tayota.vn', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'ASSISTANT', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000007'::uuid, CURRENT_TIMESTAMP, 'admin@tayota.vn', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'ADMIN', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000008'::uuid, CURRENT_TIMESTAMP, 'mechanic@tayota.vn', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'MECHANIC', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000009'::uuid, CURRENT_TIMESTAMP, 'user@tayota.vn', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'USER', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000010'::uuid, CURRENT_TIMESTAMP, 'admin.demo@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'ADMIN', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000011'::uuid, CURRENT_TIMESTAMP, 'manager.demo@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'MANAGER', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000012'::uuid, CURRENT_TIMESTAMP, 'advisor.demo@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'SERVICE_ADVISOR', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000013'::uuid, CURRENT_TIMESTAMP, 'assistant.demo@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'ASSISTANT', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000014'::uuid, CURRENT_TIMESTAMP, 'mechanic.demo@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'MECHANIC', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000015'::uuid, CURRENT_TIMESTAMP, 'customer.demo@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'USER', 'ACTIVE')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO "USER_PROFILE" (user_id, fullname, phone, gender, birth_date, address, avatar_url)
@@ -130,7 +136,13 @@ VALUES
     ('00000000-0000-0000-0000-000000000006'::uuid, 'Tayota Assistant', '0902000006', TRUE, DATE '1994-02-02', 'Tayota Phu My Hung', '/default-avatar.png'),
     ('00000000-0000-0000-0000-000000000007'::uuid, 'Tayota Admin VN', '0902000007', TRUE, DATE '1987-02-02', 'Tayota Head Office', '/default-avatar.png'),
     ('00000000-0000-0000-0000-000000000008'::uuid, 'Tayota Mechanic VN', '0902000008', TRUE, DATE '1991-02-02', 'Tayota Thu Duc', '/default-avatar.png'),
-    ('00000000-0000-0000-0000-000000000009'::uuid, 'Tayota User', '0902000009', TRUE, DATE '1999-02-02', 'Ho Chi Minh City', '/default-avatar.png')
+    ('00000000-0000-0000-0000-000000000009'::uuid, 'Tayota User', '0902000009', TRUE, DATE '1999-02-02', 'Ho Chi Minh City', '/default-avatar.png'),
+    ('00000000-0000-0000-0000-000000000010'::uuid, 'Tayota Demo Admin', '0903000010', TRUE, DATE '1988-01-01', 'Tayota Head Office', '/default-avatar.png'),
+    ('00000000-0000-0000-0000-000000000011'::uuid, 'Tayota Demo Manager', '0903000011', TRUE, DATE '1989-02-01', 'Tayota Head Office', '/default-avatar.png'),
+    ('00000000-0000-0000-0000-000000000012'::uuid, 'Tayota Demo Advisor', '0903000012', TRUE, DATE '1991-03-01', 'Tayota District 1', '/default-avatar.png'),
+    ('00000000-0000-0000-0000-000000000013'::uuid, 'Tayota Demo Assistant', '0903000013', FALSE, DATE '1993-04-01', 'Tayota District 1', '/default-avatar.png'),
+    ('00000000-0000-0000-0000-000000000014'::uuid, 'Tayota Demo Mechanic', '0903000014', TRUE, DATE '1992-05-01', 'Tayota District 1', '/default-avatar.png'),
+    ('00000000-0000-0000-0000-000000000015'::uuid, 'Tayota Demo Customer', '0903000015', FALSE, DATE '1997-06-01', 'Ho Chi Minh City', '/default-avatar.png')
 ON CONFLICT (user_id) DO NOTHING;
 
 INSERT INTO "DEALERSHIP" (id, name, address, car_quantity, accessory_quantity, latitude, longitude, place_id, phone, operating_hours, is_active, created_at)
@@ -144,7 +156,13 @@ ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO "MECHANIC" (id, dealership_id, specialty, average_rating, is_active)
 VALUES
-    ('00000000-0000-0000-0000-000000000008'::uuid, '10000000-0000-0000-0000-000000000003'::uuid, 'Hybrid diagnostics', 4.90, TRUE)
+    ('00000000-0000-0000-0000-000000000008'::uuid, '10000000-0000-0000-0000-000000000003'::uuid, 'Hybrid diagnostics', 4.90, TRUE),
+    ('00000000-0000-0000-0000-000000000014'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, 'General maintenance', 4.80, TRUE)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "SERVICE_ADVISOR" (id, dealership_id)
+VALUES
+    ('00000000-0000-0000-0000-000000000012'::uuid, '10000000-0000-0000-0000-000000000001'::uuid)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO "CAR_STYLE" (id, name, description)
@@ -228,4 +246,67 @@ VALUES
     ('40000000-0000-0000-0000-000000000010'::uuid, '10000000-0000-0000-0000-000000000004'::uuid, 'TEST_DRIVE', TIME '09:00:00', TIME '10:00:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     ('40000000-0000-0000-0000-000000000011'::uuid, '10000000-0000-0000-0000-000000000005'::uuid, 'SERVICE', TIME '10:00:00', TIME '11:00:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
     ('40000000-0000-0000-0000-000000000012'::uuid, '10000000-0000-0000-0000-000000000006'::uuid, 'TEST_DRIVE', TIME '15:00:00', TIME '16:00:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "CAR" (vin_id, car_version_id, dealership_id, engine_number, owner_user_id, status, producted_year, created_at)
+VALUES
+    ('TAYOTA00000000008', '22000000-0000-0000-0000-000000000009'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, 'ENG-TAYOTA-0008', '00000000-0000-0000-0000-000000000015'::uuid, 'SOLD', TIMESTAMP '2026-01-01 00:00:00', CURRENT_TIMESTAMP)
+ON CONFLICT (vin_id) DO NOTHING;
+
+INSERT INTO "GUEST_INFORMATION" (id, full_name, email, phone)
+VALUES
+    ('50000000-0000-0000-0000-000000000001'::uuid, 'Nguyen Van Guest', 'guest.customer@example.com', '0911000001'),
+    ('50000000-0000-0000-0000-000000000002'::uuid, 'Tran Mai Guest', 'guest.service@example.com', '0911000002')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "APPOINTMENT" (id, user_id, car_version_id, vin_id, dealership_id, mechanic_id, guest_information_id, type, status, scheduled_start_at, scheduled_end_at, notes, confirmed_at, completed_at, canceled_at, expired_at, cancel_reason, created_at, updated_at)
+VALUES
+    ('51000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000015'::uuid, '22000000-0000-0000-0000-000000000006'::uuid, NULL, '10000000-0000-0000-0000-000000000001'::uuid, NULL, NULL, 'TEST_DRIVE', 'COMPLETED', TIMESTAMP '2026-05-10 02:00:00', TIMESTAMP '2026-05-10 03:00:00', 'Customer compared hybrid models.', TIMESTAMP '2026-05-08 03:00:00', TIMESTAMP '2026-05-10 03:00:00', NULL, NULL, NULL, TIMESTAMP '2026-05-07 03:00:00', TIMESTAMP '2026-05-10 03:00:00'),
+    ('51000000-0000-0000-0000-000000000002'::uuid, '00000000-0000-0000-0000-000000000015'::uuid, NULL, 'TAYOTA00000000008', '10000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000014'::uuid, NULL, 'SERVICE', 'COMPLETED', TIMESTAMP '2026-05-18 03:00:00', TIMESTAMP '2026-05-18 05:00:00', 'Periodic maintenance at 10,000 km.', TIMESTAMP '2026-05-17 02:00:00', TIMESTAMP '2026-05-18 05:00:00', NULL, NULL, NULL, TIMESTAMP '2026-05-16 02:00:00', TIMESTAMP '2026-05-18 05:00:00'),
+    ('51000000-0000-0000-0000-000000000003'::uuid, '00000000-0000-0000-0000-000000000015'::uuid, '22000000-0000-0000-0000-000000000004'::uuid, NULL, '10000000-0000-0000-0000-000000000002'::uuid, NULL, NULL, 'TEST_DRIVE', 'CONFIRMED', TIMESTAMP '2026-06-05 02:30:00', TIMESTAMP '2026-06-05 03:30:00', 'Customer wants to test Camry Hybrid.', TIMESTAMP '2026-05-24 03:00:00', NULL, NULL, NULL, NULL, TIMESTAMP '2026-05-24 02:00:00', TIMESTAMP '2026-05-24 03:00:00'),
+    ('51000000-0000-0000-0000-000000000004'::uuid, NULL, '22000000-0000-0000-0000-000000000005'::uuid, NULL, '10000000-0000-0000-0000-000000000004'::uuid, NULL, '50000000-0000-0000-0000-000000000001'::uuid, 'TEST_DRIVE', 'PENDING', TIMESTAMP '2026-06-10 02:00:00', TIMESTAMP '2026-06-10 03:00:00', 'Guest requested seven-seat SUV.', NULL, NULL, NULL, NULL, NULL, TIMESTAMP '2026-05-25 04:00:00', TIMESTAMP '2026-05-25 04:00:00')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "SERVICE" (id, user_id, guest_information_id, vin_id, mechanic_id, dealership_id, appointment_id, mileage_at_service, status, total_amount, vehicle_condition, notes, receiving_at, processing_at, completed_at, canceled_at, expired_at, cancel_reason, created_at, updated_at)
+VALUES
+    ('52000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000015'::uuid, NULL, 'TAYOTA00000000008', '00000000-0000-0000-0000-000000000014'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, '51000000-0000-0000-0000-000000000002'::uuid, 10125, 'COMPLETED', 1950000.00, 'Vehicle in good condition, normal tire wear.', 'Changed oil and inspected brake system.', TIMESTAMP '2026-05-18 03:00:00', TIMESTAMP '2026-05-18 03:15:00', TIMESTAMP '2026-05-18 05:00:00', NULL, NULL, NULL, TIMESTAMP '2026-05-18 03:00:00', TIMESTAMP '2026-05-18 05:00:00')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "SERVICE_ITEM" (id, service_id, item_type, accessory_id, item_name, quantity, unit_price, billing_type, final_price, note, created_at)
+VALUES
+    ('53000000-0000-0000-0000-000000000001'::uuid, '52000000-0000-0000-0000-000000000001'::uuid, 'LABOR', NULL, 'Periodic maintenance labor', 1, 450000.00, 'NORMAL', 450000.00, '10,000 km inspection.', TIMESTAMP '2026-05-18 03:20:00'),
+    ('53000000-0000-0000-0000-000000000002'::uuid, '52000000-0000-0000-0000-000000000001'::uuid, 'PART', NULL, 'Engine oil and filter package', 1, 1500000.00, 'NORMAL', 1500000.00, 'OEM consumables.', TIMESTAMP '2026-05-18 03:20:00')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "CHAT_SESSION" (id, user_id, guest_id, assigned_staff_id, status, closed_at, resolved_at, created_at, updated_at)
+VALUES
+    ('54000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000015'::uuid, NULL, '00000000-0000-0000-0000-000000000013'::uuid, 'RESOLVED', NULL, TIMESTAMP '2026-05-20 05:25:00', TIMESTAMP '2026-05-20 05:00:00', TIMESTAMP '2026-05-20 05:25:00'),
+    ('54000000-0000-0000-0000-000000000002'::uuid, NULL, 'guest-web-0001', '00000000-0000-0000-0000-000000000013'::uuid, 'CHATTING', NULL, NULL, TIMESTAMP '2026-05-25 05:00:00', TIMESTAMP '2026-05-25 05:05:00')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "CHAT_MESSAGE" (id, session_id, sender_id, sender_type, content, created_at)
+VALUES
+    ('55000000-0000-0000-0000-000000000001'::uuid, '54000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000015'::uuid, 'CUSTOMER', 'When should I bring the car for periodic maintenance?', TIMESTAMP '2026-05-20 05:00:00'),
+    ('55000000-0000-0000-0000-000000000002'::uuid, '54000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000013'::uuid, 'ASSISTANT', 'Your maintenance appointment is confirmed for May 18.', TIMESTAMP '2026-05-20 05:10:00'),
+    ('55000000-0000-0000-0000-000000000003'::uuid, '54000000-0000-0000-0000-000000000002'::uuid, NULL, 'CUSTOMER', 'I would like a quotation for Fortuner.', TIMESTAMP '2026-05-25 05:00:00'),
+    ('55000000-0000-0000-0000-000000000004'::uuid, '54000000-0000-0000-0000-000000000002'::uuid, '00000000-0000-0000-0000-000000000013'::uuid, 'ASSISTANT', 'I can arrange a test drive and send the quotation.', TIMESTAMP '2026-05-25 05:05:00')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "NOTIFICATION" (id, user_id, sender_id, type, title, content, is_read, read_at, created_at)
+VALUES
+    ('56000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000015'::uuid, NULL, 'APPOINTMENT', 'Test drive confirmed', 'Your Camry Hybrid test drive appointment has been confirmed.', FALSE, NULL, TIMESTAMP '2026-05-24 03:00:00'),
+    ('56000000-0000-0000-0000-000000000002'::uuid, '00000000-0000-0000-0000-000000000015'::uuid, '00000000-0000-0000-0000-000000000014'::uuid, 'SERVICE', 'Service completed', 'Your vehicle is ready for collection after periodic maintenance.', TRUE, TIMESTAMP '2026-05-18 06:00:00', TIMESTAMP '2026-05-18 05:00:00'),
+    ('56000000-0000-0000-0000-000000000003'::uuid, '00000000-0000-0000-0000-000000000014'::uuid, NULL, 'SERVICE', 'New assigned job', 'A maintenance service ticket was assigned to you.', TRUE, TIMESTAMP '2026-05-18 03:05:00', TIMESTAMP '2026-05-18 03:00:00')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "CUSTOMER_REVIEW" (id, review_type, status, review_token, token_expires_at, submitted_at, appointment_id, service_id, user_id, dealership_id, service_rating, service_comment, mechanic_id, mechanic_rating, mechanic_comment, created_at)
+VALUES
+    ('57000000-0000-0000-0000-000000000001'::uuid, 'TEST_DRIVE', 'SUBMITTED', 'demo-review-test-drive-0001', TIMESTAMP '2026-06-10 03:00:00', TIMESTAMP '2026-05-10 05:00:00', '51000000-0000-0000-0000-000000000001'::uuid, NULL, '00000000-0000-0000-0000-000000000015'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, 5, 'Comfortable test drive experience.', NULL, NULL, NULL, TIMESTAMP '2026-05-10 04:00:00'),
+    ('57000000-0000-0000-0000-000000000002'::uuid, 'SERVICE', 'SUBMITTED', 'demo-review-service-0001', TIMESTAMP '2026-06-18 05:00:00', TIMESTAMP '2026-05-18 07:00:00', NULL, '52000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000015'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, 5, 'Quick and transparent maintenance service.', '00000000-0000-0000-0000-000000000014'::uuid, 5, 'Mechanic explained every completed item.', TIMESTAMP '2026-05-18 06:00:00')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "APPOINTMENT_HOLIDAY" (id, dealership_id, holiday_date, reason, is_active, created_at, updated_at)
+VALUES
+    ('58000000-0000-0000-0000-000000000001'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, DATE '2026-09-02', 'National holiday', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+    ('58000000-0000-0000-0000-000000000002'::uuid, '10000000-0000-0000-0000-000000000002'::uuid, DATE '2026-09-02', 'National holiday', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;

@@ -195,7 +195,7 @@ def test_list_documents_returns_uploaded_documents(monkeypatch):
 
     monkeypatch.setattr(app_module.document_store, "list_documents", fake_list_documents)
 
-    response = client.get("/api/v1/documents")
+    response = client.get("/api/v1/documents", headers={"X-User-Role": "ROLE_ADMIN"})
 
     assert response.status_code == 200
     assert response.json() == {
@@ -226,11 +226,20 @@ def test_list_documents_allows_status_filter(monkeypatch):
 
     monkeypatch.setattr(app_module.document_store, "list_documents", fake_list_documents)
 
-    response = client.get("/api/v1/documents?status=indexed&status=failed")
+    response = client.get(
+        "/api/v1/documents?status=indexed&status=failed",
+        headers={"X-User-Role": "ROLE_ADMIN"},
+    )
 
     assert response.status_code == 200
     assert response.json() == {"count": 0, "documents": []}
     assert captured["statuses"] == ("indexed", "failed")
+
+
+def test_list_documents_requires_admin_role():
+    response = client.get("/api/v1/documents", headers={"X-User-Role": "ROLE_MANAGER"})
+
+    assert response.status_code == 403
 
 
 def test_upload_document_requires_admin_role():
@@ -286,6 +295,15 @@ def test_upload_document_allows_admin_role(monkeypatch):
     assert captured["job_document_id"] == "doc-1"
     assert captured["ingest_document_id"] == "doc-1"
     assert captured["rebuild"] is False
+
+
+def test_get_document_job_requires_admin_role():
+    response = client.get(
+        "/api/v1/documents/jobs/job-1",
+        headers={"X-User-Role": "ROLE_USER"},
+    )
+
+    assert response.status_code == 403
 
 
 def test_delete_document_removes_qdrant_chunks_then_mongo(monkeypatch):

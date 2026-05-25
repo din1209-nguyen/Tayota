@@ -11,7 +11,7 @@ export default function AdminDashboardPage() {
         <p className="eyebrow">Dashboard</p>
         <h1>Quản trị hệ thống</h1>
       </div>
-      <div className="shell-container">
+      <div className="shell-container admin-shell-container">
         <AdminDashboard />
       </div>
     </section>

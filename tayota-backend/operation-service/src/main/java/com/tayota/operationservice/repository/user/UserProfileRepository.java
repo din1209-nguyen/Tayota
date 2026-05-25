@@ -1,6 +1,10 @@
 package com.tayota.operationservice.repository.user;
 
 import com.tayota.operationservice.entity.user.UserProfile;
+import com.tayota.operationservice.enums.user.RoleType;
+import com.tayota.operationservice.enums.user.StatusType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -9,6 +13,63 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface UserProfileRepository extends JpaRepository<UserProfile, UUID> {
+
+    @Query(
+            value = """
+                    select userProfile
+                    from UserProfile userProfile
+                    join userProfile.user user
+                    where (:role is null or user.role = :role)
+                      and (:status is null or user.status = :status)
+                    order by user.createdAt desc
+                    """,
+            countQuery = """
+                    select count(userProfile)
+                    from UserProfile userProfile
+                    join userProfile.user user
+                    where (:role is null or user.role = :role)
+                      and (:status is null or user.status = :status)
+                    """
+    )
+    Page<UserProfile> searchForAdminWithoutKeyword(
+            @Param("role") RoleType role,
+            @Param("status") StatusType status,
+            Pageable pageable
+    );
+
+    @Query(
+            value = """
+                    select userProfile
+                    from UserProfile userProfile
+                    join userProfile.user user
+                    where (:role is null or user.role = :role)
+                      and (:status is null or user.status = :status)
+                      and (
+                           lower(user.email) like concat('%', :keyword, '%')
+                           or lower(userProfile.fullname) like concat('%', :keyword, '%')
+                           or userProfile.phone like concat('%', :keyword, '%')
+                      )
+                    order by user.createdAt desc
+                    """,
+            countQuery = """
+                    select count(userProfile)
+                    from UserProfile userProfile
+                    join userProfile.user user
+                    where (:role is null or user.role = :role)
+                      and (:status is null or user.status = :status)
+                      and (
+                           lower(user.email) like concat('%', :keyword, '%')
+                           or lower(userProfile.fullname) like concat('%', :keyword, '%')
+                           or userProfile.phone like concat('%', :keyword, '%')
+                      )
+                    """
+    )
+    Page<UserProfile> searchForAdminWithKeyword(
+            @Param("keyword") String keyword,
+            @Param("role") RoleType role,
+            @Param("status") StatusType status,
+            Pageable pageable
+    );
 
     // Dùng để lấy thông tin liên hệ của user đã đăng nhập cho màn quản lý lịch hẹn
     @Query("""

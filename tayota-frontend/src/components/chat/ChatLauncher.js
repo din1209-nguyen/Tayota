@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { sendAiChatMessage } from "@/lib/services/chat";
 import LiveChatPanel from "@/components/chat/LiveChatPanel";
@@ -85,7 +86,7 @@ export default function ChatLauncher() {
                 <span>Hỏi nhanh về xe, giá, lịch lái thử và dịch vụ.</span>
               </button>
               <button className="choice-card" type="button" onClick={() => setMode("live")}>
-                <strong>Live chat</strong>
+                <strong>Tư vấn trực tuyến</strong>
                 <span>Trao đổi realtime với tư vấn viên Tayota.</span>
               </button>
             </div>
@@ -133,11 +134,12 @@ export default function ChatLauncher() {
           ) : null}
         </section>
       ) : null}
-      <button className="chat-launch" type="button" onClick={() => {
+      {!open ? <div className="chat-greeting">Xin chào</div> : null}
+      <button className="chat-launch" type="button" aria-label="Mở chat Tayota" onClick={() => {
         setOpen(true);
         setMode("");
       }}>
-        Chat
+        <Image src="/images/chatbot-floating.png" alt="" width={104} height={104} aria-hidden="true" priority />
       </button>
     </div>
   );

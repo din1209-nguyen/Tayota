@@ -9,6 +9,7 @@ export default function VehicleFilterControls({
   styles = [],
   variant = "chooser",
   advanced = true,
+  showKeyword = true,
 }) {
   const seriesOptions = getSeriesOptions(styles, filters.styleId);
 
@@ -17,6 +18,7 @@ export default function VehicleFilterControls({
       ...filters,
       [name]: value,
       ...(name === "styleId" ? { seriesId: "" } : {}),
+      ...(!showKeyword ? { keyword: "" } : {}),
     });
   }
 
@@ -39,14 +41,16 @@ export default function VehicleFilterControls({
       </div>
 
       {variant !== "minimal" ? (
-        <div className="vehicle-filter-primary">
-          <input
-            aria-label="Tìm xe"
-            className="field"
-            placeholder="Tìm mẫu xe hoặc phiên bản"
-            value={filters.keyword}
-            onChange={(event) => change("keyword", event.target.value)}
-          />
+        <div className={`vehicle-filter-primary ${showKeyword ? "" : "vehicle-filter-primary-series-only"}`}>
+          {showKeyword ? (
+            <input
+              aria-label="Tìm xe"
+              className="field"
+              placeholder="Tìm mẫu xe hoặc phiên bản"
+              value={filters.keyword}
+              onChange={(event) => change("keyword", event.target.value)}
+            />
+          ) : null}
           <select
             aria-label="Dòng xe"
             className="field"

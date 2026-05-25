@@ -1,12 +1,13 @@
 package com.tayota.operationservice.dto.request.car;
 
+import java.time.Instant;
+
 import com.tayota.operationservice.enums.car.CarStatusType;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
-
-import java.time.Instant;
 
 @Getter
 public class CarRequestDTO {

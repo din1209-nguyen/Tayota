@@ -1,13 +1,13 @@
 package com.tayota.operationservice.dto.request.appointment;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
-
-import java.time.LocalDate;
-import java.time.LocalTime;
 
 // Dùng để lưu thông tin yêu cầu tạo cuộc hẹn dịch vụ từ phía khách hàng gửi lên
 @Getter

@@ -141,6 +141,13 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
     setForm((current) => ({ ...current, [name]: value }));
   }
 
+  function toggleVehicle(value) {
+    setForm((current) => ({
+      ...current,
+      carVersionId: String(current.carVersionId) === String(value) ? "" : value,
+    }));
+  }
+
   function validateStep(targetStep = step) {
     if (targetStep === 0 && !isService && !form.carVersionId) return "Vui lòng chọn mẫu xe muốn lái thử.";
     if (targetStep === 0 && isService && form.vinId.trim().length !== 17) return "Số VIN cần đúng 17 ký tự.";
@@ -286,6 +293,8 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
                   filters={vehicleFilters}
                   onChange={setVehicleFilters}
                   styles={vehicleStyles}
+                  advanced={false}
+                  showKeyword={false}
                   variant="chooser"
                 />
               </div>
@@ -295,7 +304,7 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
                   const selected = String(form.carVersionId) === String(id);
                   const imageUrl = getVehicleImage(vehicle);
                   return (
-                    <button className={`choice-card vehicle-choice ${selected ? "selected" : ""}`} key={id} type="button" onClick={() => choose("carVersionId", id)}>
+                    <button className={`choice-card vehicle-choice ${selected ? "selected" : ""}`} key={id} type="button" onClick={() => toggleVehicle(id)}>
                       <span className="vehicle-choice-image" style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : undefined} />
                       <strong>{getVehicleName(vehicle)}</strong>
                       <span>{formatVnd(getVehiclePrice(vehicle))}</span>

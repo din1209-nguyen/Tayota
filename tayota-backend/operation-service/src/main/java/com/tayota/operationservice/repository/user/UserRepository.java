@@ -2,6 +2,7 @@ package com.tayota.operationservice.repository.user;
 
 import com.tayota.operationservice.entity.user.User;
 import com.tayota.operationservice.enums.user.ProviderType;
+import com.tayota.operationservice.enums.user.RoleType;
 import com.tayota.operationservice.enums.user.StatusType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -19,6 +20,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     // Kiểm tra xem email đã tồn tại
     boolean existsByEmail(String email);
+
+    long countByRoleAndStatus(RoleType role, StatusType status);
 
     // Cập nhật mật khẩu người dùng theo ID
     @Modifying

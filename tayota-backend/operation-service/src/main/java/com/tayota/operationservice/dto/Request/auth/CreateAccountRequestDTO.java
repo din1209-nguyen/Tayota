@@ -1,7 +1,9 @@
 package com.tayota.operationservice.dto.request.auth;
 
-import com.tayota.operationservice.enums.user.RoleType;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 
 @Getter

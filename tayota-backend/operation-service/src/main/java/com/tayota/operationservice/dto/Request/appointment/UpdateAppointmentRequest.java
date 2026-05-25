@@ -1,11 +1,12 @@
 package com.tayota.operationservice.dto.request.appointment;
 
-import com.tayota.operationservice.enums.appointment.AppointmentStatus;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-
 import java.time.LocalDate;
 import java.time.LocalTime;
+
+import com.tayota.operationservice.enums.appointment.AppointmentStatus;
+
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
 
 // Dùng để quản lý cập nhật thông tin lịch hẹn.
 @Getter

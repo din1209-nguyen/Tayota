@@ -1,10 +1,10 @@
 package com.tayota.operationservice.dto.request.workorder;
 
+import java.util.UUID;
+
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
-
-import java.util.UUID;
 
 // Dùng để nhận dữ liệu khách hàng check-in khi đến xưởng (đặt lịch dịch vụ)
 // bao gồm thông tin về thợ sửa, số km hiện tại, tình trạng xe và ghi chú nếu có

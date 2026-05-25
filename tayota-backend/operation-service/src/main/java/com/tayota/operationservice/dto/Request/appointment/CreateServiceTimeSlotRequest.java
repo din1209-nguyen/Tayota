@@ -1,10 +1,11 @@
 package com.tayota.operationservice.dto.request.appointment;
 
+import java.time.LocalTime;
+
 import com.tayota.operationservice.enums.appointment.AppointmentType;
+
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
-
-import java.time.LocalTime;
 
 // DTO này được sử dụng để nhận dữ liệu từ client khi tạo một khung giờ dịch vụ mới cho đại lý.
 @Getter

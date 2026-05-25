@@ -7,7 +7,7 @@ import { getMe, logout } from "@/lib/services/auth";
 import { clearSession, getCurrentUser, getDashboardPath, onSessionChange, setCurrentUser } from "@/lib/session";
 
 const navItems = [
-  ["Dòng xe", "/vehicles"],
+  ["Sản phẩm", "/vehicles"],
   ["So sánh", "/compare"],
   ["Đại lý", "/dealerships"],
   ["Lái thử", "/appointments/test-drive"],

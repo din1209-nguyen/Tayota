@@ -1,12 +1,12 @@
 package com.tayota.operationservice.dto.request.user;
 
+import java.time.LocalDate;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
-
-import java.time.LocalDate;
 
 @Getter
 public class UserProfileUpdateRequestDTO {

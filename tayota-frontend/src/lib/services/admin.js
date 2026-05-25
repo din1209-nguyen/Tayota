@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api";
+import { apiFetch, buildQuery } from "@/lib/api";
 
 export function createAdminUser(payload) {
   return apiFetch("/user/create-account", {
@@ -7,8 +7,24 @@ export function createAdminUser(payload) {
   });
 }
 
-export function getAiDocuments() {
-  return apiFetch("/ai/api/v1/documents", { cache: "no-store" });
+export function getAdminUsers(params = {}) {
+  return apiFetch(`/user/admin/users${buildQuery(params)}`, { cache: "no-store" });
+}
+
+export function updateAdminUserStatus(userId, payload) {
+  const action = payload?.status === "ACTIVE" ? "unban" : "ban";
+  return apiFetch(`/user/${action}/${userId}`, { method: "PATCH" });
+}
+
+export function resetAdminUserPassword(userId, payload) {
+  return apiFetch(`/user/admin/users/${userId}/password`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getAiDocuments(params = {}) {
+  return apiFetch(`/ai/api/v1/documents${buildQuery(params)}`, { cache: "no-store" });
 }
 
 export function uploadAiDocument(file) {

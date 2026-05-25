@@ -116,7 +116,7 @@ export default function LiveChatPanel({ mode = "customer", sessionId: providedSe
     <section className={`ops-panel live-chat-panel ${variant === "widget" ? "live-chat-widget-panel" : ""}`}>
       <div className="ops-panel-head">
         <div>
-          <p className="eyebrow">Live chat</p>
+          <p className="eyebrow">Tư vấn trực tuyến</p>
           <h2>{isAssistant ? "Hỗ trợ khách hàng" : "Tư vấn trực tiếp"}</h2>
           {sessionId && variant !== "widget" ? <p className="muted-text">Phiên {sessionId}</p> : null}
         </div>

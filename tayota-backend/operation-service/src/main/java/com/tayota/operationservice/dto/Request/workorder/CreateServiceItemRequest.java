@@ -1,15 +1,16 @@
 package com.tayota.operationservice.dto.request.workorder;
 
+import java.math.BigDecimal;
+import java.util.UUID;
+
 import com.tayota.operationservice.enums.workorder.BillingType;
 import com.tayota.operationservice.enums.workorder.ServiceItemType;
+
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
-
-import java.math.BigDecimal;
-import java.util.UUID;
 
 // Dùng để nhận dữ liệu khi thêm hạng mục dịch vụ vào phiếu dịch vụ
 @Getter

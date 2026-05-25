@@ -1,14 +1,13 @@
 package com.tayota.operationservice.config;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import tools.jackson.databind.ObjectMapper;
@@ -28,7 +27,7 @@ public class RedisConfig {
         template.setConnectionFactory(connectionFactory);
 
         // Tạo ObjectMapper tùy chỉnh cho serialization
-        GenericJacksonJsonRedisSerializer jsonRedisSerializer = new GenericJacksonJsonRedisSerializer(objectMapper);
+        RedisSerializer<Object> jsonRedisSerializer = new LegacyAwareJsonRedisSerializer(objectMapper);
 
         // Cấu hình Serializer cho Key
         // Serializer: quy định cách chuyển đổi dữ liệu Java thành bytes khi lưu vào Redis
@@ -59,7 +58,7 @@ public class RedisConfig {
     @ConditionalOnMissingBean(name = "cacheManager")
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory, ObjectMapper objectMapper) {
         // Tạo ObjectMapper tùy chỉnh cho Cache Manager
-        GenericJacksonJsonRedisSerializer jsonRedisSerializer = new GenericJacksonJsonRedisSerializer(objectMapper);
+        RedisSerializer<Object> jsonRedisSerializer = new LegacyAwareJsonRedisSerializer(objectMapper);
 
         // Thiết lập cấu hình mặc định cho toàn bộ cache
         RedisCacheConfiguration cacheConfig = RedisCacheConfiguration.defaultCacheConfig()

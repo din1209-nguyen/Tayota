@@ -9,14 +9,10 @@ import { clearSession, getAccessToken, getCurrentUser, getDashboardPath, onSessi
 const navItems = [
   ["Dòng xe", "/vehicles"],
   ["So sánh", "/compare"],
+  ["Đại lý", "/dealerships"],
   ["Lái thử", "/appointments/test-drive"],
   ["Dịch vụ", "/appointments/service"],
-  ["Live chat", "/support/live-chat"],
 ];
-
-function openAiChat() {
-  window.dispatchEvent(new Event("tayota:open-ai-chat"));
-}
 
 export default function Header() {
   const router = useRouter();
@@ -86,9 +82,6 @@ export default function Header() {
               {label}
             </Link>
           ))}
-          <button className="nav-button" type="button" onClick={openAiChat}>
-            AI tư vấn
-          </button>
         </nav>
 
         {user ? (
@@ -140,16 +133,6 @@ export default function Header() {
               {label}
             </Link>
           ))}
-          <button
-            className="mobile-nav-button"
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              openAiChat();
-            }}
-          >
-            AI tư vấn
-          </button>
           <Link className="btn btn-primary" href={user ? dashboardPath : "/auth/login"} onClick={() => setOpen(false)}>
             {user ? "Dashboard" : "Đăng nhập"}
           </Link>

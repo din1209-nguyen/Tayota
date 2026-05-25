@@ -12,7 +12,7 @@ export default function Footer() {
         </div>
         <div>
           <h2>Trải nghiệm</h2>
-          <Link href="/vehicles">Dòng xe</Link>
+          <Link href="/vehicles">Sản phẩm</Link>
           <Link href="/compare">So sánh</Link>
           <Link href="/appointments/test-drive">Lái thử</Link>
         </div>

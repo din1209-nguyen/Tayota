@@ -6,9 +6,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Duration;
 import java.util.LinkedHashMap;
@@ -20,11 +21,9 @@ public class CacheConfig {
 
     // Khai báo cache manager riêng cho nhóm dữ liệu xe để cấu hình TTL theo từng nhóm cache
     @Bean
-    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
+    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory, ObjectMapper objectMapper) {
         // Tạo serializer JSON dùng chung với RedisTemplate trong common code
-        GenericJacksonJsonRedisSerializer jsonRedisSerializer = GenericJacksonJsonRedisSerializer.builder()
-                .enableUnsafeDefaultTyping()
-                .build();
+        RedisSerializer<Object> jsonRedisSerializer = new LegacyAwareJsonRedisSerializer(objectMapper);
 
         // Tạo cấu hình cache mặc định
         RedisCacheConfiguration defaultConfig = createCacheConfiguration(jsonRedisSerializer, Duration.ofMinutes(30));
@@ -53,7 +52,7 @@ public class CacheConfig {
 
     // Tạo cấu hình cache theo TTL truyền vào
     private RedisCacheConfiguration createCacheConfiguration(
-            GenericJacksonJsonRedisSerializer jsonRedisSerializer,
+            RedisSerializer<Object> jsonRedisSerializer,
             Duration ttl
     ) {
         return RedisCacheConfiguration.defaultCacheConfig()

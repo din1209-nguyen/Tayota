@@ -1,3 +1,6 @@
+DROP TABLE IF EXISTS "ACCESSORY_INVENTORY";
+ALTER TABLE "DEALERSHIP" DROP COLUMN IF EXISTS accessory_quantity;
+
 INSERT INTO "USER" (id, created_at, email, login_provider, password_hash, provider_user_id, role, status)
 VALUES
     ('00000000-0000-0000-0000-000000000001'::uuid, CURRENT_TIMESTAMP, 'admin@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'ADMIN', 'ACTIVE'),
@@ -16,9 +19,9 @@ VALUES
     ('00000000-0000-0000-0000-000000000005'::uuid, 'Tayota Customer', '0901000005', TRUE, DATE '1998-01-01', 'Ho Chi Minh City', '/default-avatar.png')
 ON CONFLICT (user_id) DO NOTHING;
 
-INSERT INTO "DEALERSHIP" (id, name, address, car_quantity, accessory_quantity, latitude, longitude, place_id, phone, operating_hours, is_active, created_at)
+INSERT INTO "DEALERSHIP" (id, name, address, car_quantity, latitude, longitude, place_id, phone, operating_hours, is_active, created_at)
 VALUES
-    ('10000000-0000-0000-0000-000000000001'::uuid, 'Tayota District 1', '12 Le Duan, District 1, Ho Chi Minh City', 2, 2, 10.78123456, 106.70234567, 'tayota-district-1', '02811112222', '08:00 - 18:00', TRUE, CURRENT_TIMESTAMP)
+    ('10000000-0000-0000-0000-000000000001'::uuid, 'Tayota District 1', '12 Le Duan, District 1, Ho Chi Minh City', 2, 10.78123456, 106.70234567, 'tayota-district-1', '02811112222', '08:00 - 18:00', TRUE, CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO "SERVICE_ADVISOR" (id, dealership_id)
@@ -103,12 +106,6 @@ VALUES
     ('22000000-0000-0000-0000-000000000002'::uuid, '30000000-0000-0000-0000-000000000002'::uuid)
 ON CONFLICT (car_version_id, accessory_id) DO NOTHING;
 
-INSERT INTO "ACCESSORY_INVENTORY" (dealership_id, accessory_id, quantity, last_updated)
-VALUES
-    ('10000000-0000-0000-0000-000000000001'::uuid, '30000000-0000-0000-0000-000000000001'::uuid, 10, CURRENT_TIMESTAMP),
-    ('10000000-0000-0000-0000-000000000001'::uuid, '30000000-0000-0000-0000-000000000002'::uuid, 20, CURRENT_TIMESTAMP)
-ON CONFLICT (dealership_id, accessory_id) DO NOTHING;
-
 INSERT INTO "SERVICE_TIME_SLOT" (id, dealership_id, appointment_type, start_time, end_time, is_active, created_at, updated_at)
 VALUES
     ('40000000-0000-0000-0000-000000000001'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, 'TEST_DRIVE', TIME '09:00:00', TIME '10:00:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
@@ -145,13 +142,13 @@ VALUES
     ('00000000-0000-0000-0000-000000000015'::uuid, 'Tayota Demo Customer', '0903000015', FALSE, DATE '1997-06-01', 'Ho Chi Minh City', '/default-avatar.png')
 ON CONFLICT (user_id) DO NOTHING;
 
-INSERT INTO "DEALERSHIP" (id, name, address, car_quantity, accessory_quantity, latitude, longitude, place_id, phone, operating_hours, is_active, created_at)
+INSERT INTO "DEALERSHIP" (id, name, address, car_quantity, latitude, longitude, place_id, phone, operating_hours, is_active, created_at)
 VALUES
-    ('10000000-0000-0000-0000-000000000002'::uuid, 'Tayota Phu My Hung', '105 Nguyen Luong Bang, District 7, Ho Chi Minh City', 18, 40, 10.72981234, 106.70381234, 'tayota-phu-my-hung', '02822223333', '08:00 - 18:30', TRUE, CURRENT_TIMESTAMP),
-    ('10000000-0000-0000-0000-000000000003'::uuid, 'Tayota Thu Duc', '22 Vo Van Ngan, Thu Duc City, Ho Chi Minh City', 22, 34, 10.85061234, 106.77131234, 'tayota-thu-duc', '02833334444', '08:00 - 18:00', TRUE, CURRENT_TIMESTAMP),
-    ('10000000-0000-0000-0000-000000000004'::uuid, 'Tayota Hanoi West', '68 Le Van Luong, Thanh Xuan, Hanoi', 16, 36, 21.00761234, 105.80161234, 'tayota-hanoi-west', '02444445555', '08:00 - 18:00', TRUE, CURRENT_TIMESTAMP),
-    ('10000000-0000-0000-0000-000000000005'::uuid, 'Tayota Da Nang', '09 Nguyen Van Linh, Hai Chau, Da Nang', 14, 28, 16.06041234, 108.22191234, 'tayota-da-nang', '02365556666', '08:00 - 17:30', TRUE, CURRENT_TIMESTAMP),
-    ('10000000-0000-0000-0000-000000000006'::uuid, 'Tayota Can Tho', '188 30/4 Street, Ninh Kieu, Can Tho', 12, 24, 10.03321234, 105.78361234, 'tayota-can-tho', '02926667777', '08:00 - 17:30', TRUE, CURRENT_TIMESTAMP)
+    ('10000000-0000-0000-0000-000000000002'::uuid, 'Tayota Phu My Hung', '105 Nguyen Luong Bang, District 7, Ho Chi Minh City', 18, 10.72981234, 106.70381234, 'tayota-phu-my-hung', '02822223333', '08:00 - 18:30', TRUE, CURRENT_TIMESTAMP),
+    ('10000000-0000-0000-0000-000000000003'::uuid, 'Tayota Thu Duc', '22 Vo Van Ngan, Thu Duc City, Ho Chi Minh City', 22, 10.85061234, 106.77131234, 'tayota-thu-duc', '02833334444', '08:00 - 18:00', TRUE, CURRENT_TIMESTAMP),
+    ('10000000-0000-0000-0000-000000000004'::uuid, 'Tayota Hanoi West', '68 Le Van Luong, Thanh Xuan, Hanoi', 16, 21.00761234, 105.80161234, 'tayota-hanoi-west', '02444445555', '08:00 - 18:00', TRUE, CURRENT_TIMESTAMP),
+    ('10000000-0000-0000-0000-000000000005'::uuid, 'Tayota Da Nang', '09 Nguyen Van Linh, Hai Chau, Da Nang', 14, 16.06041234, 108.22191234, 'tayota-da-nang', '02365556666', '08:00 - 17:30', TRUE, CURRENT_TIMESTAMP),
+    ('10000000-0000-0000-0000-000000000006'::uuid, 'Tayota Can Tho', '188 30/4 Street, Ninh Kieu, Can Tho', 12, 10.03321234, 105.78361234, 'tayota-can-tho', '02926667777', '08:00 - 17:30', TRUE, CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO "MECHANIC" (id, dealership_id, specialty, average_rating, is_active)

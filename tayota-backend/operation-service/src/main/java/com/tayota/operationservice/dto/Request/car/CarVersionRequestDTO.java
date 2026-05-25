@@ -27,4 +27,6 @@ public class CarVersionRequestDTO {
 
     @Size(max = 255, message = "Đường dẫn video không được vượt quá 255 ký tự")
     private String videoUrl;
+
+    private Boolean visible = true;
 }

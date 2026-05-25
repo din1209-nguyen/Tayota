@@ -41,6 +41,10 @@ public class CarVersion {
     @Column(length = 255)
     String videoUrl;
 
+    @Builder.Default
+    @Column(name = "is_visible", nullable = false)
+    boolean visible = true;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     Instant createdAt;

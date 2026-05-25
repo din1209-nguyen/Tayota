@@ -211,18 +211,19 @@ ALTER TABLE "CAR_SERIES"
 CREATE TABLE "CAR_VERSION" (
   id            UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
   car_series_id UUID           NOT NULL,
-  version       VARCHAR(50)    NOT NULL,
+  name          VARCHAR(50)    NOT NULL,
   sale_percent  DECIMAL(5,2)   DEFAULT 0.00 CHECK (sale_percent >= 0 AND sale_percent <= 100),
-  image_url     VARCHAR(255),
+  model_year    INT            NOT NULL,
   video_url     VARCHAR(255),
+  is_visible    BOOLEAN        NOT NULL DEFAULT TRUE,
   created_at    TIMESTAMP      DEFAULT CURRENT_TIMESTAMP
 );
 COMMENT ON TABLE  "CAR_VERSION"              IS 'Lưu trữ thông tin định danh và cấu hình chung của từng phiên bản xe';
 COMMENT ON COLUMN "CAR_VERSION".car_series_id IS 'Khóa ngoại tham chiếu đến SERIES';
-COMMENT ON COLUMN "CAR_VERSION".version       IS 'Phiên bản xe (VD: 2.0 AT, Luxury)';
+COMMENT ON COLUMN "CAR_VERSION".name          IS 'Phiên bản xe (VD: 2.0 AT, Luxury)';
 COMMENT ON COLUMN "CAR_VERSION".sale_percent  IS 'Phần trăm giảm giá (0-100)';
-COMMENT ON COLUMN "CAR_VERSION".image_url     IS 'Đường dẫn ảnh đại diện của xe';
 COMMENT ON COLUMN "CAR_VERSION".video_url     IS 'Đường dẫn video giới thiệu xe';
+COMMENT ON COLUMN "CAR_VERSION".is_visible    IS 'Cho phép hiển thị phiên bản xe trên website';
 
 ALTER TABLE "CAR_VERSION"
   ADD CONSTRAINT fk_version_series
@@ -292,13 +293,16 @@ ALTER TABLE "CAR_GALLERY"
 
 CREATE TABLE "CAR_ARTICLE" (
   id             UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-  car_version_id UUID         NOT NULL,
+  car_version_id UUID,
   type           VARCHAR(50)  NOT NULL,
   title          VARCHAR(255) NOT NULL,
   content        TEXT         NOT NULL,
-  image_url      VARCHAR(255)
+  image_url      VARCHAR(255),
+  is_published   BOOLEAN      NOT NULL DEFAULT TRUE,
+  created_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-COMMENT ON TABLE  "CAR_ARTICLE"       IS 'Lưu trữ các bài viết giới thiệu, tính năng hoặc tin tức liên quan đến xe';
+COMMENT ON TABLE  "CAR_ARTICLE"       IS 'Lưu trữ bài viết tin tức chung hoặc bài viết liên quan đến xe';
 COMMENT ON COLUMN "CAR_ARTICLE".type  IS 'Loại thông tin (VD: Khuyến mãi, Tính năng nổi bật)';
 COMMENT ON COLUMN "CAR_ARTICLE".title IS 'Tiêu đề thông tin';
 
@@ -359,7 +363,9 @@ CREATE TABLE "ACCESSORY" (
   price            DECIMAL(15,2) NOT NULL CHECK (price >= 0),
   description      TEXT,
   use_content      TEXT,
-  reminder_content TEXT
+  reminder_content TEXT,
+  type             VARCHAR(100) NOT NULL,
+  is_visible       BOOLEAN      NOT NULL DEFAULT TRUE
 );
 COMMENT ON TABLE  "ACCESSORY"                 IS 'Danh mục các phụ kiện lắp thêm cho xe';
 COMMENT ON COLUMN "ACCESSORY".model           IS 'Mã/Tên model phụ kiện';
@@ -392,45 +398,24 @@ CREATE TABLE "DEALERSHIP" (
   name             VARCHAR(150)   NOT NULL,
   address          VARCHAR(255)   NOT NULL,
   car_quantity     INT            DEFAULT 0,
-  accessory_quantity INT          DEFAULT 0,
   latitude         DECIMAL(10,8)  NOT NULL,
   longitude        DECIMAL(11,8)  NOT NULL,
   place_id         VARCHAR(255)   UNIQUE,
   phone            VARCHAR(20),
   operating_hours  VARCHAR(100),
-  is_active        SMALLINT       DEFAULT 1,
+  is_active        BOOLEAN        NOT NULL DEFAULT TRUE,
   created_at       TIMESTAMP      DEFAULT CURRENT_TIMESTAMP
 );
 COMMENT ON TABLE  "DEALERSHIP"                  IS 'Quản lý danh sách hệ thống cửa hàng hiển thị trên Bản đồ';
 COMMENT ON COLUMN "DEALERSHIP".name             IS 'Tên cửa hàng/Dealership';
 COMMENT ON COLUMN "DEALERSHIP".address          IS 'Địa chỉ hiển thị cho người dùng đọc';
 COMMENT ON COLUMN "DEALERSHIP".car_quantity     IS 'Số lượng xe tồn kho';
-COMMENT ON COLUMN "DEALERSHIP".accessory_quantity IS 'Số phụ kiện xe tồn kho';
 COMMENT ON COLUMN "DEALERSHIP".latitude         IS 'Vĩ độ (Google Maps lat)';
 COMMENT ON COLUMN "DEALERSHIP".longitude        IS 'Kinh độ (Google Maps lng)';
 COMMENT ON COLUMN "DEALERSHIP".place_id         IS 'Google Place ID (Dùng để fetch đánh giá, hình ảnh từ GG API)';
 COMMENT ON COLUMN "DEALERSHIP".phone            IS 'Số điện thoại hotline dealership';
 COMMENT ON COLUMN "DEALERSHIP".operating_hours  IS 'Giờ mở cửa (VD: 08:00 - 20:00)';
 COMMENT ON COLUMN "DEALERSHIP".is_active        IS 'Trạng thái hoạt động (1 = Đang mở, 0 = Đóng cửa)';
-
--- ============================================================
---  ACCESSORY INVENTORY
--- ============================================================
-
-CREATE TABLE "ACCESSORY_INVENTORY" (
-  dealership_id UUID           NOT NULL,
-  accessory_id  UUID           NOT NULL,
-  quantity      INT            NOT NULL DEFAULT 0 CHECK (quantity >= 0),
-  last_updated  TIMESTAMP      DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (dealership_id, accessory_id)
-);
-COMMENT ON TABLE  "ACCESSORY_INVENTORY"              IS 'Quản lý số lượng phụ kiện trong cửa hàng cụ thể';
-COMMENT ON COLUMN "ACCESSORY_INVENTORY".quantity     IS 'Số lượng tồn kho hiện tại';
-COMMENT ON COLUMN "ACCESSORY_INVENTORY".last_updated IS 'Thời gian cập nhật kho gần nhất';
-
-ALTER TABLE "ACCESSORY_INVENTORY"
-  ADD CONSTRAINT fk_inv_accessory   FOREIGN KEY (accessory_id)  REFERENCES "ACCESSORY"(id)  ON DELETE SET NULL,
-  ADD CONSTRAINT fk_inv_dealership  FOREIGN KEY (dealership_id) REFERENCES "DEALERSHIP"(id) ON DELETE CASCADE;
 
 -- ============================================================
 --  CAR (Physical unit)

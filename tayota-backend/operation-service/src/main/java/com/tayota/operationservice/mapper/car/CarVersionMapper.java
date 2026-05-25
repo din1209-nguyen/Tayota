@@ -44,7 +44,9 @@ public class CarVersionMapper {
                 carStyle.getName(),
                 minPrice,
                 imageUrl,
-                specification
+                specification,
+                carVersion.getVideoUrl(),
+                carVersion.isVisible()
         );
     }
 
@@ -69,7 +71,8 @@ public class CarVersionMapper {
                 prices,
                 galleries,
                 articles,
-                accessories
+                accessories,
+                carVersion.isVisible()
         );
     }
 }

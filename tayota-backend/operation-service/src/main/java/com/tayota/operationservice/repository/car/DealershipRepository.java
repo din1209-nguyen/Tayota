@@ -7,10 +7,12 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Sort;
 
 @Repository
 public interface DealershipRepository extends JpaRepository<Dealership, UUID> {
     List<Dealership> findByIsActiveTrueOrderByNameAsc();
 
     Optional<Dealership> findByPlaceId(String placeId);
+    List<Dealership> findAll(Sort sort);
 }

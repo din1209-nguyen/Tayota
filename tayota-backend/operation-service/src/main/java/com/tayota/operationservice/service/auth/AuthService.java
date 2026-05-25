@@ -5,6 +5,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.tayota.operationservice.dto.common.ErrorCode;
+import com.tayota.operationservice.dto.request.admin.AdminResetPasswordRequest;
 import com.tayota.operationservice.enums.user.RoleType;
 import com.tayota.operationservice.util.OtpUtil;
 import com.tayota.operationservice.util.SecurityContextUtil;
@@ -735,6 +736,33 @@ public class AuthService {
 
         // Đăng xuất tất cả các thiết bị đã đăng nhập của user sau khi đổi mật khẩu để đảm bảo an toàn
         sessionUtil.deleteAllSessions(user.getId().toString());
+    }
+
+    // Đặt lại mật khẩu của tài khoản cấp dưới theo yêu cầu quản trị viên.
+    @Transactional
+    public void resetPasswordByAdmin(String userId, AdminResetPasswordRequest request) {
+        String currentUserId = SecurityContextUtil.getCurrentUserId();
+        String currentUserRole = SecurityContextUtil.normalizeRolePrefix(SecurityContextUtil.getCurrentUserRole());
+
+        if (!"ROLE_ADMIN".equals(currentUserRole) || currentUserId.equals(userId)) {
+            throw new CustomException(403, "Không thể đặt lại mật khẩu cho tài khoản này.");
+        }
+
+        User targetUser;
+        try {
+            targetUser = userRepository.findById(UUID.fromString(userId))
+                    .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        }
+        catch (IllegalArgumentException exception) {
+            throw new CustomException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        if (!SecurityContextUtil.validateRoleSuperiority(currentUserRole, targetUser.getRole().name())) {
+            throw new CustomException(403, "Không thể đặt lại mật khẩu cho tài khoản này.");
+        }
+
+        userRepository.updatePasswordHashById(targetUser.getId(), passwordEncoder.encode(request.getPassword()));
+        sessionUtil.deleteAllSessions(userId);
     }
 
     // Lấy danh sách thiết bị đã đăng nhập của một tài khoản

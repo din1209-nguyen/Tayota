@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.Collection;
 import java.util.UUID;
 
 public interface UserProfileRepository extends JpaRepository<UserProfile, UUID> {
@@ -65,6 +66,57 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, UUID> 
                     """
     )
     Page<UserProfile> searchForAdminWithKeyword(
+            @Param("keyword") String keyword,
+            @Param("role") RoleType role,
+            @Param("status") StatusType status,
+            Pageable pageable
+    );
+
+    @Query(
+            value = """
+                    select userProfile from UserProfile userProfile join userProfile.user user
+                    where user.role in :roles
+                      and (:role is null or user.role = :role)
+                      and (:status is null or user.status = :status)
+                    order by user.createdAt desc
+                    """,
+            countQuery = """
+                    select count(userProfile) from UserProfile userProfile join userProfile.user user
+                    where user.role in :roles
+                      and (:role is null or user.role = :role)
+                      and (:status is null or user.status = :status)
+                    """
+    )
+    Page<UserProfile> searchForManagerWithoutKeyword(
+            @Param("roles") Collection<RoleType> roles,
+            @Param("role") RoleType role,
+            @Param("status") StatusType status,
+            Pageable pageable
+    );
+
+    @Query(
+            value = """
+                    select userProfile from UserProfile userProfile join userProfile.user user
+                    where user.role in :roles
+                      and (:role is null or user.role = :role)
+                      and (:status is null or user.status = :status)
+                      and (lower(user.email) like concat('%', :keyword, '%')
+                        or lower(userProfile.fullname) like concat('%', :keyword, '%')
+                        or userProfile.phone like concat('%', :keyword, '%'))
+                    order by user.createdAt desc
+                    """,
+            countQuery = """
+                    select count(userProfile) from UserProfile userProfile join userProfile.user user
+                    where user.role in :roles
+                      and (:role is null or user.role = :role)
+                      and (:status is null or user.status = :status)
+                      and (lower(user.email) like concat('%', :keyword, '%')
+                        or lower(userProfile.fullname) like concat('%', :keyword, '%')
+                        or userProfile.phone like concat('%', :keyword, '%'))
+                    """
+    )
+    Page<UserProfile> searchForManagerWithKeyword(
+            @Param("roles") Collection<RoleType> roles,
             @Param("keyword") String keyword,
             @Param("role") RoleType role,
             @Param("status") StatusType status,

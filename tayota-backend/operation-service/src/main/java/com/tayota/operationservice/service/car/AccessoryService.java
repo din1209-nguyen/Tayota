@@ -65,11 +65,31 @@ public class AccessoryService {
         );
     }
 
+    public PaginationResponseDTO<AccessoryResponseDTO> searchAccessoriesForManagement(
+            String keyword, String type, String seriesId, String versionId, int page, int size
+    ) {
+        Pageable pageable = PageRequest.of(Math.max(page, 0), normalizeSize(size), Sort.by("type").and(Sort.by("model")));
+        Page<Accessory> result = accessoryRepository.searchForManagement(
+                toLikePattern(keyword),
+                toExactPattern(type),
+                parseNullableUuid(seriesId, "Id dòng xe không hợp lệ."),
+                parseNullableUuid(versionId, "Id phiên bản xe không hợp lệ."),
+                pageable
+        );
+        return new PaginationResponseDTO<>(
+                result.getContent().stream().map(accessoryMapper::toResponse).toList(),
+                result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages()
+        );
+    }
+
     // Lấy phụ kiện theo id
     @Cacheable(value = "accessoryDetail", key = "#accessoryId")
     public AccessoryResponseDTO getAccessory(String accessoryId) {
-        // Tìm phụ kiện và chuyển sang response
-        return accessoryMapper.toResponse(findAccessory(accessoryId));
+        Accessory accessory = findAccessory(accessoryId);
+        if (!accessory.isVisible()) {
+            throw new CustomException(404, "Không tìm thấy phụ kiện.");
+        }
+        return accessoryMapper.toResponse(accessory);
     }
 
     // Thêm phụ kiện
@@ -85,6 +105,7 @@ public class AccessoryService {
                 .useContent(requestDTO.getUseContent())
                 .reminderContent(requestDTO.getReminderContent())
                 .type(requestDTO.getType())
+                .visible(requestDTO.getVisible() == null || requestDTO.getVisible())
                 .build();
 
         // Lưu phụ kiện vào csdl
@@ -106,17 +127,21 @@ public class AccessoryService {
         accessory.setUseContent(requestDTO.getUseContent());
         accessory.setReminderContent(requestDTO.getReminderContent());
         accessory.setType(requestDTO.getType());
+        if (requestDTO.getVisible() != null) {
+            accessory.setVisible(requestDTO.getVisible());
+        }
 
         // Lưu phụ kiện sau khi cập nhật
         return accessoryMapper.toResponse(accessoryRepository.save(accessory));
     }
 
-    // Xóa phụ kiện
+    // Ẩn phụ kiện để bảo toàn dữ liệu đã liên kết.
     @CacheEvict(value = {"accessorySearch", "accessoryDetail", "catalogVersionDetail"}, allEntries = true)
     @Transactional
     public void deleteAccessory(String accessoryId) {
-        // Xóa phụ kiện theo id
-        accessoryRepository.delete(findAccessory(accessoryId));
+        Accessory accessory = findAccessory(accessoryId);
+        accessory.setVisible(false);
+        accessoryRepository.save(accessory);
     }
 
     // Gắn phụ kiện cho phiên bản xe

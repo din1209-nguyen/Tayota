@@ -1,15 +1,29 @@
 package com.tayota.operationservice.service.car;
 
 import com.tayota.operationservice.dto.request.car.CarSpecificationRequestDTO;
+import com.tayota.operationservice.dto.request.car.CarGalleryRequestDTO;
+import com.tayota.operationservice.dto.request.car.CarPriceRequestDTO;
 import com.tayota.operationservice.dto.request.car.CarVersionRequestDTO;
 import com.tayota.operationservice.dto.response.car.CarSpecificationResponseDTO;
+import com.tayota.operationservice.dto.response.car.CarGalleryResponseDTO;
+import com.tayota.operationservice.dto.response.car.CarPriceResponseDTO;
 import com.tayota.operationservice.dto.response.car.CarVersionItemResponseDTO;
 import com.tayota.operationservice.entity.car.CarSeries;
+import com.tayota.operationservice.entity.car.CarGallery;
+import com.tayota.operationservice.entity.car.CarPrice;
+import com.tayota.operationservice.entity.car.CarPriceId;
+import com.tayota.operationservice.entity.car.ExteriorColor;
+import com.tayota.operationservice.entity.car.InteriorColor;
 import com.tayota.operationservice.entity.car.CarSpecification;
 import com.tayota.operationservice.entity.car.CarVersion;
 import com.tayota.operationservice.mapper.car.CarSpecificationMapper;
+import com.tayota.operationservice.mapper.car.CarGalleryMapper;
+import com.tayota.operationservice.mapper.car.CarPriceMapper;
 import com.tayota.operationservice.mapper.car.CarVersionMapper;
 import com.tayota.operationservice.repository.car.CarPriceRepository;
+import com.tayota.operationservice.repository.car.CarGalleryRepository;
+import com.tayota.operationservice.repository.car.ExteriorColorRepository;
+import com.tayota.operationservice.repository.car.InteriorColorRepository;
 import com.tayota.operationservice.repository.car.CarSeriesRepository;
 import com.tayota.operationservice.repository.car.CarSpecificationRepository;
 import com.tayota.operationservice.repository.car.CarVersionRepository;
@@ -33,8 +47,13 @@ public class CarVersionService {
     private final CarSeriesRepository carSeriesRepository;
     private final CarSpecificationRepository carSpecificationRepository;
     private final CarPriceRepository carPriceRepository;
+    private final CarGalleryRepository carGalleryRepository;
+    private final ExteriorColorRepository exteriorColorRepository;
+    private final InteriorColorRepository interiorColorRepository;
     private final CarVersionMapper carVersionMapper;
     private final CarSpecificationMapper carSpecificationMapper;
+    private final CarGalleryMapper carGalleryMapper;
+    private final CarPriceMapper carPriceMapper;
 
     // Lấy danh sách phiên bản xe
     @Cacheable(value = "carVersionList", key = "#carSeriesId == null ? 'all' : #carSeriesId")
@@ -44,11 +63,16 @@ public class CarVersionService {
 
         // Lấy phiên bản xe theo dòng xe hoặc lấy toàn bộ nếu không lọc
         List<CarVersion> versions = seriesId == null
-                ? carVersionRepository.findAll(Sort.by("modelYear").descending().and(Sort.by("name")))
-                : carVersionRepository.findByCarSeriesId(seriesId);
+                ? carVersionRepository.findByVisibleTrue(Sort.by("modelYear").descending().and(Sort.by("name")))
+                : carVersionRepository.findByCarSeriesId(seriesId).stream().filter(CarVersion::isVisible).toList();
 
         // Chuyển danh sách phiên bản xe sang response
         return versions.stream().map(this::mapToItem).toList();
+    }
+
+    public List<CarVersionItemResponseDTO> getCarVersionsForManagement() {
+        return carVersionRepository.findAll(Sort.by("modelYear").descending().and(Sort.by("name")))
+                .stream().map(this::mapToItem).toList();
     }
 
     // Thêm phiên bản xe
@@ -73,6 +97,7 @@ public class CarVersionService {
                 .salePercent(requestDTO.getSalePercent())
                 .modelYear(requestDTO.getModelYear())
                 .videoUrl(requestDTO.getVideoUrl())
+                .visible(requestDTO.getVisible() == null || requestDTO.getVisible())
                 .build();
 
         // Lưu phiên bản xe vào csdl
@@ -103,20 +128,24 @@ public class CarVersionService {
         carVersion.setSalePercent(requestDTO.getSalePercent());
         carVersion.setModelYear(requestDTO.getModelYear());
         carVersion.setVideoUrl(requestDTO.getVideoUrl());
+        if (requestDTO.getVisible() != null) {
+            carVersion.setVisible(requestDTO.getVisible());
+        }
 
         // Lưu phiên bản xe sau khi cập nhật
         return mapToItem(carVersionRepository.save(carVersion));
     }
 
-    // Xóa phiên bản xe
+    // Ẩn phiên bản xe để giữ dữ liệu catalog đã được sử dụng.
     @CacheEvict(
             value = {"carVersionList", "catalogStylesWithVersions", "catalogVersionSearch", "catalogVersionDetail", "catalogSpecification"},
             allEntries = true
     )
     @Transactional
     public void deleteCarVersion(String carVersionId) {
-        // Xóa phiên bản xe theo id
-        carVersionRepository.delete(findCarVersion(carVersionId));
+        CarVersion carVersion = findCarVersion(carVersionId);
+        carVersion.setVisible(false);
+        carVersionRepository.save(carVersion);
     }
 
     // Lưu thông số kỹ thuật của xe
@@ -149,6 +178,64 @@ public class CarVersionService {
 
         // Lưu thông số kỹ thuật vào csdl
         return carSpecificationMapper.toResponse(carSpecificationRepository.save(specification));
+    }
+
+    @CacheEvict(value = {"catalogStylesWithVersions", "catalogVersionDetail"}, allEntries = true)
+    @Transactional
+    public CarPriceResponseDTO savePrice(String carVersionId, CarPriceRequestDTO request) {
+        CarVersion carVersion = findCarVersion(carVersionId);
+        UUID exteriorId = parseUuid(request.getExteriorColorId(), "Id màu ngoại thất không hợp lệ.");
+        UUID interiorId = parseUuid(request.getInteriorColorId(), "Id màu nội thất không hợp lệ.");
+        ExteriorColor exteriorColor = exteriorColorRepository.findById(exteriorId)
+                .orElseThrow(() -> new CustomException(404, "Không tìm thấy màu ngoại thất."));
+        InteriorColor interiorColor = interiorColorRepository.findById(interiorId)
+                .orElseThrow(() -> new CustomException(404, "Không tìm thấy màu nội thất."));
+        CarPriceId id = new CarPriceId(carVersion.getId(), exteriorId, interiorId);
+        CarPrice price = carPriceRepository.findById(id).orElseGet(() -> CarPrice.builder()
+                .id(id).carVersion(carVersion).exteriorColor(exteriorColor).interiorColor(interiorColor).build());
+        price.setPrice(request.getPrice());
+        price.setExImageUrl(request.getExImageUrl());
+        price.setInImageUrl(request.getInImageUrl());
+        return carPriceMapper.toResponse(carPriceRepository.save(price));
+    }
+
+    @CacheEvict(value = {"catalogStylesWithVersions", "catalogVersionDetail"}, allEntries = true)
+    @Transactional
+    public void deletePrice(String carVersionId, String exteriorColorId, String interiorColorId) {
+        UUID versionId = findCarVersion(carVersionId).getId();
+        carPriceRepository.deleteById(new CarPriceId(
+                versionId,
+                parseUuid(exteriorColorId, "Id màu ngoại thất không hợp lệ."),
+                parseUuid(interiorColorId, "Id màu nội thất không hợp lệ.")
+        ));
+    }
+
+    @CacheEvict(value = "catalogVersionDetail", allEntries = true)
+    @Transactional
+    public CarGalleryResponseDTO addGallery(String carVersionId, CarGalleryRequestDTO request) {
+        return carGalleryMapper.toResponse(carGalleryRepository.save(CarGallery.builder()
+                .carVersion(findCarVersion(carVersionId)).imageUrl(request.getImageUrl()).build()));
+    }
+
+    @CacheEvict(value = "catalogVersionDetail", allEntries = true)
+    @Transactional
+    public CarGalleryResponseDTO updateGallery(String carVersionId, String galleryId, CarGalleryRequestDTO request) {
+        CarVersion carVersion = findCarVersion(carVersionId);
+        CarGallery gallery = carGalleryRepository.findById(parseUuid(galleryId, "Id ảnh không hợp lệ."))
+                .filter(item -> item.getCarVersion().getId().equals(carVersion.getId()))
+                .orElseThrow(() -> new CustomException(404, "Không tìm thấy ảnh."));
+        gallery.setImageUrl(request.getImageUrl());
+        return carGalleryMapper.toResponse(carGalleryRepository.save(gallery));
+    }
+
+    @CacheEvict(value = "catalogVersionDetail", allEntries = true)
+    @Transactional
+    public void deleteGallery(String carVersionId, String galleryId) {
+        CarVersion carVersion = findCarVersion(carVersionId);
+        CarGallery gallery = carGalleryRepository.findById(parseUuid(galleryId, "Id ảnh không hợp lệ."))
+                .filter(item -> item.getCarVersion().getId().equals(carVersion.getId()))
+                .orElseThrow(() -> new CustomException(404, "Không tìm thấy ảnh."));
+        carGalleryRepository.delete(gallery);
     }
 
     // Tìm phiên bản xe theo id

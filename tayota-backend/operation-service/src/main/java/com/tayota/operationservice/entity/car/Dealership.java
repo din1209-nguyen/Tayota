@@ -36,10 +36,6 @@ public class Dealership {
     @Builder.Default
     Integer carQuantity = 0;
 
-    @Column(name = "accessory_quantity")
-    @Builder.Default
-    Integer accessoryQuantity = 0;
-
     @Column(nullable = false, precision = 10, scale = 8)
     BigDecimal latitude;
 
@@ -66,6 +62,4 @@ public class Dealership {
     @OneToMany(mappedBy = "dealership")
     List<Car> carList;
 
-    @OneToMany(mappedBy = "dealership", cascade = CascadeType.ALL, orphanRemoval = true)
-    List<AccessoryInventory> accessoryInventoryList;
 }

@@ -2,6 +2,7 @@ package com.tayota.operationservice.dto.response.admin;
 
 import com.tayota.operationservice.enums.user.RoleType;
 import com.tayota.operationservice.enums.user.StatusType;
+import com.tayota.operationservice.enums.user.ProviderType;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -15,6 +16,7 @@ public class AdminUserResponse {
     private String email;
     private RoleType role;
     private StatusType status;
+    private ProviderType loginProvider;
     private String fullname;
     private String phone;
     private String avatarUrl;

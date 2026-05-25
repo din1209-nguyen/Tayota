@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createAdminUser,
@@ -8,13 +8,11 @@ import {
   getAdminUsers,
   getAiDocumentJob,
   getAiDocuments,
-  resetAdminUserPassword,
-  updateAdminUserStatus,
   uploadAiDocument,
 } from "@/lib/services/admin";
 import { getDealerships } from "@/lib/services/car";
 import { getMe } from "@/lib/services/auth";
-import { roleLabel, statusLabel, unwrapList } from "@/lib/format";
+import { providerLabel, roleLabel, statusLabel, unwrapList } from "@/lib/format";
 import { getDashboardPath, setCurrentUser } from "@/lib/session";
 
 const ROLES = ["ADMIN", "MANAGER", "SERVICE_ADVISOR", "ASSISTANT", "MECHANIC", "USER"];
@@ -36,27 +34,26 @@ function needsDealership(role) {
   return role === "MECHANIC" || role === "SERVICE_ADVISOR";
 }
 
-function getUserId(user) {
-  return user?.id || user?.userId;
-}
-
 export default function AdminDashboard() {
   const router = useRouter();
+  const documentFileInputRef = useRef(null);
   const [admin, setAdmin] = useState(null);
   const [tab, setTab] = useState("accounts");
   const [message, setMessage] = useState("");
   const [dealerships, setDealerships] = useState([]);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [users, setUsers] = useState([]);
   const [userPage, setUserPage] = useState({ page: 0, size: 10, totalPages: 0, totalItems: 0 });
-  const [passwordDrafts, setPasswordDrafts] = useState({});
   const [documents, setDocuments] = useState([]);
   const [documentStatus, setDocumentStatus] = useState("");
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [documentsError, setDocumentsError] = useState("");
+  const [selectedDocumentFile, setSelectedDocumentFile] = useState(null);
+  const [uploadNotice, setUploadNotice] = useState("");
   const [job, setJob] = useState(null);
   const [busyAction, setBusyAction] = useState("");
-
-  const adminId = getUserId(admin);
 
   useEffect(() => {
     let active = true;
@@ -103,9 +100,17 @@ export default function AdminDashboard() {
   );
 
   const loadDocuments = useCallback(async () => {
-    const status = documentStatus ? [documentStatus] : undefined;
-    const result = await getAiDocuments({ status });
-    setDocuments(result?.documents || []);
+    setDocumentsLoading(true);
+    setDocumentsError("");
+    try {
+      const status = documentStatus ? [documentStatus] : undefined;
+      const result = await getAiDocuments({ status });
+      setDocuments(result?.documents || []);
+    } catch (error) {
+      setDocumentsError(error.message);
+    } finally {
+      setDocumentsLoading(false);
+    }
   }, [documentStatus]);
 
   useEffect(() => {
@@ -115,7 +120,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!admin || tab !== "documents") return;
-    loadDocuments().catch((error) => setMessage(error.message));
+    loadDocuments();
   }, [admin, tab, loadDocuments]);
 
   useEffect(() => {
@@ -124,9 +129,19 @@ export default function AdminDashboard() {
       try {
         const current = await getAiDocumentJob(job.job_id);
         setJob(current);
-        if (!["queued", "running"].includes(current.status)) await loadDocuments();
+        if (current.status === "running") {
+          setUploadNotice("Đang lập chỉ mục tài liệu. Vui lòng chờ trong giây lát.");
+        }
+        if (current.status === "success") {
+          setUploadNotice("Tài liệu đã được lập chỉ mục thành công.");
+          await loadDocuments();
+        }
+        if (current.status === "failed") {
+          setUploadNotice(`Lập chỉ mục thất bại${current.message ? `: ${current.message}` : "."}`);
+          await loadDocuments();
+        }
       } catch (error) {
-        setMessage(error.message);
+        setUploadNotice(error.message);
       }
     }, 2000);
     return () => window.clearInterval(timer);
@@ -166,6 +181,7 @@ export default function AdminDashboard() {
         dealershipId: createForm.dealershipId || null,
       });
       setCreateForm(EMPTY_CREATE_FORM);
+      setShowCreateForm(false);
       setMessage("Tạo tài khoản thành công.");
       await loadUsers(0);
     } catch (error) {
@@ -175,51 +191,21 @@ export default function AdminDashboard() {
     }
   }
 
-  async function toggleStatus(user) {
-    const nextStatus = user.status === "BANNED" ? "ACTIVE" : "BANNED";
-    setBusyAction(`status-${user.id}`);
-    setMessage("");
-    try {
-      await updateAdminUserStatus(user.id, { status: nextStatus });
-      setMessage(nextStatus === "BANNED" ? "Đã khóa tài khoản." : "Đã mở khóa tài khoản.");
-      await loadUsers(userPage.page);
-    } catch (error) {
-      setMessage(error.message);
-    } finally {
-      setBusyAction("");
-    }
-  }
-
-  async function submitPassword(user) {
-    const password = passwordDrafts[user.id] || "";
-    if (!password) return;
-    setBusyAction(`password-${user.id}`);
-    setMessage("");
-    try {
-      await resetAdminUserPassword(user.id, { password });
-      setPasswordDrafts((current) => ({ ...current, [user.id]: "" }));
-      setMessage("Đã đặt lại mật khẩu.");
-    } catch (error) {
-      setMessage(error.message);
-    } finally {
-      setBusyAction("");
-    }
-  }
-
   async function uploadDocument(event) {
     event.preventDefault();
-    const file = event.currentTarget.elements.file.files[0];
+    const file = selectedDocumentFile;
     if (!file) return;
     setBusyAction("upload-document");
-    setMessage("");
+    setUploadNotice(`Đang tải lên ${file.name}...`);
     try {
       const nextJob = await uploadAiDocument(file);
       setJob(nextJob);
-      setMessage("Đã tải PDF lên. Hệ thống đang lập chỉ mục.");
-      event.currentTarget.reset();
+      setUploadNotice(`Đã tiếp nhận ${file.name}. Tài liệu đang chờ xử lý.`);
+      setSelectedDocumentFile(null);
+      if (documentFileInputRef.current) documentFileInputRef.current.value = "";
       await loadDocuments();
     } catch (error) {
-      setMessage(error.message);
+      setUploadNotice(`Tải tài liệu thất bại: ${error.message}`);
     } finally {
       setBusyAction("");
     }
@@ -228,13 +214,13 @@ export default function AdminDashboard() {
   async function removeDocument(documentId) {
     if (!window.confirm("Xóa tài liệu này khỏi kho AI?")) return;
     setBusyAction(`document-${documentId}`);
-    setMessage("");
+    setUploadNotice("");
     try {
       await deleteAiDocument(documentId);
-      setMessage("Đã xóa tài liệu khỏi kho AI.");
+      setUploadNotice("Đã xóa tài liệu khỏi kho AI.");
       await loadDocuments();
     } catch (error) {
-      setMessage(error.message);
+      setUploadNotice(error.message);
     } finally {
       setBusyAction("");
     }
@@ -246,28 +232,57 @@ export default function AdminDashboard() {
     return dealerships.find((dealer) => dealer.id === dealershipId)?.name || dealershipId || "Không áp dụng";
   }
 
+  function openUserDetail(userId) {
+    router.push(`/dashboard/admin/users/${userId}`);
+  }
+
+  function openUserDetailByKeyboard(event, userId) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openUserDetail(userId);
+    }
+  }
+
+  function formatCreatedAt(value) {
+    if (!value) return "Đang cập nhật";
+    return new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium" }).format(new Date(value));
+  }
+
+  function formatDocumentSize(value) {
+    const size = Number(value) || 0;
+    return size >= 1024 * 1024
+      ? `${(size / (1024 * 1024)).toFixed(1)} MB`
+      : `${Math.max(1, Math.round(size / 1024))} KB`;
+  }
+
   return (
     <div className="admin-dashboard">
-      <nav className="role-tabs wide" aria-label="Các mục quản trị">
-        <button className={tab === "accounts" ? "active" : ""} type="button" onClick={() => setTab("accounts")}>
-          Tài khoản
-        </button>
-        <button className={tab === "documents" ? "active" : ""} type="button" onClick={() => setTab("documents")}>
-          Dữ liệu AI
-        </button>
-      </nav>
-      <div className="dashboard-feedback" aria-live="polite">
-        {message ? <div className="status-box">{message}</div> : null}
-      </div>
+      <header className="admin-workspace-header">
+        <div>
+          <p className="eyebrow">Dashboard / Quản trị</p>
+          <h1>Quản trị hệ thống</h1>
+          <p className="admin-workspace-copy">Theo dõi tài khoản nội bộ và dữ liệu tư vấn AI.</p>
+        </div>
+        <nav className="role-tabs admin-role-tabs" aria-label="Các mục quản trị">
+          <button className={tab === "accounts" ? "active" : ""} type="button" onClick={() => setTab("accounts")}>
+            Tài khoản
+          </button>
+          <button className={tab === "documents" ? "active" : ""} type="button" onClick={() => setTab("documents")}>
+            Dữ liệu AI
+          </button>
+        </nav>
+      </header>
+      {message ? <div className="dashboard-feedback" aria-live="polite"><div className="status-box">{message}</div></div> : null}
 
       {tab === "accounts" ? (
-        <div className="admin-account-layout">
-          <section className="ops-panel">
+        <div className={`admin-account-layout ${showCreateForm ? "" : "list-only"}`}>
+          {showCreateForm ? <section className="ops-panel admin-create-panel">
             <div className="ops-panel-head">
               <div>
                 <p className="eyebrow">Tài khoản</p>
                 <h2>Tạo tài khoản</h2>
               </div>
+              <button className="btn btn-ghost" type="button" onClick={() => setShowCreateForm(false)}>Đóng</button>
             </div>
             <form className="ops-form" onSubmit={submitCreateUser}>
               <input className="field" required name="email" type="email" placeholder="Email" value={createForm.email} onChange={changeCreateField} />
@@ -283,7 +298,7 @@ export default function AdminDashboard() {
               ) : null}
               <button className="btn btn-primary" disabled={busyAction === "create-user"} type="submit">Tạo</button>
             </form>
-          </section>
+          </section> : null}
 
           <section className="ops-panel admin-users-panel">
             <div className="ops-panel-head">
@@ -291,7 +306,9 @@ export default function AdminDashboard() {
                 <p className="eyebrow">Quản trị</p>
                 <h2>Danh sách tài khoản</h2>
               </div>
-              <form className="admin-filter-form" onSubmit={submitFilters}>
+              <button className="btn btn-primary" type="button" onClick={() => setShowCreateForm(true)}>Tạo tài khoản</button>
+            </div>
+            <form className="admin-filter-form admin-users-toolbar" onSubmit={submitFilters}>
                 <input className="field compact-field" name="keyword" placeholder="Tìm kiếm" value={filters.keyword} onChange={changeFilter} />
                 <select className="field compact-field" name="role" value={filters.role} onChange={changeFilter}>
                   <option value="">Tất cả role</option>
@@ -302,8 +319,7 @@ export default function AdminDashboard() {
                   {USER_STATUSES.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
                 </select>
                 <button className="btn btn-secondary" type="submit">Lọc</button>
-              </form>
-            </div>
+            </form>
 
             <div className="admin-user-table-wrap">
               <table className="admin-user-table">
@@ -311,16 +327,23 @@ export default function AdminDashboard() {
                   <tr>
                     <th>Tài khoản</th>
                     <th>Role</th>
+                    <th>Đăng nhập</th>
                     <th>Trạng thái</th>
                     <th>Đại lý</th>
-                    <th>Thao tác</th>
+                    <th>Ngày tạo</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.map((user) => {
-                    const isSelf = user.id === adminId;
                     return (
-                      <tr key={user.id}>
+                      <tr
+                        className="admin-user-row"
+                        key={user.id}
+                        tabIndex={0}
+                        onClick={() => openUserDetail(user.id)}
+                        onKeyDown={(event) => openUserDetailByKeyboard(event, user.id)}
+                      >
                         <td>
                           <strong>{user.email}</strong>
                           <span>{user.fullname || "Chưa cập nhật"}</span>
@@ -328,33 +351,19 @@ export default function AdminDashboard() {
                         <td>
                           <span className="role-text">{roleLabel(user.role)}</span>
                         </td>
-                        <td><span className={`status-pill ${user.status === "ACTIVE" ? "connected" : "error"}`}>{statusLabel(user.status)}</span></td>
+                        <td><span>{providerLabel(user.loginProvider)}</span></td>
+                        <td><span className={`status-pill account-status ${user.status === "ACTIVE" ? "connected" : "error"}`}><i />{user.status === "ACTIVE" ? "Đang hoạt động" : statusLabel(user.status)}</span></td>
                         <td>
                           <span>{needsDealership(user.role) ? getDealershipName(user.dealershipId) : "Không áp dụng"}</span>
                         </td>
-                        <td>
-                          <div className="admin-row-actions">
-                            <button className="btn btn-ghost" disabled={isSelf || busyAction === `status-${user.id}`} type="button" onClick={() => toggleStatus(user)}>
-                              {user.status === "BANNED" ? "Mở khóa" : "Khóa"}
-                            </button>
-                            <input
-                              className="field table-field"
-                              type="password"
-                              placeholder="Mật khẩu mới"
-                              value={passwordDrafts[user.id] || ""}
-                              onChange={(event) => setPasswordDrafts((current) => ({ ...current, [user.id]: event.target.value }))}
-                            />
-                            <button className="btn btn-ghost" disabled={busyAction === `password-${user.id}`} type="button" onClick={() => submitPassword(user)}>
-                              Reset
-                            </button>
-                          </div>
-                        </td>
+                        <td><span>{formatCreatedAt(user.createdAt)}</span></td>
+                        <td><button className="btn btn-ghost" type="button">Chi tiết</button></td>
                       </tr>
                     );
                   })}
                   {!users.length ? (
                     <tr>
-                      <td colSpan="5">Không có tài khoản.</td>
+                      <td colSpan="7">Không có tài khoản.</td>
                     </tr>
                   ) : null}
                 </tbody>
@@ -376,30 +385,76 @@ export default function AdminDashboard() {
           <div className="ops-panel-head">
             <div>
               <p className="eyebrow">AI Chatbot</p>
-              <h2>Dữ liệu huấn luyện</h2>
-            </div>
-            <div className="document-toolbar">
-              <select className="field compact-field" value={documentStatus} onChange={(event) => setDocumentStatus(event.target.value)}>
-                <option value="">Tất cả trạng thái</option>
-                {DOCUMENT_STATUSES.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
-              </select>
-              <form className="document-upload" onSubmit={uploadDocument}>
-                <input className="field" type="file" name="file" accept="application/pdf,.pdf" required />
-                <button className="btn btn-primary" disabled={busyAction === "upload-document"} type="submit">Tải PDF</button>
-              </form>
+              <h2>Kho tài liệu tư vấn</h2>
+              <p className="muted-text">Tải PDF lên để cập nhật nguồn kiến thức phục vụ tư vấn.</p>
             </div>
           </div>
-          {job ? <div className="status-box">Indexing job: {job.status}{job.message ? ` - ${job.message}` : ""}</div> : null}
+          <form className="document-upload-panel" onSubmit={uploadDocument}>
+            <label className="document-picker">
+              <span>Chọn tài liệu PDF</span>
+              <strong>{selectedDocumentFile?.name || "Chưa chọn file nào"}</strong>
+              <small>{selectedDocumentFile ? formatDocumentSize(selectedDocumentFile.size) : "Định dạng hỗ trợ: PDF"}</small>
+              <input
+                ref={documentFileInputRef}
+                type="file"
+                name="file"
+                accept="application/pdf,.pdf"
+                required
+                onChange={(event) => setSelectedDocumentFile(event.target.files?.[0] || null)}
+              />
+            </label>
+            <button className="btn btn-primary" disabled={busyAction === "upload-document" || !selectedDocumentFile} type="submit">
+              {busyAction === "upload-document" ? "Đang tải lên..." : "Tải lên và lập chỉ mục"}
+            </button>
+          </form>
+          {uploadNotice || job?.status === "queued" || job?.status === "running" ? (
+            <div className={`document-job-state ${job?.status || ""}`}>
+              {["queued", "running"].includes(job?.status) ? <span className="pending-spinner" aria-hidden="true" /> : null}
+              <div>
+                <strong>
+                  {job?.status === "queued"
+                    ? "Đang chờ xử lý"
+                    : job?.status === "running"
+                      ? "Đang xử lý tài liệu"
+                      : job?.status === "success"
+                        ? "Đã xử lý thành công"
+                        : job?.status === "failed"
+                          ? "Xử lý thất bại"
+                          : "Cập nhật tài liệu"}
+                </strong>
+                <p>{uploadNotice}</p>
+              </div>
+            </div>
+          ) : null}
+          <div className="document-list-head">
+            <h3>Tài liệu đã tải lên</h3>
+            <select className="field compact-field" value={documentStatus} onChange={(event) => setDocumentStatus(event.target.value)}>
+              <option value="">Tất cả trạng thái</option>
+              {DOCUMENT_STATUSES.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
+            </select>
+          </div>
           <div className="ops-list document-list">
             {documents.map((document) => (
               <article key={document.document_id}>
-                <strong>{document.filename}</strong>
-                <span>{statusLabel(document.status)}</span>
-                <span>{new Intl.NumberFormat("vi-VN").format(document.size_bytes || 0)} bytes</span>
-                <button className="btn btn-ghost" disabled={busyAction === `document-${document.document_id}`} type="button" onClick={() => removeDocument(document.document_id)}>Xóa</button>
+                <div className="document-name">
+                  <strong>{document.filename}</strong>
+                  <small>{formatCreatedAt(document.uploaded_at)}</small>
+                </div>
+                <span className={`status-pill document-status ${document.status}`}><i />{statusLabel(document.status)}</span>
+                <span>{formatDocumentSize(document.size_bytes)}</span>
+                <button
+                  className="btn btn-ghost"
+                  disabled={busyAction === `document-${document.document_id}` || ["uploaded", "indexing"].includes(document.status)}
+                  type="button"
+                  onClick={() => removeDocument(document.document_id)}
+                >
+                  Xóa
+                </button>
               </article>
             ))}
-            {!documents.length ? <div className="status-box">Chưa có tài liệu AI.</div> : null}
+            {documentsLoading ? <div className="status-box">Đang tải danh sách tài liệu...</div> : null}
+            {documentsError ? <div className="status-box">{documentsError}</div> : null}
+            {!documentsLoading && !documents.length && !documentsError ? <div className="status-box">Chưa có tài liệu AI.</div> : null}
           </div>
         </section>
       )}

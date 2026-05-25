@@ -37,4 +37,6 @@ public class AccessoryRequestDTO {
     @NotBlank(message = "Loại phụ kiện không được để trống")
     @Size(max = 100, message = "Loại phụ kiện không được vượt quá 100 ký tự")
     private String type;
+
+    private Boolean visible = true;
 }

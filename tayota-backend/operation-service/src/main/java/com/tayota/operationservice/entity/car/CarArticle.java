@@ -3,7 +3,10 @@ package com.tayota.operationservice.entity.car;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -22,8 +25,8 @@ public class CarArticle {
     @Column(updatable = false)
     UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "car_version_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "car_version_id")
     CarVersion carVersion;
 
     @Column(nullable = false, length = 50)
@@ -37,4 +40,16 @@ public class CarArticle {
 
     @Column(name = "image_url", length = 255)
     String imageUrl;
+
+    @Builder.Default
+    @Column(name = "is_published", nullable = false)
+    boolean published = true;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    Instant createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    Instant updatedAt;
 }

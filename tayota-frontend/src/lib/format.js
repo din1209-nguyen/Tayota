@@ -94,6 +94,14 @@ export function roleLabel(role) {
   return labels[role] || role || "Khách hàng";
 }
 
+export function providerLabel(provider) {
+  const labels = {
+    LOCAL: "Email & mật khẩu",
+    GOOGLE: "Google",
+  };
+  return labels[provider] || provider || "Đang cập nhật";
+}
+
 export function statusLabel(status) {
   const labels = {
     ACTIVE: "Hoạt động",
@@ -110,6 +118,11 @@ export function statusLabel(status) {
     CHATTING: "Đang chat",
     RESOLVED: "Đã xử lý",
     CLOSED: "Đã đóng",
+    IDLE: "Chưa kết nối",
+    CONNECTING: "Đang kết nối",
+    CONNECTED: "Đã kết nối",
+    DISCONNECTED: "Mất kết nối",
+    ERROR: "Có lỗi",
   };
   return labels[status] || status || "Đang cập nhật";
 }

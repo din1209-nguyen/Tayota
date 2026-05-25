@@ -19,7 +19,8 @@ public interface AccessoryRepository extends JpaRepository<Accessory, UUID>, Jpa
             left join CarAccessory ca on ca.accessory = a
             left join ca.carVersion cv
             left join cv.carSeries cs
-            where (lower(a.model) like :keywordPattern
+            where a.visible = true
+            and (lower(a.model) like :keywordPattern
                 or lower(a.brand) like :keywordPattern
                 or lower(a.type) like :keywordPattern)
             and lower(a.type) like :typePattern
@@ -27,6 +28,26 @@ public interface AccessoryRepository extends JpaRepository<Accessory, UUID>, Jpa
             and (:seriesId is null or cs.id = :seriesId)
             """)
     Page<Accessory> search(
+            @Param("keywordPattern") String keywordPattern,
+            @Param("typePattern") String typePattern,
+            @Param("seriesId") UUID seriesId,
+            @Param("versionId") UUID versionId,
+            Pageable pageable
+    );
+
+    @Query("""
+            select distinct a from Accessory a
+            left join CarAccessory ca on ca.accessory = a
+            left join ca.carVersion cv
+            left join cv.carSeries cs
+            where (lower(a.model) like :keywordPattern
+                or lower(a.brand) like :keywordPattern
+                or lower(a.type) like :keywordPattern)
+            and lower(a.type) like :typePattern
+            and (:versionId is null or cv.id = :versionId)
+            and (:seriesId is null or cs.id = :seriesId)
+            """)
+    Page<Accessory> searchForManagement(
             @Param("keywordPattern") String keywordPattern,
             @Param("typePattern") String typePattern,
             @Param("seriesId") UUID seriesId,

@@ -41,7 +41,7 @@ public class CarStyleController {
     }
 
     // Thêm kiểu xe
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     @PostMapping
     public ApiResponse<CarStyleResponseDTO> createCarStyle(@Valid @RequestBody CarStyleRequestDTO requestDTO) {
         CarStyleResponseDTO carStyle = carStyleService.createCarStyle(requestDTO);
@@ -49,7 +49,7 @@ public class CarStyleController {
     }
 
     // Cập nhật kiểu xe
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     @PutMapping("/{carStyleId}")
     public ApiResponse<CarStyleResponseDTO> updateCarStyle(
             @PathVariable String carStyleId,
@@ -60,8 +60,8 @@ public class CarStyleController {
     }
 
     // Xóa kiểu xe
-    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{carStyleId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> deleteCarStyle(@PathVariable String carStyleId) {
         carStyleService.deleteCarStyle(carStyleId);
         return ApiResponse.success(200, "Xóa kiểu xe thành công.", null);

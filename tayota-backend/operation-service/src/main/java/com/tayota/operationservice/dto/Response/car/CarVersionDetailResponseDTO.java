@@ -21,4 +21,5 @@ public class CarVersionDetailResponseDTO {
     private List<CarGalleryResponseDTO> galleries;
     private List<CarArticleResponseDTO> articles;
     private List<AccessoryResponseDTO> accessories;
+    private boolean visible;
 }

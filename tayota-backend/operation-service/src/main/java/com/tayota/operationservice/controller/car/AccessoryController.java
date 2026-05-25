@@ -51,7 +51,7 @@ public class AccessoryController {
     }
 
     // Thêm phụ kiện
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     @PostMapping
     public ApiResponse<AccessoryResponseDTO> createAccessory(@Valid @RequestBody AccessoryRequestDTO requestDTO) {
         AccessoryResponseDTO result = accessoryService.createAccessory(requestDTO);
@@ -59,7 +59,7 @@ public class AccessoryController {
     }
 
     // Cập nhật phụ kiện
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     @PutMapping("/{accessoryId}")
     public ApiResponse<AccessoryResponseDTO> updateAccessory(
             @PathVariable String accessoryId,
@@ -70,7 +70,7 @@ public class AccessoryController {
     }
 
     // Xóa phụ kiện
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     @DeleteMapping("/{accessoryId}")
     public ApiResponse<Void> deleteAccessory(@PathVariable String accessoryId) {
         accessoryService.deleteAccessory(accessoryId);
@@ -78,7 +78,7 @@ public class AccessoryController {
     }
 
     // Gắn phụ kiện cho phiên bản xe
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     @PostMapping("/car-versions")
     public ApiResponse<Void> attachAccessoryToVersion(@Valid @RequestBody CarAccessoryRequestDTO requestDTO) {
         accessoryService.attachAccessoryToVersion(requestDTO);
@@ -86,7 +86,7 @@ public class AccessoryController {
     }
 
     // Gỡ phụ kiện khỏi phiên bản xe
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     @DeleteMapping("/car-versions")
     public ApiResponse<Void> detachAccessoryFromVersion(@Valid @RequestBody CarAccessoryRequestDTO requestDTO) {
         accessoryService.detachAccessoryFromVersion(requestDTO);

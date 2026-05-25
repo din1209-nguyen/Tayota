@@ -1,5 +1,3 @@
-"use client";
-
 const TOKEN_KEY = "tayota_access_token";
 const USER_KEY = "tayota_current_user";
 const SESSION_EVENT = "tayota:session-changed";
@@ -65,6 +63,7 @@ export function clearSession() {
 
 export function getDashboardPath(role) {
   if (role === "ADMIN") return "/dashboard/admin";
+  if (role === "MANAGER") return "/dashboard/manager";
   if (role === "SERVICE_ADVISOR") return "/dashboard/advisor";
   if (role === "ASSISTANT") return "/dashboard/assistant";
   if (role === "MECHANIC") return "/dashboard/mechanic";

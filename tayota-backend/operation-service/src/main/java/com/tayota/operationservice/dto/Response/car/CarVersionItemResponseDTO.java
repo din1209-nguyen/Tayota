@@ -20,4 +20,6 @@ public class CarVersionItemResponseDTO {
     private BigDecimal minPrice;
     private String imageUrl;
     private CarSpecificationResponseDTO specification;
+    private String videoUrl;
+    private boolean visible;
 }

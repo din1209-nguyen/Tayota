@@ -14,7 +14,11 @@ public class CarArticleMapper {
                 article.getType(),
                 article.getTitle(),
                 article.getContent(),
-                article.getImageUrl()
+                article.getImageUrl(),
+                article.getCarVersion() == null ? null : article.getCarVersion().getId(),
+                article.isPublished(),
+                article.getCreatedAt(),
+                article.getUpdatedAt()
         );
     }
 }

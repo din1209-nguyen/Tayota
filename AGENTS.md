@@ -24,10 +24,11 @@ Không mô tả kế hoạch tương lai như tính năng đã hoàn thành.
 | Hạng mục | Hiện trạng trong source hiện tại | Hướng thực hiện khi có task liên quan |
 | --- | --- | --- |
 | Chạy backend | Có `docker-compose.yml` cho gateway, operation, AI và storage. | Chạy và kiểm thử backend thông qua Docker Compose. |
-| HTTP client frontend | `src/lib/api.js` đang dùng `fetch` qua `apiFetch()`, có single-flight refresh khi gặp `401`. Package chưa có `axios`. | Khi migrate/sửa luồng authenticated API, giữ hành vi single-flight trong Axios instance chung. |
+| HTTP client frontend | `src/lib/api.js` dùng Axios instance chung qua `apiFetch()`, có single-flight refresh khi gặp `401`. | Khi sửa luồng authenticated API, giữ hành vi single-flight và không đưa refresh token ra JavaScript. |
 | Refresh token backend | Đã có `POST /user/refresh-token`; refresh token ở cookie `HttpOnly` và session/hash trong Redis. | Không đưa refresh token ra JavaScript hoặc storage phía client. |
 | Tạo tài khoản nội bộ | Backend đã có `POST /user/create-account`, chỉ `ADMIN`; frontend hiện có vùng quản trị gọi endpoint này trong working tree. | Dùng đúng endpoint auth hiện có, không tạo luồng tài khoản song song. |
-| Role quản lý | Backend có role `MANAGER`. | Frontend chưa có dashboard riêng cho `MANAGER`; không tuyên bố UI role này đã hoàn chỉnh. |
+| Quản trị nhân sự | Admin detail hiển thị `loginProvider`; có `PATCH /user/admin/users/{userId}/dealership` cho cố vấn dịch vụ/kỹ thuật viên cấp dưới. | Chỉ gán đại lý đang hoạt động và giữ kiểm tra phân cấp role tại backend. |
+| Role quản lý | Backend có role `MANAGER`; frontend có `/dashboard/manager` cho live chat và quản trị nội dung website. | Giữ Manager trong phạm vi catalog, tin tức, đại lý, phụ kiện và hồ sơ role cấp dưới; không thêm doanh thu hoặc bảo mật tài khoản. |
 
 ## 3. Sản phẩm và chức năng
 
@@ -108,6 +109,7 @@ quản lý; endpoint quản trị tài liệu vẫn yêu cầu role phù hợp.
 | Đăng nhập | `POST /user/login` | Trả `accessToken` trong body và đặt refresh token vào cookie `HttpOnly`. |
 | Refresh | `POST /user/refresh-token` | Đọc cookie, kiểm tra Redis, xoay refresh token/cookie và trả access token mới. |
 | Đăng xuất | `POST /user/logout` | Xóa refresh session liên quan và xóa cookie. |
+| Đổi đại lý nhân sự | `PATCH /user/admin/users/{userId}/dealership` | Admin gán đại lý đang hoạt động cho `SERVICE_ADVISOR` hoặc `MECHANIC` cấp dưới. |
 
 ### Quy tắc bảo mật
 
@@ -121,25 +123,12 @@ quản lý; endpoint quản trị tài liệu vẫn yêu cầu role phù hợp.
 
 ## 7. Frontend và chuẩn Axios
 
-### Hiện trạng
+### Hiện trạng và chuẩn bắt buộc
 
-Frontend hiện dùng `src/lib/api.js` với `fetch`:
+Frontend hiện dùng một Axios instance chung trong `src/lib/api.js`, được gọi
+qua wrapper `apiFetch()`:
 
 - Đọc access token từ session/local storage hiện có.
-- Gửi cookie bằng `credentials: "include"`.
-- Gắn `Authorization: Bearer <accessToken>` nếu có.
-- Khi request gặp `401`, dùng một refresh promise chung rồi gửi lại request một lần.
-
-Luồng hiện tại chưa phải Axios interceptor, nhưng đã gom các request `401` đồng
-thời vào một lần refresh vì backend xoay refresh token. Khi migrate phải bảo
-toàn hành vi này.
-
-### Chuẩn bắt buộc khi triển khai Axios
-
-Khi task yêu cầu sửa auth/API authenticated hoặc migrate client HTTP, sử dụng
-một Axios instance chung trong `src/lib/api.js` hoặc module tương đương:
-
-- Thêm dependency `axios` theo package manager hiện có của frontend.
 - Lấy `baseURL` từ `NEXT_PUBLIC_API_BASE_URL`.
 - Đặt `withCredentials: true`.
 - Dùng request interceptor để gắn bearer access token.
@@ -231,11 +220,14 @@ src/
 
 ### Workspace
 
-`/dashboard`, `/dashboard/admin`, `/dashboard/advisor`,
-`/dashboard/assistant`, `/dashboard/mechanic`, `/dashboard/user`.
+`/dashboard`, `/dashboard/admin`, `/dashboard/manager`,
+`/dashboard/advisor`, `/dashboard/assistant`, `/dashboard/mechanic`,
+`/dashboard/user`.
 
-Mapping frontend hiện có chuyển `ADMIN`, `SERVICE_ADVISOR`, `ASSISTANT` và
-`MECHANIC` vào dashboard tương ứng. Chưa có route riêng cho `MANAGER`.
+Mapping frontend hiện có chuyển `ADMIN`, `MANAGER`, `SERVICE_ADVISOR`,
+`ASSISTANT` và `MECHANIC` vào dashboard tương ứng. Workspace `MANAGER` xử lý
+live chat và quản trị nội dung website gồm catalog xe, bài viết, đại lý, phụ
+kiện cùng hồ sơ các role cấp dưới.
 
 ## 10. API contract
 
@@ -335,14 +327,16 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:9090
 ### Quy tắc kiểm thử backend
 
 Mọi test hoặc lệnh thực thi thuộc backend cũng phải chạy trong Docker Compose.
-Compose hiện tại xây runtime image Java với bước package bỏ qua test và chưa
-cung cấp service test chuyên dụng. Vì vậy:
+Compose runtime xây image Java với bước package bỏ qua test; operation service
+có runner kiểm thử trong `docker-compose.test.yml`. Vì vậy:
 
 - Không chạy Maven, Java server hoặc Python AI backend trực tiếp trên host để
   báo cáo xác minh chuẩn.
-- Nếu task cần chạy test backend, trước tiên kiểm tra hoặc bổ sung compose
-  profile/override/service test phù hợp với module rồi chạy qua
-  `docker compose`.
+- Nếu task cần chạy test operation service, chạy service
+  `operation-service-test` qua `docker compose -f docker-compose.yml -f
+  docker-compose.test.yml --profile test run --rm --no-deps
+  operation-service-test mvn -B test`; với module khác, kiểm tra hoặc bổ sung
+  profile/override/service phù hợp.
 - Nếu task chỉ sửa tài liệu và không dựng container, ghi rõ chưa chạy test
   runtime vì thay đổi không tác động hành vi.
 

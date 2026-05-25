@@ -11,6 +11,36 @@ export function getAdminUsers(params = {}) {
   return apiFetch(`/user/admin/users${buildQuery(params)}`, { cache: "no-store" });
 }
 
+export function getAdminUser(userId) {
+  return apiFetch(`/user/admin/users/${userId}`, { cache: "no-store" });
+}
+
+export function getAdminUserProfile(userId) {
+  return apiFetch(`/user/profile/${userId}`, { cache: "no-store" });
+}
+
+export function updateAdminUserProfile(payload) {
+  return apiFetch("/user/profile", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateAdminUserDealership(userId, payload) {
+  return apiFetch(`/user/admin/users/${userId}/dealership`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getAdminUserDevices(userId) {
+  return apiFetch(`/user/devices/${userId}`, { cache: "no-store" });
+}
+
+export function revokeAdminUserDevice(userId, deviceId) {
+  return apiFetch(`/user/revoke/${userId}/${deviceId}`, { method: "DELETE" });
+}
+
 export function updateAdminUserStatus(userId, payload) {
   const action = payload?.status === "ACTIVE" ? "unban" : "ban";
   return apiFetch(`/user/${action}/${userId}`, { method: "PATCH" });

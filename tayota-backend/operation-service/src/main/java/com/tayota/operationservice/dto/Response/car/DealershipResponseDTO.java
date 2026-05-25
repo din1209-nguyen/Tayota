@@ -16,4 +16,6 @@ public class DealershipResponseDTO {
     private String operatingHours;
     private BigDecimal latitude;
     private BigDecimal longitude;
+    private String placeId;
+    private boolean active;
 }

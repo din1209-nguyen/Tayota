@@ -41,6 +41,7 @@ export default function DashboardRedirect() {
       <div className="shell-container dashboard-role-grid">
         <div className="status-box wide">{message}</div>
         <Link className="role-card" href="/dashboard/admin">Admin</Link>
+        <Link className="role-card" href="/dashboard/manager">Quản lý</Link>
         <Link className="role-card" href="/dashboard/advisor">Cố vấn</Link>
         <Link className="role-card" href="/dashboard/assistant">Assistant</Link>
         <Link className="role-card" href="/dashboard/mechanic">Kỹ thuật viên</Link>

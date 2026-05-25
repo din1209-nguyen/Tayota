@@ -42,7 +42,7 @@ public class CarSeriesController {
     }
 
     // Thêm dòng xe
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     @PostMapping
     public ApiResponse<CarSeriesResponseDTO> createCarSeries(@Valid @RequestBody CarSeriesRequestDTO requestDTO) {
         CarSeriesResponseDTO result = carSeriesService.createCarSeries(requestDTO);
@@ -50,7 +50,7 @@ public class CarSeriesController {
     }
 
     // Cập nhật dòng xe
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
     @PutMapping("/{carSeriesId}")
     public ApiResponse<CarSeriesResponseDTO> updateCarSeries(
             @PathVariable String carSeriesId,
@@ -61,8 +61,8 @@ public class CarSeriesController {
     }
 
     // Xóa dòng xe
-    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{carSeriesId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> deleteCarSeries(@PathVariable String carSeriesId) {
         carSeriesService.deleteCarSeries(carSeriesId);
         return ApiResponse.success(200, "Xóa dòng xe thành công.", null);

@@ -43,4 +43,8 @@ public class Accessory {
 
     @Column(nullable = false, length = 100)
     String type;
+
+    @Builder.Default
+    @Column(name = "is_visible", nullable = false)
+    boolean visible = true;
 }

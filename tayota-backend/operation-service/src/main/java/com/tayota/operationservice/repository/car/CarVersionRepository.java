@@ -3,6 +3,7 @@ package com.tayota.operationservice.repository.car;
 import com.tayota.operationservice.entity.car.CarVersion;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -17,6 +18,7 @@ import java.util.UUID;
 public interface CarVersionRepository extends JpaRepository<CarVersion, UUID>, JpaSpecificationExecutor<CarVersion> {
     // Tìm phiên bản xe theo dòng xe
     List<CarVersion> findByCarSeriesId(UUID carSeriesId);
+    List<CarVersion> findByVisibleTrue(Sort sort);
 
     // Kiểm tra tên phiên bản đã tồn tại trong cùng dòng xe
     boolean existsByNameAndCarSeriesId(String name, UUID carSeriesId);
@@ -30,7 +32,8 @@ public interface CarVersionRepository extends JpaRepository<CarVersion, UUID>, J
             join cv.carSeries cs
             join cs.carStyle st
             left join CarPrice cp on cp.carVersion = cv
-            where (lower(cv.name) like :keywordPattern
+            where cv.visible = true
+            and (lower(cv.name) like :keywordPattern
                 or lower(cs.name) like :keywordPattern
                 or lower(st.name) like :keywordPattern)
             and (:styleId is null or st.id = :styleId)

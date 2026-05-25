@@ -31,6 +31,7 @@ export default function LiveChatPanel({ mode = "customer", sessionId: providedSe
   const [content, setContent] = useState("");
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
+  const [sending, setSending] = useState(false);
   const clientRef = useRef(null);
 
   useEffect(() => {
@@ -40,6 +41,7 @@ export default function LiveChatPanel({ mode = "customer", sessionId: providedSe
     async function connect() {
       setError("");
       setStatus("connecting");
+      setMessages([]);
 
       try {
         const session = isAssistant ? { id: providedSessionId } : await getCurrentChatSession();
@@ -97,9 +99,9 @@ export default function LiveChatPanel({ mode = "customer", sessionId: providedSe
   async function send(event) {
     event.preventDefault();
     const text = content.trim();
-    if (!text || !sessionId) return;
+    if (!text || !sessionId || sending) return;
 
-    setContent("");
+    setSending(true);
     setError("");
 
     try {
@@ -107,8 +109,11 @@ export default function LiveChatPanel({ mode = "customer", sessionId: providedSe
         ? await sendAssistantChatMessage(sessionId, text)
         : await sendCustomerChatMessage(text);
       setMessages((current) => appendUnique(current, savedMessage));
+      setContent("");
     } catch (caughtError) {
       setError(caughtError.message || "Không gửi được tin nhắn. Vui lòng thử lại.");
+    } finally {
+      setSending(false);
     }
   }
 
@@ -149,9 +154,10 @@ export default function LiveChatPanel({ mode = "customer", sessionId: providedSe
           value={content}
           onChange={(event) => setContent(event.target.value)}
           placeholder="Nhập tin nhắn"
+          disabled={sending}
         />
-        <button className="btn btn-primary" type="submit" disabled={!sessionId}>
-          Gửi
+        <button className="btn btn-primary" type="submit" disabled={!sessionId || !content.trim() || sending}>
+          {sending ? "Đang gửi..." : "Gửi"}
         </button>
       </form>
     </section>

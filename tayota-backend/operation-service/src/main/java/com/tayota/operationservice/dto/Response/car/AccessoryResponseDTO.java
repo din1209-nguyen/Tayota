@@ -17,4 +17,5 @@ public class AccessoryResponseDTO {
     private String useContent;
     private String reminderContent;
     private String type;
+    private boolean visible;
 }

@@ -52,10 +52,14 @@ docker compose down
 | `ai-service` | Port `8094`, nhưng frontend vẫn gọi qua gateway. |
 | `postgres-operation-service`, `redis`, `mongodb`, `qdrant` | Dependency backend trong Compose. |
 
-Dockerfile Java hiện package với `-DskipTests`, và Compose chưa có service
-chuyên chạy test. Nếu cần kiểm thử backend, agent phải dùng hoặc bổ sung
-Compose profile/override/service test thích hợp, không chạy Maven hay backend
-service trực tiếp trên host rồi coi đó là xác minh chuẩn.
+Dockerfile Java hiện package với `-DskipTests`. Khi cần kiểm thử operation
+service, dùng service `operation-service-test` trong `docker-compose.test.yml`,
+không chạy Maven hay backend service trực tiếp trên host rồi coi đó là xác
+minh chuẩn:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.test.yml --profile test run --rm --no-deps operation-service-test mvn -B test
+```
 
 ## 3. Gateway và luồng xác thực
 
@@ -150,6 +154,8 @@ src/main/java/com/tayota/operationservice/
 | `POST /user/refresh-token` | Public theo nghĩa không cần bearer; đọc cookie `HttpOnly`, xoay token bằng Redis. |
 | `POST /user/logout` | Xóa session/cookie refresh liên quan. |
 | `POST /user/logout-all` | Xóa các phiên đăng nhập theo logic service. |
+| `PATCH /user/admin/users/{userId}/password` | Admin đặt lại mật khẩu tài khoản cấp dưới qua `AuthService`; thu hồi toàn bộ phiên của tài khoản đích. |
+| `PATCH /user/admin/users/{userId}/dealership` | Admin đổi đại lý đang hoạt động cho `SERVICE_ADVISOR` hoặc `MECHANIC` cấp dưới. |
 
 ### Chi tiết cần bảo toàn
 
@@ -158,9 +164,15 @@ src/main/java/com/tayota/operationservice/
   liệu session/hash phía Redis.
 - `create-account` kiểm tra quyền role; luồng tạo `SERVICE_ADVISOR` hoặc
   `MECHANIC` yêu cầu dữ liệu đại lý theo service hiện có.
+- DTO danh sách/chi tiết tài khoản admin trả cả `loginProvider` để UI phân biệt
+  tài khoản đăng nhập nội bộ và tài khoản Google.
 - Ban/unban người dùng hiện cho phép `ADMIN` hoặc `MANAGER`.
+- Admin reset mật khẩu không cho phép thao tác trên chính mình hoặc tài khoản `ADMIN` ngang quyền.
 - Nhóm endpoint assistant chat được bảo vệ cho các role vận hành phù hợp
   (`ADMIN`, `MANAGER`, `ASSISTANT`, `SERVICE_ADVISOR`) theo controller hiện tại.
+- Manager quản trị nội dung website qua `/manager/**` thuộc nhóm `/car/*` và
+  xem/thống kê role cấp dưới qua `/manager/users/**` thuộc nhóm `/user/*`;
+  không có báo cáo doanh thu hoặc thao tác bảo mật tài khoản trong phạm vi này.
 
 Khi đổi auth, phải kiểm tra đồng thời gateway filter, controller, service,
 cookie, Redis và client frontend.

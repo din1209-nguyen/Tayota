@@ -13,14 +13,13 @@ src/
   app/                  # Route, layout và globals.css
   components/           # UI theo trang/domain
   lib/
-    api.js              # HTTP helper hiện dùng fetch
+    api.js              # Axios instance chung, bearer token và single-flight refresh
     session.js          # Access token, current user và dashboard mapping
     format.js
     services/           # API wrapper theo domain
 ```
 
-`package.json` hiện có Next.js, React và STOMP client cho realtime chat.
-Dependency `axios` chưa tồn tại tại thời điểm tài liệu này được đối chiếu.
+`package.json` hiện có Next.js, React, Axios và STOMP client cho realtime chat.
 
 ## 2. Route giao diện đã có
 
@@ -44,13 +43,16 @@ Dependency `axios` chưa tồn tại tại thời điểm tài liệu này đư�
 | --- | --- |
 | `/dashboard` | Điểm điều hướng workspace. |
 | `/dashboard/admin` | Admin. |
+| `/dashboard/admin/users/[userId]` | Chi tiết tài khoản, nhà cung cấp đăng nhập, hồ sơ, đại lý nhân sự, bảo mật và phiên đăng nhập do admin quản lý. |
+| `/dashboard/manager` | Manager xử lý live chat và quản trị nội dung website. |
 | `/dashboard/advisor` | Service advisor. |
 | `/dashboard/assistant` | Assistant. |
 | `/dashboard/mechanic` | Mechanic. |
 | `/dashboard/user` | Người dùng mặc định. |
 
-Backend có role `MANAGER`, nhưng frontend hiện chưa có dashboard riêng cho role
-này; mapping session rơi về dashboard mặc định nếu không thuộc các role đã map.
+Backend có role `MANAGER`; frontend map role này vào `/dashboard/manager`.
+Workspace Manager gồm các tab Live Chat, Xe, Bài viết, Đại lý, Phụ kiện và
+Người dùng; không bao gồm báo cáo doanh thu hoặc thao tác bảo mật tài khoản.
 
 ## 3. Service API theo domain
 
@@ -65,7 +67,18 @@ Component/page nên gọi service wrapper thay vì tự rải request API.
 | `notifications.js` | `/operation/notifications/*`. |
 | `reviews.js` | `/operation/reviews/*`. |
 | `workorders.js` | `/operation/workorders/mechanic/*`. |
-| `admin.js` khi hiện diện trong working tree | `/user/create-account`, `/ai/api/v1/documents*`. |
+| `admin.js` | `/user/create-account`, `/user/admin/users*` (gồm đổi đại lý nhân sự), `/user/profile*`, `/user/devices/*`, `/user/revoke/*`, `/user/ban/*`, `/user/unban/*`, `/ai/api/v1/documents*`. |
+
+Màn quản trị tài khoản hiển thị `loginProvider` trong danh sách và chi tiết.
+Admin chỉ thay đổi đại lý cho `SERVICE_ADVISOR` và `MECHANIC` thuộc phạm vi
+quản lý của mình. Tab tài liệu AI phải thể hiện rõ file được chọn, trạng thái
+tải lên/lập chỉ mục (`queued`, `running`, `success`, `failed`) và kết quả danh
+sách tài liệu đã lưu.
+
+`StaffChatWorkspace` là UI dùng chung cho workspace Assistant và Manager; nó
+dùng `chat.js` để tải phiên `WAITING`/`CHATTING`, thao tác phiên và nhận cập
+nhật STOMP. Manager dùng thêm `manager.js` cho catalog, bài viết, đại lý, phụ
+kiện và hồ sơ role cấp dưới.
 
 Không gọi trực tiếp port `8091` hoặc `8094` từ frontend. Luôn dùng
 `NEXT_PUBLIC_API_BASE_URL`, mặc định cho môi trường local:
@@ -74,42 +87,19 @@ Không gọi trực tiếp port `8091` hoặc `8094` từ frontend. Luôn dùng
 NEXT_PUBLIC_API_BASE_URL=http://localhost:9090
 ```
 
-## 4. Auth API: hiện trạng và chuẩn Axios
+## 4. Auth API và Axios
 
-### Hiện trạng `apiFetch()`
+`src/lib/api.js` hiện cung cấp Axios instance chung qua wrapper `apiFetch()`:
 
-`src/lib/api.js` hiện:
+- Dùng `NEXT_PUBLIC_API_BASE_URL` làm `baseURL` và bật `withCredentials`.
+- Gắn bearer access token bằng request interceptor.
+- Khi request protected gặp `401`, response interceptor gọi `POST /user/refresh-token`
+  theo cơ chế single-flight, lưu access token mới và retry request một lần.
+- Không refresh cho login, register, verify-account, refresh-token hoặc logout.
+- Khi refresh thất bại, xóa session client để người dùng đăng nhập lại.
 
-- Dùng `fetch`, không dùng Axios.
-- Gửi cookie bằng `credentials: "include"`.
-- Gắn bearer access token từ session client khi có.
-- Gọi `POST /user/refresh-token` khi gặp `401`, gom refresh đồng thời bằng
-  single-flight promise, lưu access token mới và thử request ban đầu thêm một lần.
-
-Backend đã có refresh token trong cookie `HttpOnly` và xoay token bằng Redis.
-Frontend hiện đã tránh xung đột refresh đồng thời; phải giữ đặc tính này khi
-chuyển sang Axios interceptor.
-
-### Khi thực hiện migrate Axios
-
-Axios là chuẩn mục tiêu cho thay đổi client API/auth mới, nhưng không được ghi
-nhận là đã triển khai trước khi source thực sự được migrate.
-
-Yêu cầu triển khai:
-
-- Cài `axios` và tạo một instance dùng chung ở `src/lib/api.js` hoặc module API
-  tương đương.
-- Dùng `baseURL: process.env.NEXT_PUBLIC_API_BASE_URL` và
-  `withCredentials: true`.
-- Gắn access token bằng request interceptor.
-- Bắt `401` bằng response interceptor; bỏ qua refresh cho login, register,
-  verify-account, refresh-token và logout.
-- Dùng single-flight promise hoặc queue để mọi request đang chờ dùng cùng một
-  lần refresh.
-- Retry request lỗi đúng một lần; tránh vòng lặp interceptor.
-- Khi refresh thất bại, xóa session client và đưa người dùng khỏi route cần
-  đăng nhập.
-- Không lưu hoặc đọc refresh token bằng JavaScript.
+Backend giữ refresh token trong cookie `HttpOnly` và xoay token bằng Redis;
+frontend không truy cập hoặc lưu refresh token bằng JavaScript.
 
 ## 5. Quy tắc React và trạng thái dữ liệu
 
@@ -177,8 +167,8 @@ Yêu cầu triển khai:
 
 - Đọc `AGENTS.md`, service hiện có và component/page bị tác động.
 - Xác định API đi qua gateway prefix nào và role nào được sử dụng.
-- Không tuyên bố Axios đã có nếu chưa sửa source và dependency; không làm mất
-  single-flight refresh đang có trong `apiFetch()`.
+- Không làm mất single-flight refresh của Axios instance chung khi mở rộng API
+  authenticated.
 - Soát layout shift, heading, scrollbar, form state và text UTF-8 khi đổi UI.
 - Chạy:
 

@@ -1,9 +1,9 @@
 package com.tayota.operationservice.dto.request.appointment;
 
+import java.time.LocalDate;
+
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
-
-import java.time.LocalDate;
 
 // DTO này được sử dụng để nhận dữ liệu từ client khi cập nhật một ngày nghỉ cho đại lý.
 @Getter

@@ -81,11 +81,7 @@ public class CarCatalogService {
                 .toList();
     }
 
-    // Láº¥y danh sÃ¡ch phiÃªn báº£n xe theo Ä‘iá»u kiá»‡n lá»c
-    @Cacheable(
-            value = "catalogVersionSearch",
-            key = "{#keyword, #styleId, #seriesId, #modelYear, #minPrice, #maxPrice, #page, #size}"
-    )
+    // Lấy danh sách phiên bản xe theo điều kiện lọc
     public PaginationResponseDTO<CarVersionItemResponseDTO> searchCarVersions(
             String keyword,
             String styleId,
@@ -99,9 +95,14 @@ public class CarCatalogService {
         // Táº¡o cáº¥u hÃ¬nh phÃ¢n trang vÃ  sáº¯p xáº¿p phiÃªn báº£n má»›i nháº¥t lÃªn trÆ°á»›c
         Pageable pageable = PageRequest.of(Math.max(page, 0), normalizeSize(size), Sort.by("modelYear").descending().and(Sort.by("name")));
 
-        // Lá»c danh sÃ¡ch phiÃªn báº£n xe theo cÃ¡c Ä‘iá»u kiá»‡n truyá»n vÃ o
-        Page<CarVersion> result = carVersionRepository.findAll(
-                buildSpecification(keyword, styleId, seriesId, modelYear, minPrice, maxPrice),
+        // Lọc danh sách phiên bản xe theo các điều kiện truyền vào
+        Page<CarVersion> result = carVersionRepository.search(
+                toLikePattern(keyword),
+                parseNullableUuid(styleId, "Id kiểu dáng không hợp lệ."),
+                parseNullableUuid(seriesId, "Id dòng xe không hợp lệ."),
+                modelYear,
+                minPrice,
+                maxPrice,
                 pageable
         );
 
@@ -202,8 +203,11 @@ public class CarCatalogService {
                         .findFirst()
                         .orElse(null));
 
-        // Tráº£ vá» response rÃºt gá»n cho danh sÃ¡ch phiÃªn báº£n xe
-        return carVersionMapper.toItem(carVersion, minPrice, imageUrl);
+        // Trả về response rút gọn cho danh sách phiên bản xe
+        CarSpecificationResponseDTO specification = carSpecificationRepository.findById(carVersion.getId())
+                .map(carSpecificationMapper::toResponse)
+                .orElse(null);
+        return carVersionMapper.toItem(carVersion, minPrice, imageUrl, specification);
     }
 
     // Chuyá»ƒn phiÃªn báº£n xe sang response chi tiáº¿t
@@ -362,7 +366,12 @@ public class CarCatalogService {
         return StringUtils.hasText(value) ? value.trim() : null;
     }
 
-    // Chuáº©n hÃ³a kÃ­ch thÆ°á»›c trang
+    private String toLikePattern(String value) {
+        String normalized = normalizeText(value);
+        return normalized == null ? "%" : "%" + normalized.toLowerCase() + "%";
+    }
+
+    // Chuẩn hóa kích thước trang
     private int normalizeSize(int size) {
         // DÃ¹ng kÃ­ch thÆ°á»›c máº·c Ä‘á»‹nh náº¿u request truyá»n giÃ¡ trá»‹ khÃ´ng há»£p lá»‡
         if (size <= 0) {

@@ -19,4 +19,5 @@ public class CarVersionItemResponseDTO {
     private String carStyleName;
     private BigDecimal minPrice;
     private String imageUrl;
+    private CarSpecificationResponseDTO specification;
 }

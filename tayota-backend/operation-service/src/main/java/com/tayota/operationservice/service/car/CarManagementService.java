@@ -14,7 +14,6 @@ import com.tayota.operationservice.repository.car.DealershipRepository;
 import com.tayota.operationservice.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -35,10 +34,6 @@ public class CarManagementService {
     private final CarMapper carMapper;
 
     // Lấy danh sách xe vật lý theo điều kiện lọc
-    @Cacheable(
-            value = "physicalCarSearch",
-            key = "{#carVersionId, #dealershipId, #ownerUserId, #status, #page, #size}"
-    )
     public PaginationResponseDTO<CarResponseDTO> searchCars(
             String carVersionId,
             String dealershipId,

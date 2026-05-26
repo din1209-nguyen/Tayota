@@ -33,6 +33,12 @@ public class CustomerReviewResponse {
     // ID của thợ sửa xe được chỉ định cho đánh giá, có thể null nếu chưa được chỉ định
     private Short serviceRating;
 
+    private String vinId;
+
+    private String customerFullName;
+
+    private String customerEmail;
+
     // Lời đánh giá của khách hàng về dịch vụ
     private String serviceComment;
 

@@ -12,4 +12,6 @@ import java.util.UUID;
 public interface CarAccessoryRepository extends JpaRepository<CarAccessory, CarAccessoryId> {
     // Tìm phụ kiện theo phiên bản xe
     List<CarAccessory> findByCarVersionId(UUID carVersionId);
+
+    boolean existsByCarVersionIdAndAccessoryId(UUID carVersionId, UUID accessoryId);
 }

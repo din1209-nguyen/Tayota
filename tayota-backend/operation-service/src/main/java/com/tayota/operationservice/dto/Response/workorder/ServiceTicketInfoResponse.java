@@ -24,6 +24,16 @@ public class ServiceTicketInfoResponse {
     // ID của xe (VIN) liên quan đến phiếu dịch vụ
     private String vinId;
 
+    private UUID dealershipId;
+
+    private String customerType;
+
+    private String customerFullName;
+
+    private String customerEmail;
+
+    private String customerPhone;
+
     // ID của thợ sửa xe được chỉ định cho phiếu dịch vụ, có thể null nếu chưa được chỉ định
     private UUID mechanicId;
 

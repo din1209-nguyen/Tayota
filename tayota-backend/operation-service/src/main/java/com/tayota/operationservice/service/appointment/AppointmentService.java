@@ -11,6 +11,7 @@ import com.tayota.operationservice.dto.response.appointment.AppointmentCreatedRe
 import com.tayota.operationservice.dto.response.appointment.AppointmentManagementDetailResponse;
 import com.tayota.operationservice.dto.response.appointment.MyAppointmentDetailResponse;
 import com.tayota.operationservice.dto.response.workorder.CheckInServiceAppointmentResponse;
+import com.tayota.operationservice.entity.car.Car;
 import com.tayota.operationservice.entity.appointment.Appointment;
 import com.tayota.operationservice.entity.appointment.GuestInformation;
 import com.tayota.operationservice.entity.user.ServiceAdvisor;
@@ -24,6 +25,7 @@ import com.tayota.operationservice.mapper.appointment.MyAppointmentDetailMapper;
 import com.tayota.operationservice.mapper.workorder.WorkOrderMapper;
 import com.tayota.operationservice.repository.appointment.AppointmentRepository;
 import com.tayota.operationservice.repository.appointment.GuestInformationRepository;
+import com.tayota.operationservice.repository.car.CarRepository;
 import com.tayota.operationservice.repository.user.ServiceAdvisorRepository;
 import com.tayota.operationservice.repository.user.UserProfileRepository;
 import com.tayota.operationservice.repository.workorder.MechanicRepository;
@@ -53,6 +55,7 @@ public class AppointmentService {
     private final UserProfileRepository userProfileRepository;
     private final MechanicRepository mechanicRepository;
     private final ServiceTicketRepository serviceTicketRepository;
+    private final CarRepository carRepository;
     private final RedisTemplate<String, Object> redisTemplate;
     private final AppointmentBookingProperties bookingProperties;
     private final AppointmentScheduleService appointmentScheduleService;
@@ -124,14 +127,19 @@ public class AppointmentService {
         return createServiceAppointment(request, getCurrentUserId(), clientIp);
     }
 
+    @Transactional(readOnly = true)
+    public void validateVinForServiceAppointment(String vinId) {
+        String normalizedVin = normalizeVin(vinId);
+        validateVinCanCreateServiceAppointment(normalizedVin, getCurrentUserIdOrNull());
+    }
+
     // Dịch vụ tạo lịch hẹn dịch vụ cho cả user đã đăng nhập và guest chưa đăng nhập, phân biệt bằng userId có null hay không
     @Transactional
     public AppointmentCreatedResponse createServiceAppointment(CreateServiceAppointmentRequest request, UUID userId, String clientIp) {
 
         // Kiểm tra số VIN hợp lệ trong hệ thống
         String vinId = normalizeVin(request.getVinId());
-        // TODO: Bật lại khi API kiểm tra VIN nội bộ ổn định.
-        // validateVinExists(vinId);
+        validateVinCanCreateServiceAppointment(vinId, userId);
 
         // Kiểm tra đại lý có tồn tại không
         UUID dealershipId = parseUuid(request.getDealershipId(), "Đại lý không hợp lệ");
@@ -357,6 +365,14 @@ public class AppointmentService {
         return UUID.fromString(SecurityContextUtil.getCurrentUserId());
     }
 
+    private UUID getCurrentUserIdOrNull() {
+        try {
+            return getCurrentUserId();
+        } catch (IllegalStateException | IllegalArgumentException | ClassCastException exception) {
+            return null;
+        }
+    }
+
     private void validateAppointmentCanCheckIn(Appointment appointment) {
         if (appointment.getStatus() != AppointmentStatus.CONFIRMED) {
             throw new CustomException(400, "Chỉ có thể check-in lịch hẹn đã được xác nhận");
@@ -496,6 +512,12 @@ public class AppointmentService {
                     throw new CustomException(400, "Vui lòng nhập lý do hủy lịch hẹn");
                 }
             }
+            case REJECTED -> {
+                appointment.setCanceledAt(now);
+                if (!StringUtils.hasText(appointment.getCancelReason())) {
+                    throw new CustomException(400, "Vui lòng nhập lý do từ chối lịch hẹn");
+                }
+            }
             case EXPIRED -> appointment.setExpiredAt(now);
             default -> {
             }
@@ -505,13 +527,14 @@ public class AppointmentService {
     // Kiểm tra luồng chuyển trạng thái hợp lệ của lịch hẹn để cố vấn không thể đưa lịch về trạng thái sai quy trình.
     private void validateStatusTransition(AppointmentStatus currentStatus, AppointmentStatus newStatus) {
         boolean valid = switch (currentStatus) {
-            case PENDING -> newStatus == AppointmentStatus.CONFIRMED;
+            case PENDING -> newStatus == AppointmentStatus.CONFIRMED
+                    || newStatus == AppointmentStatus.REJECTED;
             case CONFIRMED -> newStatus == AppointmentStatus.CHECKED_IN
                     || newStatus == AppointmentStatus.CANCELED
                     || newStatus == AppointmentStatus.EXPIRED;
             case CHECKED_IN -> newStatus == AppointmentStatus.COMPLETED
                     || newStatus == AppointmentStatus.CANCELED;
-            case EXPIRED, COMPLETED, CANCELED -> false;
+            case EXPIRED, COMPLETED, CANCELED, REJECTED -> false;
         };
 
         if (!valid) {
@@ -622,31 +645,14 @@ public class AppointmentService {
 
     }
 
-    // Kiểm tra số VIN có tồn tại trong hệ thống hay không, nếu không tồn tại thì không cho phép tạo lịch hẹn dịch vụ (tạm thời bỏ qua)
-//    private void validateVinExists(String vinId) {
-//        String encodedVin = URLEncoder.encode(vinId, StandardCharsets.UTF_8);
-//        HttpRequest request = HttpRequest.newBuilder()
-//                .uri(URI.create("/cars/" + encodedVin))
-//                .timeout(Duration.ofSeconds(3))
-//                .GET()
-//                .build();
-//
-//        try {
-//            HttpResponse<Void> response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
-//
-//            if (response.statusCode() == 404) {
-//                throw new CustomException(404, "Số VIN không tồn tại trong hệ thống");
-//            }
-//
-//            if (response.statusCode() < 200 || response.statusCode() >= 300) {
-//                throw new CustomException(502, "Không thể kiểm tra số VIN lúc này");
-//            }
-//        } catch (CustomException exception) {
-//            throw exception;
-//        } catch (Exception exception) {
-//            throw new CustomException(502, "Không thể kiểm tra số VIN lúc này");
-//        }
-//    }
+    private void validateVinCanCreateServiceAppointment(String vinId, UUID userId) {
+        Car car = carRepository.findById(vinId)
+                .orElseThrow(() -> new CustomException(404, "Số VIN không tồn tại trong hệ thống"));
+
+        if (userId != null && !userId.equals(car.getOwnerUserId())) {
+            throw new CustomException(403, "VIN này chưa được gán cho tài khoản của bạn");
+        }
+    }
 
     // Hàm đánh dấu đã sử dụng chính sách đặt lịch sau khi tạo lịch hẹn thành công, bao gồm:
     // - Đánh dấu thời gian chờ giữa các lần đặt lịch (cooldown)

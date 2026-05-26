@@ -44,6 +44,8 @@ public class MyAppointmentDetailResponse {
     // Tên đầy đủ của khách hàng
     private String notes;
 
+    private String cancelReason;
+
     // Thông tin thời gian tạo và cập nhật của cuộc hẹn
     private Instant createdAt;
 

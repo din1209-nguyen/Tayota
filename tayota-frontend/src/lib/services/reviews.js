@@ -14,3 +14,7 @@ export function submitReviewByToken(token, payload) {
 export function getMyReviews() {
   return apiFetch("/operation/reviews/my", { cache: "no-store" });
 }
+
+export function getMyMechanicReviews() {
+  return apiFetch("/operation/reviews/mechanic/my", { cache: "no-store" });
+}

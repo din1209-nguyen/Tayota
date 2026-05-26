@@ -40,3 +40,7 @@ export function compareCarVersions(ids) {
 export function getAccessories(params = {}) {
   return apiFetch(`/car/accessories${buildQuery(params)}`, { cache: "no-store" });
 }
+
+export function getMyVehicles() {
+  return apiFetch("/operation/customer-vehicles/my", { cache: "no-store" });
+}

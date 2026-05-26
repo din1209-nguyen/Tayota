@@ -153,10 +153,12 @@ public class AppointmentNotificationService {
                 """.formatted(greetingName, appointmentType, reviewLink);
     }
 
-    // Hàm xây dựng link đánh giá dựa trên token, đảm bảo rằng link có thể chứa thêm tham số nếu đã có query parameters trong base URL.
+    // Hàm xây dựng link đánh giá theo route frontend /reviews/[token].
     private String buildReviewLink(String token) {
-        String separator = reviewLinkBaseUrl.contains("?") ? "&" : "?";
-        return reviewLinkBaseUrl + separator + "token=" + token;
+        String normalizedBaseUrl = reviewLinkBaseUrl.endsWith("/")
+                ? reviewLinkBaseUrl.substring(0, reviewLinkBaseUrl.length() - 1)
+                : reviewLinkBaseUrl;
+        return normalizedBaseUrl + "/" + token;
     }
 
     private record CustomerContact(String fullName, String email) {

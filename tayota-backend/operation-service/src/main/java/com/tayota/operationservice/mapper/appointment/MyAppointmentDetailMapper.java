@@ -32,6 +32,7 @@ public class MyAppointmentDetailMapper {
                 appointment.getCarVersionId(),
                 appointment.getVinId(),
                 appointment.getNotes(),
+                appointment.getCancelReason(),
                 appointment.getCreatedAt(),
                 appointment.getUpdatedAt()
         );

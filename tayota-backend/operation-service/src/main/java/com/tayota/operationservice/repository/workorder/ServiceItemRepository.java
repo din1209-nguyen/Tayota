@@ -15,4 +15,6 @@ public interface ServiceItemRepository extends JpaRepository<ServiceItem, UUID> 
 
     // Lấy tất cả các ServiceItem liên quan đến một ServiceTicket cụ thể, sắp xếp theo thời gian tạo tăng dần
     List<ServiceItem> findByServiceTicketIdOrderByCreatedAtAsc(UUID serviceTicketId);
+
+    java.util.Optional<ServiceItem> findByIdAndServiceTicketId(UUID id, UUID serviceTicketId);
 }

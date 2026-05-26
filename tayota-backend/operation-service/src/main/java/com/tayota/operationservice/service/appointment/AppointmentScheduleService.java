@@ -8,6 +8,7 @@ import com.tayota.operationservice.dto.request.appointment.CreateServiceTimeSlot
 import com.tayota.operationservice.dto.request.appointment.UpdateAppointmentHolidayRequest;
 import com.tayota.operationservice.dto.request.appointment.UpdateServiceTimeSlotRequest;
 import com.tayota.operationservice.dto.response.appointment.AppointmentAvailableSlotsResponse;
+import com.tayota.operationservice.dto.response.appointment.AppointmentCalendarDayResponse;
 import com.tayota.operationservice.dto.response.appointment.AppointmentHolidayResponse;
 import com.tayota.operationservice.dto.response.appointment.ServiceTimeSlotResponse;
 import com.tayota.operationservice.entity.appointment.AppointmentHoliday;
@@ -106,6 +107,43 @@ public class AppointmentScheduleService {
                 .toList();
 
         return new AppointmentAvailableSlotsResponse(appointmentDate, false, null, slots);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AppointmentCalendarDayResponse> getAvailabilityCalendar(
+            UUID dealershipId,
+            AppointmentType appointmentType,
+            LocalDate from,
+            LocalDate to
+    ) {
+        LocalDate today = LocalDate.now(bookingProperties.getBusinessZone());
+        LocalDate maxDate = today.plusMonths(4);
+        LocalDate startDate = from == null || from.isBefore(today) ? today : from;
+        LocalDate endDate = to == null ? startDate.plusDays(34) : to;
+
+        if (startDate.isAfter(maxDate)) {
+            throw new CustomException(400, "Khoảng ngày vượt quá giới hạn đặt lịch");
+        }
+
+        if (endDate.isBefore(startDate)) {
+            throw new CustomException(400, "Khoảng ngày không hợp lệ");
+        }
+
+        if (endDate.isAfter(maxDate)) {
+            endDate = maxDate;
+        }
+
+        if (startDate.plusDays(62).isBefore(endDate)) {
+            endDate = startDate.plusDays(62);
+        }
+
+        List<ServiceTimeSlot> activeSlots = serviceTimeSlotRepository
+                .findByDealershipIdAndAppointmentTypeAndActiveTrueOrderByStartTimeAsc(dealershipId, appointmentType);
+
+        LocalDate finalEndDate = endDate;
+        return startDate.datesUntil(finalEndDate.plusDays(1))
+                .map(date -> toCalendarDay(dealershipId, date, activeSlots))
+                .toList();
     }
 
     // Lấy tất cả khung giờ của đại lý mà cố vấn dịch vụ hiện tại đang quản lý.
@@ -271,6 +309,20 @@ public class AppointmentScheduleService {
                 slot.getEndTime(),
                 true
         );
+    }
+
+    private AppointmentCalendarDayResponse toCalendarDay(UUID dealershipId, LocalDate date, List<ServiceTimeSlot> activeSlots) {
+        AppointmentHoliday holiday = appointmentHolidayRepository
+                .findByDealershipIdAndHolidayDateAndActiveTrue(dealershipId, date)
+                .orElse(null);
+
+        if (holiday != null) {
+            return new AppointmentCalendarDayResponse(date, true, holiday.getReason(), false);
+        }
+
+        boolean hasAvailableSlots = activeSlots.stream().anyMatch(slot -> isAfterMinimumNotice(date, slot));
+
+        return new AppointmentCalendarDayResponse(date, false, null, hasAvailableSlots);
     }
 
     // Kiểm tra ngày hẹn có hợp lệ không: bắt buộc có ngày, không ở quá khứ và không quá 4 tháng.

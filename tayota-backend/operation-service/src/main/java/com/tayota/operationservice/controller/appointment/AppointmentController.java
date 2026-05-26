@@ -11,6 +11,7 @@ import com.tayota.operationservice.dto.request.appointment.UpdateAppointmentRequ
 import com.tayota.operationservice.dto.request.appointment.UpdateServiceTimeSlotRequest;
 import com.tayota.operationservice.dto.request.workorder.CheckInServiceAppointmentRequest;
 import com.tayota.operationservice.dto.response.appointment.AppointmentAvailableSlotsResponse;
+import com.tayota.operationservice.dto.response.appointment.AppointmentCalendarDayResponse;
 import com.tayota.operationservice.dto.response.appointment.AppointmentCreatedResponse;
 import com.tayota.operationservice.dto.response.appointment.AppointmentHolidayResponse;
 import com.tayota.operationservice.dto.response.appointment.AppointmentManagementDetailResponse;
@@ -86,6 +87,13 @@ public class AppointmentController {
         return ApiResponse.success(201, "Táº¡o lá»‹ch dá»‹ch vá»¥ thÃ nh cÃ´ng, vui lÃ²ng chá» xÃ¡c nháº­n!", response);
     }
 
+    @GetMapping("/service/vin-validation")
+    public ApiResponse<Void> validateServiceVin(@RequestParam String vinId) {
+        appointmentService.validateVinForServiceAppointment(vinId);
+
+        return ApiResponse.success(200, "VIN is valid for service appointment.", null);
+    }
+
     // Láº¥y danh sÃ¡ch lá»‹ch háº¹n cá»§a khÃ¡ch hÃ ng
     @GetMapping("/my")
     public ApiResponse<List<AppointmentCreatedResponse>> getMyAppointments() {
@@ -118,6 +126,23 @@ public class AppointmentController {
         );
 
         return ApiResponse.success(200, "Láº¥y danh sÃ¡ch khung giá» thÃ nh cÃ´ng!", response);
+    }
+
+    @GetMapping("/availability-calendar")
+    public ApiResponse<List<AppointmentCalendarDayResponse>> getAvailabilityCalendar(
+            @RequestParam UUID dealershipId,
+            @RequestParam AppointmentType appointmentType,
+            @RequestParam(required = false) LocalDate from,
+            @RequestParam(required = false) LocalDate to
+    ) {
+        List<AppointmentCalendarDayResponse> response = appointmentScheduleService.getAvailabilityCalendar(
+                dealershipId,
+                appointmentType,
+                from,
+                to
+        );
+
+        return ApiResponse.success(200, "Lấy lịch khả dụng thành công!", response);
     }
 
     // DÃ¹ng cho cá»‘ váº¥n dá»‹ch vá»¥ xem appointment cá»§a Ä‘áº¡i lÃ½ mÃ¬nh.

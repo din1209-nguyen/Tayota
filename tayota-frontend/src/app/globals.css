@@ -96,6 +96,12 @@ button {
   margin-inline: auto;
 }
 
+.shell-container.appointment-layout,
+.shell-container.test-drive-layout {
+  width: 100%;
+  padding-inline: 32px;
+}
+
 .section,
 .page-section {
   padding: 76px 0;
@@ -484,15 +490,16 @@ footer.footer a:not(.brand):hover {
   line-height: 1.7;
 }
 
+.wizard-actions,
 .hero-actions,
 .vehicle-actions,
 .auth-actions,
-.wizard-actions,
 .row-actions,
 .ops-nav {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+  justify-content: flex-end;
 }
 
 .hero-actions,
@@ -1145,31 +1152,36 @@ footer.footer a:not(.brand):hover {
 
 .test-drive-layout {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(320px, 0.62fr) minmax(760px, 1.38fr);
-  align-items: center;
-  gap: 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .test-drive-layout-large {
-  width: min(calc(100% - 64px), 1520px);
+  width: 100%;
   max-width: none;
 }
 
 .test-drive-copy {
-  max-width: 480px;
+  max-width: 100%;
+  display: none;
 }
 
 .test-drive-form {
-  width: min(100%, 980px);
-  justify-self: end;
+  width: 100%;
+  max-width: none;
 }
 
 .test-drive-form .form-panel {
-  max-height: calc(100vh - 148px);
-  overflow: auto;
-  overflow-x: hidden;
-  background: rgba(255, 255, 255, 0.94);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 16px;
+  width: 100%;
+  min-height: auto;
+  max-height: calc(100dvh - 200px);
+  padding: clamp(26px, 2vw, 34px);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
   color: var(--ink);
   backdrop-filter: blur(18px);
 }
@@ -1179,14 +1191,29 @@ footer.footer a:not(.brand):hover {
 }
 
 .appointment-layout-large {
-  width: min(calc(100% - 64px), 1460px);
+  width: 100%;
   max-width: none;
-  grid-template-columns: minmax(280px, 0.54fr) minmax(760px, 1.46fr);
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.appointment-layout-large > div:first-child {
+  max-width: 100%;
+  display: none;
 }
 
 .appointment-wizard-large {
-  min-height: min(720px, calc(100dvh - 148px));
-  padding: clamp(26px, 2vw, 34px);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 12px;
+  width: 100%;
+  min-height: auto;
+  max-height: calc(100dvh - 200px);
+  padding: clamp(18px, 1.5vw, 24px);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .appointment-success h2 {
@@ -1234,7 +1261,7 @@ footer.footer a:not(.brand):hover {
 .wizard-panel {
   display: grid;
   align-content: start;
-  gap: 16px;
+  gap: 12px;
   min-width: 0;
 }
 
@@ -1244,13 +1271,15 @@ footer.footer a:not(.brand):hover {
 }
 
 .appointment-wizard-large .wizard-panel {
-  height: clamp(330px, 47vh, 500px);
+  height: auto;
+  max-height: calc(100dvh - 260px);
   overflow-y: auto;
-  padding-right: 4px;
+  overflow-x: hidden;
+  padding-right: 8px;
 }
 
 .wizard-feedback {
-  min-height: 54px;
+  min-height: 44px;
   display: grid;
   align-items: start;
 }
@@ -1258,17 +1287,17 @@ footer.footer a:not(.brand):hover {
 .appointment-options {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 
 .appointment-vehicle-filter {
   display: grid;
-  gap: 16px;
+  gap: 12px;
   min-width: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.72);
-  padding: 16px;
+  padding: 12px;
 }
 
 .appointment-filter-head {
@@ -1296,19 +1325,21 @@ footer.footer a:not(.brand):hover {
 
 .choice-card,
 .slot-button {
-  min-height: 84px;
+  min-height: 72px;
   display: grid;
-  gap: 6px;
+  gap: 4px;
   text-align: left;
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: 8px;
   background: #ffffff;
-  padding: 16px;
+  padding: 12px;
   color: var(--ink);
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .appointment-wizard-large .choice-card {
-  min-height: 132px;
+  min-height: 100px;
 }
 
 .appointment-wizard-large .dealer-choice strong {
@@ -1332,8 +1363,10 @@ footer.footer a:not(.brand):hover {
 .choice-card.selected,
 .slot-button.selected {
   border-color: var(--ink);
+  border-width: 2px;
   background: var(--ink);
   color: #ffffff;
+  box-shadow: 0 4px 12px rgba(5, 5, 5, 0.15);
 }
 
 .choice-card.selected span,
@@ -1343,14 +1376,106 @@ footer.footer a:not(.brand):hover {
 
 .slot-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.booking-calendar-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: clamp(14px, 2vw, 20px);
+}
+
+.booking-calendar-head {
+  display: grid;
+  grid-template-columns: 36px 1fr 36px;
+  align-items: center;
   gap: 10px;
+  text-align: center;
+}
+
+.booking-calendar-head strong {
+  font-size: 0.95rem;
+  text-transform: lowercase;
+}
+
+.calendar-nav {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 1.3rem;
+  line-height: 1;
+  box-shadow: var(--shadow-soft);
+}
+
+.booking-calendar-weekdays,
+.booking-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.booking-calendar-weekdays span {
+  color: var(--muted);
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.calendar-blank {
+  min-height: 38px;
+}
+
+.calendar-day {
+  min-height: 38px;
+  display: grid;
+  justify-items: center;
+  align-items: center;
+  gap: 1px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--ink);
+  padding: 3px 2px;
+  cursor: pointer;
+}
+
+.calendar-day strong {
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
+.calendar-day.selected {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #ffffff;
+}
+
+.calendar-day.disabled,
+.calendar-day:disabled {
+  background: #d8dce2;
+  color: #727983;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.calendar-slot-title {
+  margin: 4px 0 0;
+  text-align: center;
+  font-size: 0.88rem;
 }
 
 .slot-button {
-  min-height: 46px;
+  min-height: 40px;
   place-items: center;
   text-align: center;
+  font-size: 0.9rem;
 }
 
 .summary-list {
@@ -2172,6 +2297,143 @@ footer.footer a:not(.brand):hover {
 .ops-list span,
 .ops-list small {
   color: var(--muted);
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metric-grid article {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  padding: 16px;
+}
+
+.metric-grid strong {
+  font-size: 1.45rem;
+}
+
+.inline-form,
+.ticket-detail-panel,
+.service-item-form {
+  display: grid;
+  gap: 14px;
+}
+
+.inline-form {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.inline-form h3,
+.service-item-form h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.row-actions.wrap {
+  flex-wrap: wrap;
+}
+
+.search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip-row button {
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 0 12px;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.chip-row button.selected {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #ffffff;
+}
+
+.summary-list.compact div {
+  grid-template-columns: 110px 1fr;
+}
+
+.review-panel {
+  width: min(100%, 760px);
+  margin-inline: auto;
+}
+
+.rating-options {
+  display: grid;
+  grid-template-columns: repeat(5, 42px);
+  gap: 8px;
+}
+
+.rating-options button {
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.rating-options button.selected {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #ffffff;
+}
+
+.service-item-list {
+  max-height: 260px;
+}
+
+.invoice-preview {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 16px;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .invoice-preview,
+  .invoice-preview * {
+    visibility: visible;
+  }
+
+  .invoice-preview {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .no-print {
+    display: none !important;
+  }
 }
 
 .compact-field {

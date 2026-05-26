@@ -15,6 +15,12 @@ public class ServiceTicketSummaryResponse {
     private UUID appointmentId;
     private UUID guestInformationId;
     private String vinId;
+    private UUID dealershipId;
+    private UUID mechanicId;
+    private String customerType;
+    private String customerFullName;
+    private String customerEmail;
+    private String customerPhone;
     private ServiceTicketStatus status;
     private Instant receivingAt;
     private BigDecimal totalAmount;

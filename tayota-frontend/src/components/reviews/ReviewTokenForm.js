@@ -1,7 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getReviewByToken, submitReviewByToken } from "@/lib/services/reviews";
+import { statusLabel } from "@/lib/format";
+
+function RatingInput({ label, name, value, onChange, disabled }) {
+  return (
+    <label className="label rating-field">
+      {label}
+      <div className="rating-options" role="radiogroup" aria-label={label}>
+        {[1, 2, 3, 4, 5].map((score) => (
+          <button
+            className={Number(value) === score ? "selected" : ""}
+            key={score}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(name, score)}
+          >
+            {score}
+          </button>
+        ))}
+      </div>
+    </label>
+  );
+}
 
 export default function ReviewTokenForm({ token }) {
   const [review, setReview] = useState(null);
@@ -13,56 +35,121 @@ export default function ReviewTokenForm({ token }) {
   });
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  const isServiceReview = review?.reviewType === "SERVICE";
+  const submitted = review?.status === "SUBMITTED";
+  const expired = review?.status === "EXPIRED";
+  const disabled = submitting || submitted || expired;
+  const contextTitle = useMemo(() => {
+    if (!review) return "Đánh giá dịch vụ";
+    if (review.reviewType === "TEST_DRIVE") return "Đánh giá trải nghiệm lái thử";
+    return "Đánh giá dịch vụ bảo dưỡng/sửa chữa";
+  }, [review]);
 
   useEffect(() => {
+    let alive = true;
+
     getReviewByToken(token)
-      .then(setReview)
-      .catch((error) => setMessage(error.message))
-      .finally(() => setLoading(false));
+      .then((result) => {
+        if (!alive) return;
+        setReview(result);
+        setForm({
+          serviceRating: result?.serviceRating || 5,
+          serviceComment: result?.serviceComment || "",
+          mechanicRating: result?.mechanicRating || 5,
+          mechanicComment: result?.mechanicComment || "",
+        });
+      })
+      .catch((error) => {
+        if (alive) setMessage(error.message || "Không thể tải form đánh giá.");
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+
+    return () => {
+      alive = false;
+    };
   }, [token]);
+
+  function setField(name, value) {
+    setForm((current) => ({ ...current, [name]: value }));
+  }
 
   function updateField(event) {
     const { name, value } = event.target;
-    setForm((current) => ({
-      ...current,
-      [name]: name.includes("Rating") ? Number(value) : value,
-    }));
+    setField(name, value);
   }
 
   async function submit(event) {
     event.preventDefault();
+    if (disabled) return;
+
+    setSubmitting(true);
     setMessage("");
     try {
-      const result = await submitReviewByToken(token, form);
+      const payload = {
+        serviceRating: Number(form.serviceRating),
+        serviceComment: form.serviceComment.trim(),
+        mechanicRating: isServiceReview ? Number(form.mechanicRating) : null,
+        mechanicComment: isServiceReview ? form.mechanicComment.trim() : null,
+      };
+      const result = await submitReviewByToken(token, payload);
       setReview(result);
       setMessage("Cảm ơn bạn đã gửi đánh giá.");
     } catch (error) {
-      setMessage(error.message);
+      setMessage(error.message || "Không thể gửi đánh giá.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
+  if (loading) {
+    return <section className="form-panel review-panel"><div className="status-box">Đang tải đánh giá...</div></section>;
+  }
+
+  if (!review) {
+    return <section className="form-panel review-panel"><div className="status-box">{message || "Không tìm thấy form đánh giá."}</div></section>;
+  }
+
   return (
-    <form className="form-panel" onSubmit={submit}>
-      {loading ? <p>Đang tải đánh giá...</p> : null}
-      {review ? <div className="status-box">{review.reviewType || "REVIEW"} · {review.status || "PENDING"}</div> : null}
-      <label className="label">
-        Điểm dịch vụ
-        <input className="field" type="number" min="1" max="5" name="serviceRating" value={form.serviceRating} onChange={updateField} />
-      </label>
+    <form className="form-panel review-panel" onSubmit={submit}>
+      <div className="ops-panel-head">
+        <div>
+          <p className="eyebrow">Tayota review</p>
+          <h2>{contextTitle}</h2>
+        </div>
+        <span className="status-pill">{statusLabel(review.status)}</span>
+      </div>
+
+      <dl className="summary-list">
+        <div><dt>Mã lịch</dt><dd>{review.appointmentId || review.serviceId || "Đang cập nhật"}</dd></div>
+        {review.vinId ? <div><dt>VIN</dt><dd>{review.vinId}</dd></div> : null}
+        {review.customerFullName ? <div><dt>Khách hàng</dt><dd>{review.customerFullName}</dd></div> : null}
+        <div><dt>Loại đánh giá</dt><dd>{review.reviewType === "SERVICE" ? "Dịch vụ" : "Lái thử"}</dd></div>
+      </dl>
+
+      <RatingInput label="Điểm dịch vụ" name="serviceRating" value={form.serviceRating} onChange={setField} disabled={disabled} />
       <label className="label">
         Nhận xét dịch vụ
-        <textarea className="field" name="serviceComment" rows={4} value={form.serviceComment} onChange={updateField} />
+        <textarea className="field" name="serviceComment" rows={4} value={form.serviceComment} onChange={updateField} disabled={disabled} />
       </label>
-      <label className="label">
-        Điểm kỹ thuật viên
-        <input className="field" type="number" min="1" max="5" name="mechanicRating" value={form.mechanicRating} onChange={updateField} />
-      </label>
-      <label className="label">
-        Nhận xét kỹ thuật viên
-        <textarea className="field" name="mechanicComment" rows={4} value={form.mechanicComment} onChange={updateField} />
-      </label>
+
+      {isServiceReview ? (
+        <>
+          <RatingInput label="Điểm kỹ thuật viên" name="mechanicRating" value={form.mechanicRating} onChange={setField} disabled={disabled} />
+          <label className="label">
+            Nhận xét kỹ thuật viên
+            <textarea className="field" name="mechanicComment" rows={4} value={form.mechanicComment} onChange={updateField} disabled={disabled} />
+          </label>
+        </>
+      ) : null}
+
       {message ? <div className="status-box">{message}</div> : null}
-      <button className="btn btn-primary" type="submit">Gửi đánh giá</button>
+      <button className="btn btn-primary" type="submit" disabled={disabled}>
+        {submitted ? "Đã gửi đánh giá" : submitting ? "Đang gửi..." : "Gửi đánh giá"}
+      </button>
     </form>
   );
 }

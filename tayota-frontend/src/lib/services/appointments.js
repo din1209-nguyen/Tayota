@@ -6,6 +6,12 @@ export function getAvailableSlots(params) {
   });
 }
 
+export function getAvailabilityCalendar(params) {
+  return apiFetch(`/operation/appointments/availability-calendar${buildQuery(params)}`, {
+    cache: "no-store",
+  });
+}
+
 export function createAppointment({ type, authenticated, payload }) {
   const appointmentType = type === "service" ? "service" : "test-drive";
   const suffix = authenticated ? "" : "/guest";
@@ -16,8 +22,18 @@ export function createAppointment({ type, authenticated, payload }) {
   });
 }
 
+export function validateServiceVin(vinId) {
+  return apiFetch(`/operation/appointments/service/vin-validation${buildQuery({ vinId })}`, {
+    cache: "no-store",
+  });
+}
+
 export function getMyAppointments() {
   return apiFetch("/operation/appointments/my", { cache: "no-store" });
+}
+
+export function getMyAppointmentDetail(id) {
+  return apiFetch(`/operation/appointments/my/${id}`, { cache: "no-store" });
 }
 
 export function getAdvisorAppointments(status = "PENDING") {
@@ -32,4 +48,62 @@ export function getAdvisorTimeSlots() {
 
 export function getAdvisorHolidays() {
   return apiFetch("/operation/appointments/advisor/holidays", { cache: "no-store" });
+}
+
+export function getAdvisorAppointmentDetail(id) {
+  return apiFetch(`/operation/appointments/${id}`, { cache: "no-store" });
+}
+
+export function updateAdvisorAppointment(id, payload) {
+  return apiFetch(`/operation/appointments/advisor/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function checkInTestDriveAppointment(id) {
+  return apiFetch(`/operation/appointments/advisor/test-drive/${id}/check-in`, { method: "PATCH" });
+}
+
+export function checkInServiceAppointment(id, payload) {
+  return apiFetch(`/operation/appointments/advisor/service/${id}/check-in`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function createAdvisorTimeSlot(payload) {
+  return apiFetch("/operation/appointments/advisor/time-slots", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateAdvisorTimeSlot(id, payload) {
+  return apiFetch(`/operation/appointments/advisor/time-slots/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteAdvisorTimeSlot(id) {
+  return apiFetch(`/operation/appointments/advisor/time-slots/${id}`, { method: "DELETE" });
+}
+
+export function createAdvisorHoliday(payload) {
+  return apiFetch("/operation/appointments/advisor/holidays", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateAdvisorHoliday(id, payload) {
+  return apiFetch(`/operation/appointments/advisor/holidays/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteAdvisorHoliday(id) {
+  return apiFetch(`/operation/appointments/advisor/holidays/${id}`, { method: "DELETE" });
 }

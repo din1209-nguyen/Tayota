@@ -6,6 +6,7 @@ import com.tayota.operationservice.dto.response.review.CustomerReviewResponse;
 import com.tayota.operationservice.service.review.CustomerReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -69,5 +70,13 @@ public class CustomerReviewController {
         List<CustomerReviewResponse> response = customerReviewService.getMyReviews();
 
         return ApiResponse.success(200, "Lấy danh sách đánh giá thành công!", response);
+    }
+
+    @GetMapping("/mechanic/my")
+    @PreAuthorize("hasRole('MECHANIC')")
+    public ApiResponse<List<CustomerReviewResponse>> getMyMechanicReviews() {
+        List<CustomerReviewResponse> response = customerReviewService.getMyMechanicReviews();
+
+        return ApiResponse.success(200, "Lấy danh sách đánh giá kỹ thuật viên thành công!", response);
     }
 }

@@ -94,6 +94,16 @@ public class CustomerReviewService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<CustomerReviewResponse> getMyMechanicReviews() {
+        UUID mechanicId = getCurrentUserId();
+
+        return customerReviewRepository.findByMechanicIdOrderByCreatedAtDesc(mechanicId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     // Tạo một đánh giá pending mới cho một lịch hẹn đã hoàn thành. Nếu đã tồn tại đánh giá cho lịch hẹn này, trả về token của đánh giá đó.
     @Transactional
     public String createPendingReviewForAppointment(Appointment appointment) {
@@ -303,6 +313,9 @@ public class CustomerReviewService {
                 review.getServiceTicket() == null ? null : review.getServiceTicket().getId(),
                 review.getDealershipId(),
                 review.getServiceRating(),
+                resolveVinId(review),
+                review.getGuestFullName(),
+                review.getGuestEmail(),
                 review.getServiceComment(),
                 review.getMechanicId(),
                 review.getMechanicRating(),
@@ -311,6 +324,18 @@ public class CustomerReviewService {
                 review.getSubmittedAt(),
                 review.getCreatedAt()
         );
+    }
+
+    private String resolveVinId(CustomerReview review) {
+        if (review.getServiceTicket() != null) {
+            return review.getServiceTicket().getVinId();
+        }
+
+        if (review.getAppointment() != null) {
+            return review.getAppointment().getVinId();
+        }
+
+        return null;
     }
 
     // Hàm để chuẩn hóa chuỗi đầu vào, loại bỏ khoảng trắng thừa và trả về null nếu chuỗi rỗng hoặc chỉ chứa khoảng trắng.

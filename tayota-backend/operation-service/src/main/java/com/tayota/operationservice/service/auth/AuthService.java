@@ -34,9 +34,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -347,8 +347,8 @@ public class AuthService {
             // Tạo session đăng nhập mới và trả về access-token cho client
             return createLoginSession(userId, email, roles, clientIp, userAgent, oldRefreshToken);
         }
-        // Bắt lỗi khi sai mật khẩu
-        catch (BadCredentialsException e) {
+        // Bắt mọi lỗi xác thực để không lộ trạng thái tài khoản và tránh trả 500.
+        catch (AuthenticationException e) {
             // Lưu số lần nhập sai email lên 1 theo IP vào Redis
             Long newFailedCount = redisTemplate.opsForValue().increment(loginLimitKey);
 

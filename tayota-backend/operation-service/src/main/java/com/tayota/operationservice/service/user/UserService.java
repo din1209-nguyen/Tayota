@@ -7,6 +7,7 @@ import com.tayota.operationservice.dto.response.admin.AdminUserResponse;
 import com.tayota.operationservice.dto.response.admin.ManagerUserStatsResponse;
 import com.tayota.operationservice.dto.response.car.PaginationResponseDTO;
 import com.tayota.operationservice.dto.response.user.BasicInformationResponseDTO;
+import com.tayota.operationservice.dto.response.user.AdvisorCustomerResponse;
 import com.tayota.operationservice.dto.response.user.UserProfileResponseDTO;
 import com.tayota.operationservice.entity.user.ServiceAdvisor;
 import com.tayota.operationservice.entity.user.User;
@@ -30,6 +31,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.UUID;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -105,6 +107,30 @@ public class UserService {
         );
         long total = byRole.values().stream().mapToLong(Long::longValue).sum();
         return new ManagerUserStatsResponse(total, byRole, byStatus);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdvisorCustomerResponse> searchActiveCustomersForAdvisor(String keyword, int size) {
+        String normalizedKeyword = StringUtils.hasText(keyword) ? keyword.trim().toLowerCase() : "";
+        if (!StringUtils.hasText(normalizedKeyword)) {
+            return List.of();
+        }
+
+        return userProfileRepository
+                .searchActiveCustomersForAdvisor(
+                        normalizedKeyword,
+                        RoleType.USER,
+                        StatusType.ACTIVE,
+                        PageRequest.of(0, normalizeSize(size))
+                )
+                .stream()
+                .map(profile -> new AdvisorCustomerResponse(
+                        profile.getId(),
+                        profile.getFullname(),
+                        profile.getUser().getEmail(),
+                        profile.getPhone()
+                ))
+                .toList();
     }
 
     @Transactional

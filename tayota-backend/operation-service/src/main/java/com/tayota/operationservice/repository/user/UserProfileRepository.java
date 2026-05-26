@@ -133,6 +133,26 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, UUID> 
             """)
     Optional<UserContactView> findContactByUserId(@Param("userId") UUID userId);
 
+    @Query("""
+            select userProfile
+            from UserProfile userProfile
+            join userProfile.user user
+            where user.role = :role
+              and user.status = :status
+              and (
+                   lower(user.email) like concat('%', :keyword, '%')
+                   or lower(userProfile.fullname) like concat('%', :keyword, '%')
+                   or userProfile.phone like concat('%', :keyword, '%')
+              )
+            order by userProfile.fullname asc
+            """)
+    Page<UserProfile> searchActiveCustomersForAdvisor(
+            @Param("keyword") String keyword,
+            @Param("role") RoleType role,
+            @Param("status") StatusType status,
+            Pageable pageable
+    );
+
     // Dùng để lưu thông tin liên hê của user
     interface UserContactView {
         String getFullname();

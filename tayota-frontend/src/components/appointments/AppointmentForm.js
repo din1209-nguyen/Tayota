@@ -2,14 +2,47 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { createAppointment, getAvailableSlots } from "@/lib/services/appointments";
-import { getAllCarVersions, getCarStylesWithVersions, getDealerships } from "@/lib/services/car";
+import { createAppointment, getAvailabilityCalendar, getAvailableSlots, validateServiceVin } from "@/lib/services/appointments";
+import { getAllCarVersions, getCarStylesWithVersions, getDealerships, getMyVehicles } from "@/lib/services/car";
+import { getMe } from "@/lib/services/auth";
 import { getAccessToken } from "@/lib/session";
 import { formatVnd, getGoogleMapsUrl, getVehicleId, getVehicleImage, getVehicleName, getVehiclePrice, unwrapList } from "@/lib/format";
 import { EMPTY_VEHICLE_FILTERS, filterVehicleItems } from "@/lib/vehicle-filters";
 import VehicleFilterControls from "@/components/vehicles/VehicleFilterControls";
 
 const STEPS = ["Dịch vụ", "Đại lý", "Thời gian", "Liên hệ", "Xác nhận"];
+const WEEKDAY_LABELS = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "CN"];
+
+function toDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getMonthBounds(monthDate) {
+  const first = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  const last = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+  return { first, last };
+}
+
+function getCalendarCells(monthDate, daysByDate) {
+  const { first, last } = getMonthBounds(monthDate);
+  const leadingBlanks = (first.getDay() + 6) % 7;
+  const cells = Array.from({ length: leadingBlanks }, (_, index) => ({ key: `blank-${index}`, blank: true }));
+
+  for (let day = 1; day <= last.getDate(); day += 1) {
+    const date = new Date(monthDate.getFullYear(), monthDate.getMonth(), day);
+    const dateKey = toDateInputValue(date);
+    cells.push({ key: dateKey, date: dateKey, day, meta: daysByDate.get(dateKey) });
+  }
+
+  while (cells.length % 7 !== 0) {
+    cells.push({ key: `tail-${cells.length}`, blank: true });
+  }
+
+  return cells;
+}
 
 function toTimeLabel(slot) {
   if (!slot) return "";
@@ -21,13 +54,23 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
   const [step, setStep] = useState(0);
   const [vehicles, setVehicles] = useState([]);
   const [vehicleStyles, setVehicleStyles] = useState([]);
+  const [myVehicles, setMyVehicles] = useState([]);
+  const [profile, setProfile] = useState(null);
   const [vehicleFilters, setVehicleFilters] = useState(EMPTY_VEHICLE_FILTERS);
   const [dealerships, setDealerships] = useState([]);
   const [slots, setSlots] = useState([]);
+  const [calendarDays, setCalendarDays] = useState([]);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
   const [loadingInitial, setLoadingInitial] = useState(true);
+  const [loadingCalendar, setLoadingCalendar] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [validatingVin, setValidatingVin] = useState(false);
   const [message, setMessage] = useState("");
+  const [vinValidationMessage, setVinValidationMessage] = useState("");
   const [success, setSuccess] = useState(null);
   const [form, setForm] = useState({
     guestFullName: "",
@@ -60,6 +103,9 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
     }
     return [selectedVehicle, ...matches];
   }, [form.carVersionId, selectedVehicle, vehicleFilters, vehicles]);
+  const authenticated = Boolean(getAccessToken());
+  const daysByDate = useMemo(() => new Map(calendarDays.map((day) => [day.date, day])), [calendarDays]);
+  const calendarCells = useMemo(() => getCalendarCells(calendarMonth, daysByDate), [calendarMonth, daysByDate]);
 
   useEffect(() => {
     let alive = true;
@@ -67,15 +113,19 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
     async function loadInitialData() {
       setLoadingInitial(true);
       try {
-        const [dealerResult, vehicleResult, styleResult] = await Promise.all([
+        const [dealerResult, vehicleResult, styleResult, profileResult, myVehicleResult] = await Promise.all([
           getDealerships(),
           isService ? Promise.resolve([]) : getAllCarVersions(),
           isService ? Promise.resolve([]) : getCarStylesWithVersions(),
+          authenticated ? getMe() : Promise.resolve(null),
+          isService && authenticated ? getMyVehicles() : Promise.resolve([]),
         ]);
         if (!alive) return;
         setDealerships(unwrapList(dealerResult));
         setVehicles(vehicleResult);
         setVehicleStyles(unwrapList(styleResult));
+        setProfile(profileResult);
+        setMyVehicles(unwrapList(myVehicleResult));
       } catch (error) {
         if (!alive) return;
         setMessage(error.message || "Không thể tải dữ liệu đặt lịch.");
@@ -88,7 +138,45 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
     return () => {
       alive = false;
     };
-  }, [isService]);
+  }, [authenticated, isService]);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadCalendar() {
+      if (!form.dealershipId) {
+        setCalendarDays([]);
+        return;
+      }
+
+      setLoadingCalendar(true);
+      setMessage("");
+
+      try {
+        const { first, last } = getMonthBounds(calendarMonth);
+        const result = await getAvailabilityCalendar({
+          dealershipId: form.dealershipId,
+          appointmentType: isService ? "SERVICE" : "TEST_DRIVE",
+          from: toDateInputValue(first),
+          to: toDateInputValue(last),
+        });
+        if (!alive) return;
+        setCalendarDays(unwrapList(result));
+      } catch (error) {
+        if (!alive) return;
+        setCalendarDays([]);
+        setMessage(error.message || "Không thể tải lịch khả dụng.");
+      } finally {
+        if (alive) setLoadingCalendar(false);
+      }
+    }
+
+    setForm((current) => ({ ...current, appointmentDate: "", startTime: "" }));
+    loadCalendar();
+    return () => {
+      alive = false;
+    };
+  }, [calendarMonth, form.dealershipId, isService]);
 
   useEffect(() => {
     let alive = true;
@@ -114,7 +202,9 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
           : unwrapList(result).filter((slot) => slot?.available !== false);
         setSlots(availableSlots);
         if (!availableSlots.length) {
-          setMessage(result?.holiday ? result?.holidayReason || "Đại lý nghỉ trong ngày này." : "Không còn khung giờ trống.");
+          setMessage(result?.holiday
+            ? result?.holidayReason || "Đại lý nghỉ trong ngày này."
+            : "Chỉ có thể đặt lịch ở các khung giờ cách hiện tại tối thiểu 12 tiếng. Các khung giờ còn lại của ngày này không khả dụng hoặc nằm ngoài giờ làm việc của đại lý, vui lòng chọn ngày khác.");
         }
       } catch (error) {
         if (!alive) return;
@@ -134,10 +224,18 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
 
   function updateField(event) {
     const { name, value } = event.target;
+    if (name === "vinId") {
+      setVinValidationMessage("");
+      setForm((current) => ({ ...current, [name]: value.toUpperCase() }));
+      return;
+    }
     setForm((current) => ({ ...current, [name]: value }));
   }
 
   function choose(name, value) {
+    if (name === "vinId") {
+      setVinValidationMessage("");
+    }
     setForm((current) => ({ ...current, [name]: value }));
   }
 
@@ -148,24 +246,43 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
     }));
   }
 
+  function moveCalendarMonth(direction) {
+    setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() + direction, 1));
+  }
+
   function validateStep(targetStep = step) {
     if (targetStep === 0 && !isService && !form.carVersionId) return "Vui lòng chọn mẫu xe muốn lái thử.";
     if (targetStep === 0 && isService && form.vinId.trim().length !== 17) return "Số VIN cần đúng 17 ký tự.";
     if (targetStep === 1 && !form.dealershipId) return "Vui lòng chọn đại lý.";
     if (targetStep === 2 && (!form.appointmentDate || !form.startTime)) return "Vui lòng chọn ngày và khung giờ.";
-    if (targetStep === 3 && (!form.guestFullName || !form.guestPhone || !form.guestEmail)) {
+    if (targetStep === 3 && !authenticated && (!form.guestFullName || !form.guestPhone || !form.guestEmail)) {
       return "Vui lòng nhập đủ họ tên, số điện thoại và email.";
     }
     if (targetStep === 3 && isService && !form.notes.trim()) return "Vui lòng mô tả tình trạng xe.";
     return "";
   }
 
-  function next() {
+  async function next() {
     const validationMessage = validateStep();
     if (validationMessage) {
       setMessage(validationMessage);
       return;
     }
+
+    if (isService && step === 0) {
+      const normalizedVin = form.vinId.trim().toUpperCase();
+      setValidatingVin(true);
+      try {
+        await validateServiceVin(normalizedVin);
+        setVinValidationMessage("VIN hop le. Ban co the tiep tuc dat lich.");
+      } catch (error) {
+        setMessage(error.message || "Khong the kiem tra VIN.");
+        return;
+      } finally {
+        setValidatingVin(false);
+      }
+    }
+
     setMessage("");
     setStep((current) => Math.min(current + 1, STEPS.length - 1));
   }
@@ -188,7 +305,6 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
     setSubmitting(true);
     setMessage("");
     try {
-      const authenticated = Boolean(getAccessToken());
       const contact = {
         guestFullName: form.guestFullName.trim(),
         guestEmail: form.guestEmail.trim(),
@@ -266,17 +382,41 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
           <span className="eyebrow">{isService ? "Bảo dưỡng và sửa chữa" : "Trải nghiệm xe"}</span>
           <h2>{isService ? "Nhập thông tin xe" : "Chọn mẫu xe muốn lái thử"}</h2>
           {isService ? (
-            <label className="label">
-              Số VIN
-              <input
-                className="field"
-                name="vinId"
-                value={form.vinId}
-                onChange={updateField}
-                maxLength={17}
-                placeholder="17 ký tự trên giấy đăng ký hoặc thân xe"
-              />
-            </label>
+            <>
+              {authenticated && myVehicles.length ? (
+                <label className="label">
+                  Xe của tôi
+                  <select className="field" value={form.vinId} onChange={(event) => choose("vinId", event.target.value)}>
+                    <option value="">Chọn VIN đã gán với tài khoản</option>
+                    {myVehicles.map((vehicle) => (
+                      <option key={vehicle.vinId} value={vehicle.vinId}>
+                        {vehicle.vinId} · {vehicle.carVersionName || "Xe Tayota"}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              <label className="label">
+                Số VIN
+                <input
+                  className="field"
+                  name="vinId"
+                  value={form.vinId}
+                  onChange={updateField}
+                  maxLength={17}
+                  placeholder="17 ký tự trên giấy đăng ký hoặc thân xe"
+                />
+              </label>
+              {vinValidationMessage ? (
+                <div className="status-box">{vinValidationMessage}</div>
+              ) : null}
+              {authenticated && !myVehicles.length ? (
+                <div className="status-box">Tài khoản của bạn chưa có VIN được gán. Bạn vẫn có thể nhập VIN, hệ thống sẽ kiểm tra quyền sở hữu khi gửi lịch.</div>
+              ) : null}
+              {!authenticated ? (
+                <div className="status-box">Khach vang lai co the nhap VIN. He thong se kiem tra VIN ngay o buoc nay truoc khi cho phep chon dai ly.</div>
+              ) : null}
+            </>
           ) : (
             <>
               <div className="appointment-vehicle-filter">
@@ -349,10 +489,39 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
         <section className="wizard-panel">
           <span className="eyebrow">Lịch trống</span>
           <h2>Chọn ngày và giờ</h2>
-          <label className="label">
-            Ngày hẹn
-            <input className="field" type="date" name="appointmentDate" value={form.appointmentDate} onChange={updateField} />
-          </label>
+          <div className="booking-calendar-card">
+            <div className="booking-calendar-head">
+              <button className="calendar-nav" type="button" onClick={() => moveCalendarMonth(-1)} aria-label="Tháng trước">‹</button>
+              <strong>{calendarMonth.toLocaleDateString("vi-VN", { month: "long", year: "numeric" })}</strong>
+              <button className="calendar-nav" type="button" onClick={() => moveCalendarMonth(1)} aria-label="Tháng sau">›</button>
+            </div>
+            <div className="booking-calendar-weekdays">
+              {WEEKDAY_LABELS.map((label) => <span key={label}>{label}</span>)}
+            </div>
+            <div className="booking-calendar" aria-label="Lịch ngày khả dụng">
+            {loadingCalendar ? <div className="status-box wide">Đang tải lịch đại lý...</div> : null}
+            {!loadingCalendar && calendarCells.map((cell) => {
+              if (cell.blank) return <span className="calendar-blank" key={cell.key} />;
+              const day = cell.meta;
+              const disabled = !day || day.holiday || !day.hasAvailableSlots;
+              const selected = form.appointmentDate === cell.date;
+              return (
+                <button
+                  className={`calendar-day ${selected ? "selected" : ""} ${disabled ? "disabled" : ""}`}
+                  key={cell.key}
+                  type="button"
+                  disabled={disabled}
+                  title={day?.holiday ? day.holidayReason || "Đại lý nghỉ" : disabled ? "Không có khung giờ khả dụng" : "Có thể đặt lịch"}
+                  onClick={() => choose("appointmentDate", cell.date)}
+                >
+                  <strong>{cell.day}</strong>
+                </button>
+              );
+            })}
+            {!loadingCalendar && !calendarDays.length ? <div className="status-box wide">Chưa có dữ liệu lịch khả dụng.</div> : null}
+            </div>
+          </div>
+          <h3 className="calendar-slot-title">Khoảng thời gian khả dụng</h3>
           <div className="slot-grid">
             {loadingSlots ? <div className="status-box">Đang tải khung giờ...</div> : null}
             {!loadingSlots && slots.map((slot) => (
@@ -373,20 +542,28 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
         <section className="wizard-panel">
           <span className="eyebrow">Liên hệ</span>
           <h2>Thông tin xác nhận</h2>
-          <div className="form-grid">
-            <label className="label">
-              Họ và tên
-              <input className="field" name="guestFullName" value={form.guestFullName} onChange={updateField} />
-            </label>
-            <label className="label">
-              Số điện thoại
-              <input className="field" name="guestPhone" value={form.guestPhone} onChange={updateField} />
-            </label>
-            <label className="label">
-              Email
-              <input className="field" type="email" name="guestEmail" value={form.guestEmail} onChange={updateField} />
-            </label>
-          </div>
+          {authenticated ? (
+            <dl className="summary-list compact">
+              <div><dt>Khách hàng</dt><dd>{profile?.fullname || profile?.fullName || "Tài khoản của tôi"}</dd></div>
+              <div><dt>Email</dt><dd>{profile?.email || "Đang cập nhật"}</dd></div>
+              <div><dt>Số điện thoại</dt><dd>{profile?.phone || "Đang cập nhật"}</dd></div>
+            </dl>
+          ) : (
+            <div className="form-grid">
+              <label className="label">
+                Họ và tên
+                <input className="field" name="guestFullName" value={form.guestFullName} onChange={updateField} />
+              </label>
+              <label className="label">
+                Số điện thoại
+                <input className="field" name="guestPhone" value={form.guestPhone} onChange={updateField} />
+              </label>
+              <label className="label">
+                Email
+                <input className="field" type="email" name="guestEmail" value={form.guestEmail} onChange={updateField} />
+              </label>
+            </div>
+          )}
           <label className="label">
             {isService ? "Mô tả tình trạng xe" : "Ghi chú"}
             <textarea className="field" name="notes" value={form.notes} onChange={updateField} rows={4} />
@@ -403,7 +580,7 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
             <div><dt>{isService ? "VIN" : "Xe"}</dt><dd>{isService ? form.vinId : getVehicleName(selectedVehicle)}</dd></div>
             <div><dt>Đại lý</dt><dd>{selectedDealer?.name || "Chưa chọn"}</dd></div>
             <div><dt>Thời gian</dt><dd>{form.appointmentDate} {toTimeLabel(selectedSlot)}</dd></div>
-            <div><dt>Khách hàng</dt><dd>{form.guestFullName} - {form.guestPhone}</dd></div>
+            <div><dt>Khách hàng</dt><dd>{authenticated ? profile?.fullname || profile?.email || "Tài khoản của tôi" : `${form.guestFullName} - ${form.guestPhone}`}</dd></div>
           </dl>
         </section>
       ) : null}
@@ -415,12 +592,12 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
       </div>
 
       <div className="wizard-actions">
-        <button className="btn btn-secondary" type="button" onClick={back} disabled={step === 0 || submitting}>
+        <button className="btn btn-secondary" type="button" onClick={back} disabled={step === 0 || submitting || validatingVin}>
           Quay lại
         </button>
         {step < STEPS.length - 1 ? (
-          <button className="btn btn-primary" type="button" onClick={next}>
-            Tiếp tục
+          <button className="btn btn-primary" type="button" onClick={next} disabled={validatingVin}>
+            {validatingVin ? "Dang kiem tra VIN..." : "Tiếp tục"}
           </button>
         ) : (
           <button className="btn btn-primary" type="submit" disabled={submitting}>

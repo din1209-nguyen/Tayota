@@ -3,11 +3,11 @@ ALTER TABLE "DEALERSHIP" DROP COLUMN IF EXISTS accessory_quantity;
 
 INSERT INTO "USER" (id, created_at, email, login_provider, password_hash, provider_user_id, role, status)
 VALUES
-    ('00000000-0000-0000-0000-000000000001'::uuid, CURRENT_TIMESTAMP, 'admin@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'ADMIN', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000002'::uuid, CURRENT_TIMESTAMP, 'manager@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'MANAGER', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000003'::uuid, CURRENT_TIMESTAMP, 'advisor@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'SERVICE_ADVISOR', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000004'::uuid, CURRENT_TIMESTAMP, 'mechanic@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'MECHANIC', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000005'::uuid, CURRENT_TIMESTAMP, 'customer@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'USER', 'ACTIVE')
+    ('00000000-0000-0000-0000-000000000001'::uuid, CURRENT_TIMESTAMP, 'admin@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ADMIN', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000002'::uuid, CURRENT_TIMESTAMP, 'manager@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MANAGER', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000003'::uuid, CURRENT_TIMESTAMP, 'advisor@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'SERVICE_ADVISOR', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000004'::uuid, CURRENT_TIMESTAMP, 'mechanic@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MECHANIC', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000005'::uuid, CURRENT_TIMESTAMP, 'customer@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'USER', 'ACTIVE')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO "USER_PROFILE" (user_id, fullname, phone, gender, birth_date, address, avatar_url)
@@ -116,17 +116,49 @@ ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO "USER" (id, created_at, email, login_provider, password_hash, provider_user_id, role, status)
 VALUES
-    ('00000000-0000-0000-0000-000000000006'::uuid, CURRENT_TIMESTAMP, 'assistant@tayota.vn', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'ASSISTANT', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000007'::uuid, CURRENT_TIMESTAMP, 'admin@tayota.vn', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'ADMIN', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000008'::uuid, CURRENT_TIMESTAMP, 'mechanic@tayota.vn', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'MECHANIC', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000009'::uuid, CURRENT_TIMESTAMP, 'user@tayota.vn', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'USER', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000010'::uuid, CURRENT_TIMESTAMP, 'admin.demo@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'ADMIN', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000011'::uuid, CURRENT_TIMESTAMP, 'manager.demo@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'MANAGER', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000012'::uuid, CURRENT_TIMESTAMP, 'advisor.demo@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'SERVICE_ADVISOR', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000013'::uuid, CURRENT_TIMESTAMP, 'assistant.demo@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'ASSISTANT', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000014'::uuid, CURRENT_TIMESTAMP, 'mechanic.demo@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'MECHANIC', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000015'::uuid, CURRENT_TIMESTAMP, 'customer.demo@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'USER', 'ACTIVE')
+    ('00000000-0000-0000-0000-000000000006'::uuid, CURRENT_TIMESTAMP, 'assistant@tayota.vn', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ASSISTANT', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000007'::uuid, CURRENT_TIMESTAMP, 'admin@tayota.vn', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ADMIN', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000008'::uuid, CURRENT_TIMESTAMP, 'mechanic@tayota.vn', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MECHANIC', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000009'::uuid, CURRENT_TIMESTAMP, 'user@tayota.vn', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'USER', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000010'::uuid, CURRENT_TIMESTAMP, 'admin.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ADMIN', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000011'::uuid, CURRENT_TIMESTAMP, 'manager.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MANAGER', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000012'::uuid, CURRENT_TIMESTAMP, 'service.advisor.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'SERVICE_ADVISOR', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000013'::uuid, CURRENT_TIMESTAMP, 'assistant.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ASSISTANT', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000014'::uuid, CURRENT_TIMESTAMP, 'mechanic.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MECHANIC', 'ACTIVE'),
+    ('00000000-0000-0000-0000-000000000015'::uuid, CURRENT_TIMESTAMP, 'customer.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'USER', 'ACTIVE')
 ON CONFLICT (id) DO NOTHING;
+
+UPDATE "USER"
+SET email = 'service.advisor.demo@tayota.com',
+    role = 'SERVICE_ADVISOR',
+    status = 'ACTIVE',
+    login_provider = 'LOCAL',
+    password_hash = '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq'
+WHERE id = '00000000-0000-0000-0000-000000000012'::uuid;
+
+UPDATE "USER"
+SET email = 'admin.demo@tayota.com',
+    role = 'ADMIN',
+    status = 'ACTIVE',
+    login_provider = 'LOCAL',
+    password_hash = '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq'
+WHERE id = '00000000-0000-0000-0000-000000000010'::uuid;
+
+UPDATE "USER"
+SET email = 'manager.demo@tayota.com',
+    role = 'MANAGER',
+    status = 'ACTIVE',
+    login_provider = 'LOCAL',
+    password_hash = '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq'
+WHERE id = '00000000-0000-0000-0000-000000000011'::uuid;
+
+UPDATE "USER"
+SET email = 'mechanic.demo@tayota.com',
+    role = 'MECHANIC',
+    status = 'ACTIVE',
+    login_provider = 'LOCAL',
+    password_hash = '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq'
+WHERE id = '00000000-0000-0000-0000-000000000014'::uuid;
 
 INSERT INTO "USER_PROFILE" (user_id, fullname, phone, gender, birth_date, address, avatar_url)
 VALUES
@@ -155,12 +187,17 @@ INSERT INTO "MECHANIC" (id, dealership_id, specialty, average_rating, is_active)
 VALUES
     ('00000000-0000-0000-0000-000000000008'::uuid, '10000000-0000-0000-0000-000000000003'::uuid, 'Hybrid diagnostics', 4.90, TRUE),
     ('00000000-0000-0000-0000-000000000014'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, 'General maintenance', 4.80, TRUE)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE
+SET dealership_id = EXCLUDED.dealership_id,
+    specialty = EXCLUDED.specialty,
+    average_rating = EXCLUDED.average_rating,
+    is_active = EXCLUDED.is_active;
 
 INSERT INTO "SERVICE_ADVISOR" (id, dealership_id)
 VALUES
     ('00000000-0000-0000-0000-000000000012'::uuid, '10000000-0000-0000-0000-000000000001'::uuid)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE
+SET dealership_id = EXCLUDED.dealership_id;
 
 INSERT INTO "CAR_STYLE" (id, name, description)
 VALUES

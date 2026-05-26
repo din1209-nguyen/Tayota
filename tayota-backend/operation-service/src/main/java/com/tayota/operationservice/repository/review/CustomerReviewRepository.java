@@ -22,6 +22,8 @@ public interface CustomerReviewRepository extends JpaRepository<CustomerReview, 
     // Lấy tất cả đánh giá của một người dùng, sắp xếp theo thời gian tạo mới nhất
     List<CustomerReview> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
+    List<CustomerReview> findByMechanicIdOrderByCreatedAtDesc(UUID mechanicId);
+
     Optional<CustomerReview> findByReviewToken(String reviewToken);
 
     // Lấy review token của đánh giá liên quan đến một appointment cụ thể, nếu có

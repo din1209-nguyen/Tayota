@@ -11,11 +11,27 @@ import org.springframework.stereotype.Component;
 public class WorkOrderMapper {
     // Mapper để chuyển đổi giữa entity và DTO cho phiếu dịch vụ
     public ServiceTicketSummaryResponse toSummaryResponse(ServiceTicket serviceTicket) {
+        return toSummaryResponse(serviceTicket, null, null, null, null);
+    }
+
+    public ServiceTicketSummaryResponse toSummaryResponse(
+            ServiceTicket serviceTicket,
+            String customerType,
+            String customerFullName,
+            String customerEmail,
+            String customerPhone
+    ) {
         return new ServiceTicketSummaryResponse(
                 serviceTicket.getId(),
                 serviceTicket.getAppointment() == null ? null : serviceTicket.getAppointment().getId(),
                 serviceTicket.getGuestInformation() == null ? null : serviceTicket.getGuestInformation().getId(),
                 serviceTicket.getVinId(),
+                serviceTicket.getDealershipId(),
+                serviceTicket.getMechanicId(),
+                customerType,
+                customerFullName,
+                customerEmail,
+                customerPhone,
                 serviceTicket.getStatus(),
                 serviceTicket.getReceivingAt(),
                 serviceTicket.getTotalAmount()
@@ -24,11 +40,26 @@ public class WorkOrderMapper {
 
     // Mapper để chuyển đổi giữa entity và DTO cho phiếu dịch vụ chi tiết
     public ServiceTicketInfoResponse toInfoResponse(ServiceTicket serviceTicket) {
+        return toInfoResponse(serviceTicket, null, null, null, null);
+    }
+
+    public ServiceTicketInfoResponse toInfoResponse(
+            ServiceTicket serviceTicket,
+            String customerType,
+            String customerFullName,
+            String customerEmail,
+            String customerPhone
+    ) {
         return new ServiceTicketInfoResponse(
                 serviceTicket.getId(),
                 serviceTicket.getAppointment() == null ? null : serviceTicket.getAppointment().getId(),
                 serviceTicket.getGuestInformation() == null ? null : serviceTicket.getGuestInformation().getId(),
                 serviceTicket.getVinId(),
+                serviceTicket.getDealershipId(),
+                customerType,
+                customerFullName,
+                customerEmail,
+                customerPhone,
                 serviceTicket.getMechanicId(),
                 serviceTicket.getMileageAtService(),
                 serviceTicket.getStatus(),

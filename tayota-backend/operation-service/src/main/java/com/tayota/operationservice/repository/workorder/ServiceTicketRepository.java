@@ -18,6 +18,10 @@ public interface ServiceTicketRepository extends JpaRepository<ServiceTicket, UU
 
     List<ServiceTicket> findByMechanicIdOrderByCreatedAtDesc(UUID mechanicId);
 
+    List<ServiceTicket> findByDealershipIdOrderByCreatedAtDesc(UUID dealershipId);
+
+    List<ServiceTicket> findByDealershipIdAndStatusOrderByCreatedAtDesc(UUID dealershipId, ServiceTicketStatus status);
+
     List<ServiceTicket> findByMechanicIdAndStatusInOrderByCreatedAtDesc(
             UUID mechanicId,
             List<ServiceTicketStatus> statuses

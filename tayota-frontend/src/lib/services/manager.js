@@ -4,8 +4,20 @@ export function getManagerVehicles() {
   return apiFetch("/car/manager/car-versions", { cache: "no-store" });
 }
 
+export function getManagerVehicleDetail(id) {
+  return apiFetch(`/car/manager/car-versions/${id}`, { cache: "no-store" });
+}
+
 export function createVehicle(payload) {
   return apiFetch("/car/car-versions", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function createVehicleStyle(payload) {
+  return apiFetch("/car/car-styles", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function createVehicleSeries(payload) {
+  return apiFetch("/car/car-series", { method: "POST", body: JSON.stringify(payload) });
 }
 
 export function updateVehicle(id, payload) {
@@ -26,6 +38,10 @@ export function saveVehicleSpecification(id, payload) {
 
 export function saveVehiclePrice(id, payload) {
   return apiFetch(`/car/car-versions/${id}/prices`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+export function deleteVehiclePrice(id, exteriorColorId, interiorColorId) {
+  return apiFetch(`/car/car-versions/${id}/prices${buildQuery({ exteriorColorId, interiorColorId })}`, { method: "DELETE" });
 }
 
 export function addVehicleGallery(id, payload) {

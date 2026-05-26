@@ -5,11 +5,13 @@ import com.tayota.operationservice.dto.request.car.CarArticleRequestDTO;
 import com.tayota.operationservice.dto.request.car.DealershipRequestDTO;
 import com.tayota.operationservice.dto.response.car.AccessoryResponseDTO;
 import com.tayota.operationservice.dto.response.car.CarArticleResponseDTO;
+import com.tayota.operationservice.dto.response.car.CarVersionDetailResponseDTO;
 import com.tayota.operationservice.dto.response.car.CarVersionItemResponseDTO;
 import com.tayota.operationservice.dto.response.car.DealershipResponseDTO;
 import com.tayota.operationservice.dto.response.car.PaginationResponseDTO;
 import com.tayota.operationservice.service.car.AccessoryService;
 import com.tayota.operationservice.service.car.ArticleService;
+import com.tayota.operationservice.service.car.CarCatalogService;
 import com.tayota.operationservice.service.car.CarVersionService;
 import com.tayota.operationservice.service.car.DealershipService;
 import jakarta.validation.Valid;
@@ -25,6 +27,7 @@ import java.util.List;
 @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
 public class ManagerContentController {
     private final CarVersionService carVersionService;
+    private final CarCatalogService carCatalogService;
     private final AccessoryService accessoryService;
     private final ArticleService articleService;
     private final DealershipService dealershipService;
@@ -32,6 +35,11 @@ public class ManagerContentController {
     @GetMapping("/car-versions")
     public ApiResponse<List<CarVersionItemResponseDTO>> getCarVersions() {
         return ApiResponse.success(200, "Lấy danh sách phiên bản quản trị thành công.", carVersionService.getCarVersionsForManagement());
+    }
+
+    @GetMapping("/car-versions/{carVersionId}")
+    public ApiResponse<CarVersionDetailResponseDTO> getCarVersionDetail(@PathVariable String carVersionId) {
+        return ApiResponse.success(200, "Lấy chi tiết phiên bản quản trị thành công.", carCatalogService.getCarVersionDetailForManagement(carVersionId));
     }
 
     @GetMapping("/accessories")

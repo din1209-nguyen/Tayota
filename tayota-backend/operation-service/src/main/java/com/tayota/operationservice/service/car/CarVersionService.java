@@ -96,6 +96,7 @@ public class CarVersionService {
                 .name(requestDTO.getName())
                 .salePercent(requestDTO.getSalePercent())
                 .modelYear(requestDTO.getModelYear())
+                .imageUrl(requestDTO.getImageUrl())
                 .videoUrl(requestDTO.getVideoUrl())
                 .visible(requestDTO.getVisible() == null || requestDTO.getVisible())
                 .build();
@@ -127,6 +128,7 @@ public class CarVersionService {
         carVersion.setName(requestDTO.getName());
         carVersion.setSalePercent(requestDTO.getSalePercent());
         carVersion.setModelYear(requestDTO.getModelYear());
+        carVersion.setImageUrl(requestDTO.getImageUrl());
         carVersion.setVideoUrl(requestDTO.getVideoUrl());
         if (requestDTO.getVisible() != null) {
             carVersion.setVisible(requestDTO.getVisible());
@@ -184,6 +186,11 @@ public class CarVersionService {
     @Transactional
     public CarPriceResponseDTO savePrice(String carVersionId, CarPriceRequestDTO request) {
         CarVersion carVersion = findCarVersion(carVersionId);
+        if (hasText(request.getExteriorColorName()) || hasText(request.getInteriorColorName())) {
+            ExteriorColor exteriorColor = resolveExteriorColor(request);
+            InteriorColor interiorColor = resolveInteriorColor(request);
+            return saveCarPrice(carVersion, request, exteriorColor, interiorColor);
+        }
         UUID exteriorId = parseUuid(request.getExteriorColorId(), "Id màu ngoại thất không hợp lệ.");
         UUID interiorId = parseUuid(request.getInteriorColorId(), "Id màu nội thất không hợp lệ.");
         ExteriorColor exteriorColor = exteriorColorRepository.findById(exteriorId)
@@ -197,6 +204,47 @@ public class CarVersionService {
         price.setExImageUrl(request.getExImageUrl());
         price.setInImageUrl(request.getInImageUrl());
         return carPriceMapper.toResponse(carPriceRepository.save(price));
+    }
+
+    private CarPriceResponseDTO saveCarPrice(
+            CarVersion carVersion,
+            CarPriceRequestDTO request,
+            ExteriorColor exteriorColor,
+            InteriorColor interiorColor
+    ) {
+        UUID exteriorId = exteriorColor.getId();
+        UUID interiorId = interiorColor.getId();
+        CarPriceId id = new CarPriceId(carVersion.getId(), exteriorId, interiorId);
+        CarPrice price = carPriceRepository.findById(id).orElseGet(() -> CarPrice.builder()
+                .id(id).carVersion(carVersion).exteriorColor(exteriorColor).interiorColor(interiorColor).build());
+        price.setPrice(request.getPrice());
+        price.setExImageUrl(request.getExImageUrl());
+        price.setInImageUrl(request.getInImageUrl());
+        return carPriceMapper.toResponse(carPriceRepository.save(price));
+    }
+
+    private ExteriorColor resolveExteriorColor(CarPriceRequestDTO request) {
+        if (hasText(request.getExteriorColorId())) {
+            UUID exteriorId = parseUuid(request.getExteriorColorId(), "Id màu ngoại thất không hợp lệ.");
+            return exteriorColorRepository.findById(exteriorId)
+                    .orElseThrow(() -> new CustomException(404, "Không tìm thấy màu ngoại thất."));
+        }
+
+        String colorName = request.getExteriorColorName().trim();
+        return exteriorColorRepository.findByColorNameIgnoreCase(colorName)
+                .orElseGet(() -> exteriorColorRepository.save(ExteriorColor.builder().colorName(colorName).build()));
+    }
+
+    private InteriorColor resolveInteriorColor(CarPriceRequestDTO request) {
+        if (hasText(request.getInteriorColorId())) {
+            UUID interiorId = parseUuid(request.getInteriorColorId(), "Id màu nội thất không hợp lệ.");
+            return interiorColorRepository.findById(interiorId)
+                    .orElseThrow(() -> new CustomException(404, "Không tìm thấy màu nội thất."));
+        }
+
+        String colorName = request.getInteriorColorName().trim();
+        return interiorColorRepository.findByColorNameIgnoreCase(colorName)
+                .orElseGet(() -> interiorColorRepository.save(InteriorColor.builder().colorName(colorName).build()));
     }
 
     @CacheEvict(value = {"catalogStylesWithVersions", "catalogVersionDetail"}, allEntries = true)
@@ -268,7 +316,28 @@ public class CarVersionService {
                 .orElse(null);
 
         // Trả về response rút gọn cho phiên bản xe
-        return carVersionMapper.toItem(carVersion, minPrice, null);
+        List<CarPrice> prices = carPriceRepository.findByCarVersionId(carVersion.getId());
+        String imageUrl = hasText(carVersion.getImageUrl())
+                ? carVersion.getImageUrl()
+                : prices.stream()
+                        .map(CarPrice::getExImageUrl)
+                        .filter(this::hasText)
+                        .findFirst()
+                        .orElseGet(() -> carGalleryRepository.findByCarVersionId(carVersion.getId()).stream()
+                                .map(CarGallery::getImageUrl)
+                                .filter(this::hasText)
+                                .findFirst()
+                                .orElse(null));
+
+        CarSpecificationResponseDTO specification = carSpecificationRepository.findById(carVersion.getId())
+                .map(carSpecificationMapper::toResponse)
+                .orElse(null);
+
+        return carVersionMapper.toItem(carVersion, minPrice, imageUrl, specification);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     // Chuyển chuỗi id sang UUID

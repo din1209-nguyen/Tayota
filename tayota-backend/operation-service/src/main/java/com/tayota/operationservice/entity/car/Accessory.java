@@ -3,6 +3,7 @@ package com.tayota.operationservice.entity.car;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -45,6 +46,7 @@ public class Accessory {
     String type;
 
     @Builder.Default
+    @ColumnDefault("true")
     @Column(name = "is_visible", nullable = false)
     boolean visible = true;
 }

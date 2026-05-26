@@ -124,7 +124,12 @@ public class CarCatalogService {
         CarVersion carVersion = findVisibleCarVersion(carVersionId);
 
         // Chuyển phiên bản xe sang response chi tiết.
-        return toVersionDetail(carVersion);
+        return toVersionDetail(carVersion, false);
+    }
+
+    public CarVersionDetailResponseDTO getCarVersionDetailForManagement(String carVersionId) {
+        CarVersion carVersion = findCarVersion(carVersionId);
+        return toVersionDetail(carVersion, true);
     }
 
     // Lấy thông số kỹ thuật của xe.
@@ -196,15 +201,18 @@ public class CarCatalogService {
                 .min(Comparator.naturalOrder())
                 .orElse(null);
 
-        // Lấy ảnh đại diện từ bảng giá, nếu không có thì lấy từ gallery.
-        String imageUrl = prices.stream()
-                .map(CarPrice::getExImageUrl)
-                .filter(StringUtils::hasText)
-                .findFirst()
-                .orElseGet(() -> carGalleryRepository.findByCarVersionId(carVersion.getId()).stream()
-                        .map(CarGallery::getImageUrl)
+        // Lấy ảnh đại diện riêng của xe, fallback về dữ liệu media cũ nếu chưa có.
+        String imageUrl = StringUtils.hasText(carVersion.getImageUrl())
+                ? carVersion.getImageUrl()
+                : prices.stream()
+                        .map(CarPrice::getExImageUrl)
+                        .filter(StringUtils::hasText)
                         .findFirst()
-                        .orElse(null));
+                        .orElseGet(() -> carGalleryRepository.findByCarVersionId(carVersion.getId()).stream()
+                                .map(CarGallery::getImageUrl)
+                                .filter(StringUtils::hasText)
+                                .findFirst()
+                                .orElse(null));
 
         // Trả về response rút gọn cho danh sách phiên bản xe
         CarSpecificationResponseDTO specification = carSpecificationRepository.findById(carVersion.getId())
@@ -214,7 +222,7 @@ public class CarCatalogService {
     }
 
     // Chuyển phiên bản xe sang response chi tiết.
-    private CarVersionDetailResponseDTO toVersionDetail(CarVersion carVersion) {
+    private CarVersionDetailResponseDTO toVersionDetail(CarVersion carVersion, boolean includeHiddenArticles) {
         // Lấy id phiên bản xe để truy vấn các bảng liên quan.
         UUID id = carVersion.getId();
 
@@ -236,7 +244,9 @@ public class CarCatalogService {
                 .toList();
 
         // Lấy danh sách bài viết giới thiệu phiên bản xe.
-        List<CarArticleResponseDTO> articles = carArticleRepository.findByCarVersionIdAndPublishedTrue(id)
+        List<CarArticleResponseDTO> articles = (includeHiddenArticles
+                ? carArticleRepository.findByCarVersionId(id)
+                : carArticleRepository.findByCarVersionIdAndPublishedTrue(id))
                 .stream()
                 .map(carArticleMapper::toResponse)
                 .toList();

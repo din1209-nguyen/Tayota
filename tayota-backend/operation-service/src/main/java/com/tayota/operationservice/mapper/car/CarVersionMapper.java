@@ -65,6 +65,7 @@ public class CarVersionMapper {
                 carVersion.getName(),
                 carVersion.getModelYear(),
                 carVersion.getSalePercent(),
+                carVersion.getImageUrl(),
                 carVersion.getVideoUrl(),
                 carSeries,
                 specification,

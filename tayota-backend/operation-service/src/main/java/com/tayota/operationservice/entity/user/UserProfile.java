@@ -33,6 +33,7 @@ public class UserProfile {
 
     String address;
 
+    @Column(length = 1024)
     String avatarUrl;
 
     @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY, optional = false)

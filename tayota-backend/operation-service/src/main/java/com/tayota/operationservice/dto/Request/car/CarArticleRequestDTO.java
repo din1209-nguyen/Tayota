@@ -19,7 +19,7 @@ public class CarArticleRequestDTO {
     @NotBlank(message = "Nội dung không được để trống")
     private String content;
 
-    @Size(max = 255, message = "Đường dẫn ảnh không được vượt quá 255 ký tự")
+    @Size(max = 1024, message = "Đường dẫn ảnh không được vượt quá 1024 ký tự")
     private String imageUrl;
 
     private Boolean published = true;

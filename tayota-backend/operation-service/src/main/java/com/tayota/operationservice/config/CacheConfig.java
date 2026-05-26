@@ -1,6 +1,9 @@
 package com.tayota.operationservice.config;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.cache.Cache;
+import org.springframework.cache.annotation.CachingConfigurer;
+import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
@@ -17,13 +20,13 @@ import java.util.Map;
 
 @Configuration
 @ConditionalOnProperty(prefix = "common.redis", name = "enabled", havingValue = "true", matchIfMissing = true)
-public class CacheConfig {
+public class CacheConfig implements CachingConfigurer {
 
     // Khai báo cache manager riêng cho nhóm dữ liệu xe để cấu hình TTL theo từng nhóm cache
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory, ObjectMapper objectMapper) {
         // Tạo serializer JSON dùng chung với RedisTemplate trong common code
-        RedisSerializer<Object> jsonRedisSerializer = new LegacyAwareJsonRedisSerializer(objectMapper);
+        RedisSerializer<Object> jsonRedisSerializer = new LegacyAwareJsonRedisSerializer(objectMapper, false);
 
         // Tạo cấu hình cache mặc định
         RedisCacheConfiguration defaultConfig = createCacheConfiguration(jsonRedisSerializer, Duration.ofMinutes(30));
@@ -48,6 +51,37 @@ public class CacheConfig {
                 .cacheDefaults(defaultConfig)
                 .withInitialCacheConfigurations(cacheConfigs)
                 .build();
+    }
+
+    @Bean
+    @Override
+    public CacheErrorHandler errorHandler() {
+        return new CacheErrorHandler() {
+            @Override
+            public void handleCacheGetError(RuntimeException exception, Cache cache, Object key) {
+                try {
+                    cache.evictIfPresent(key);
+                }
+                catch (RuntimeException ignored) {
+                    // Bỏ qua lỗi xóa cache để request tiếp tục đọc dữ liệu từ database.
+                }
+            }
+
+            @Override
+            public void handleCachePutError(RuntimeException exception, Cache cache, Object key, Object value) {
+                // Bỏ qua lỗi ghi cache để Redis không làm hỏng luồng nghiệp vụ chính.
+            }
+
+            @Override
+            public void handleCacheEvictError(RuntimeException exception, Cache cache, Object key) {
+                // Bỏ qua lỗi xóa cache đơn lẻ khi Redis tạm thời không sẵn sàng.
+            }
+
+            @Override
+            public void handleCacheClearError(RuntimeException exception, Cache cache) {
+                // Bỏ qua lỗi xóa toàn bộ cache khi Redis tạm thời không sẵn sàng.
+            }
+        };
     }
 
     // Tạo cấu hình cache theo TTL truyền vào

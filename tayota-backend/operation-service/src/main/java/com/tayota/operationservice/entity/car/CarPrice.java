@@ -38,9 +38,9 @@ public class CarPrice {
     @Column(nullable = false, precision = 15, scale = 2)
     BigDecimal price;
 
-    @Column(name = "ex_image_url", length = 255)
+    @Column(name = "ex_image_url", length = 1024)
     String exImageUrl;
 
-    @Column(name = "in_image_url", length = 255)
+    @Column(name = "in_image_url", length = 1024)
     String inImageUrl;
 }

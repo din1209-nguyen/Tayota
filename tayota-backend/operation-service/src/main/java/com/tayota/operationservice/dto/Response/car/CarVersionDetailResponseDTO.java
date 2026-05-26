@@ -14,6 +14,7 @@ public class CarVersionDetailResponseDTO {
     private String name;
     private Integer modelYear;
     private BigDecimal salePercent;
+    private String imageUrl;
     private String videoUrl;
     private CarSeriesResponseDTO carSeries;
     private CarSpecificationResponseDTO specification;

@@ -25,7 +25,10 @@ public class CarVersionRequestDTO {
     @Min(value = 1900, message = "Năm mẫu xe không hợp lệ")
     private Integer modelYear;
 
-    @Size(max = 255, message = "Đường dẫn video không được vượt quá 255 ký tự")
+    @Size(max = 1024, message = "Đường dẫn ảnh không được vượt quá 1024 ký tự")
+    private String imageUrl;
+
+    @Size(max = 1024, message = "Đường dẫn video không được vượt quá 1024 ký tự")
     private String videoUrl;
 
     private Boolean visible = true;

@@ -84,7 +84,7 @@ Các công nghệ phụ là những thành phần hỗ trợ để mô hình RAG
 - Vấn đề giải quyết: Cần một service API riêng để frontend, gateway và backend gọi chức năng chat, upload tài liệu, xem lịch sử và kiểm tra health.
 - Yêu cầu: Nhẹ, dễ viết REST API, validate dữ liệu tốt, có OpenAPI/Swagger.
 - Lựa chọn: Chọn FastAPI vì phù hợp Python AI stack hơn Flask/Django/Spring Boot cho một microservice nhỏ.
-- Vai trò trong RAG: Cung cấp các endpoint như `/api/v1/chat`, `/api/v1/documents`, `/api/v1/sessions`.
+- Vai trò trong RAG: Là lớp giao tiếp và điều phối của AI Service, nhận yêu cầu từ gateway, validate dữ liệu bằng Pydantic, chuyển câu hỏi hoặc tài liệu vào các module RAG phù hợp, chuẩn hóa response và xử lý lỗi để frontend không phụ thuộc trực tiếp vào logic truy xuất, embedding hay LLM.
 
 ### 2.2 MongoDB và GridFS
 

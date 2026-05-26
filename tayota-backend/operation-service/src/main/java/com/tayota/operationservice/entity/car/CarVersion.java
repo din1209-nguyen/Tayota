@@ -3,6 +3,7 @@ package com.tayota.operationservice.entity.car;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
@@ -38,10 +39,14 @@ public class CarVersion {
     @Column(name = "model_year", nullable = false)
     Integer modelYear;
 
-    @Column(length = 255)
+    @Column(name = "image_url", length = 1024)
+    String imageUrl;
+
+    @Column(length = 1024)
     String videoUrl;
 
     @Builder.Default
+    @ColumnDefault("true")
     @Column(name = "is_visible", nullable = false)
     boolean visible = true;
 

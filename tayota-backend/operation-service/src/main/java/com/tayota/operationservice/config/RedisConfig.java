@@ -58,7 +58,7 @@ public class RedisConfig {
     @ConditionalOnMissingBean(name = "cacheManager")
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory, ObjectMapper objectMapper) {
         // Tạo ObjectMapper tùy chỉnh cho Cache Manager
-        RedisSerializer<Object> jsonRedisSerializer = new LegacyAwareJsonRedisSerializer(objectMapper);
+        RedisSerializer<Object> jsonRedisSerializer = new LegacyAwareJsonRedisSerializer(objectMapper, false);
 
         // Thiết lập cấu hình mặc định cho toàn bộ cache
         RedisCacheConfiguration cacheConfig = RedisCacheConfiguration.defaultCacheConfig()

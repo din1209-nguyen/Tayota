@@ -26,6 +26,6 @@ public class CarGallery {
     @JoinColumn(name = "car_version_id", nullable = false)
     CarVersion carVersion;
 
-    @Column(name = "image_url", nullable = false, length = 255)
+    @Column(name = "image_url", nullable = false, length = 1024)
     String imageUrl;
 }

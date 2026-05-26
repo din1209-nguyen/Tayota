@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import MediaUploadField from "@/components/dashboard/MediaUploadField";
 import {
   getAdminUser,
   getAdminUserDevices,
@@ -290,7 +291,12 @@ export default function AdminUserDetail({ userId }) {
             </select>
             <input className="field" name="birthDate" type="date" value={profileForm.birthDate} onChange={updateProfileField} />
             <input className="field" name="address" value={profileForm.address} onChange={updateProfileField} placeholder="Địa chỉ" maxLength="255" />
-            <input className="field" name="avatarUrl" value={profileForm.avatarUrl} onChange={updateProfileField} placeholder="URL ảnh đại diện" maxLength="255" />
+            <MediaUploadField
+              label="Ảnh đại diện"
+              value={profileForm.avatarUrl}
+              onChange={(value) => setProfileForm((current) => ({ ...current, avatarUrl: value }))}
+              context="USER_AVATAR"
+            />
             <button className="btn btn-primary" disabled={busyAction === "profile"} type="submit">Lưu hồ sơ</button>
           </form>
         </section>

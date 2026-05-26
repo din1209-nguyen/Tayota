@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, Literal
 
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, FastAPI, File, Header, HTTPException, Query, Request, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -18,13 +18,26 @@ from mongo_storage import (
     MongoStorageError,
 )
 from rag import GROQ_API_KEY, LLM_PROVIDER, answer
-from vector_database import delete_document_chunks, get_collection_info, ingest_documents
+from vector_database import (
+    DOCUMENT_CATEGORY_BASIC_ADVICE,
+    DOCUMENT_CATEGORY_HILUX,
+    DOCUMENT_CATEGORY_MPV,
+    DOCUMENT_CATEGORY_SEDAN,
+    DOCUMENT_CATEGORY_SUMMARY,
+    DOCUMENT_CATEGORY_SUV,
+    DOCUMENT_CATEGORY_WIGO,
+    delete_document_chunks,
+    get_collection_info,
+    infer_document_category,
+    ingest_documents,
+)
 
 load_dotenv()
 
 
 class Source(BaseModel):
     source: str | None = None
+    document_category: str | None = None
     page: int | None = None
     score: float | None = None
     chunk_id: str | None = None
@@ -89,6 +102,7 @@ class DocumentItem(BaseModel):
     document_id: str
     filename: str
     status: str
+    document_category: str | None = None
     content_type: str | None = None
     size_bytes: int = 0
     sha256: str | None = None
@@ -143,6 +157,15 @@ app = FastAPI(title="Toyota RAG AI Service", version="1.0.0")
 DEFAULT_DOCUMENT_STATUSES = ("uploaded", "indexing", "indexed", "failed")
 GATEWAY_SECRET_HEADER = "X-Gateway-Secret"
 GATEWAY_INTERNAL_SECRET = os.getenv("GATEWAY_INTERNAL_SECRET", "change-me-gateway-internal-secret")
+DOCUMENT_CATEGORIES = {
+    DOCUMENT_CATEGORY_BASIC_ADVICE,
+    DOCUMENT_CATEGORY_SUMMARY,
+    DOCUMENT_CATEGORY_HILUX,
+    DOCUMENT_CATEGORY_SEDAN,
+    DOCUMENT_CATEGORY_SUV,
+    DOCUMENT_CATEGORY_WIGO,
+    DOCUMENT_CATEGORY_MPV,
+}
 
 
 @app.middleware("http")
@@ -168,6 +191,16 @@ def _safe_filename(filename: str) -> str:
     return name
 
 
+def _normalize_document_category(category: str | None, filename: str) -> str | None:
+    """Chuẩn hóa category tài liệu upload hoặc suy ra từ filename khi chưa truyền."""
+    normalized = category.strip().casefold() if category else None
+    if normalized:
+        if normalized not in DOCUMENT_CATEGORIES:
+            raise HTTPException(status_code=400, detail="Unsupported document category.")
+        return normalized
+    return infer_document_category(filename)
+
+
 def _has_admin_role(user_role: str | None) -> bool:
     """Kiểm tra header role có chứa quyền ADMIN hay không."""
     if not user_role:
@@ -190,6 +223,9 @@ def _qdrant_metadata_for_path(path: Path, document: Dict[str, Any]) -> Dict[str,
     """Tạo metadata gắn với file tạm để ingest chunk vào Qdrant."""
     document_id = document.get("document_id")
     gridfs_file_id = str(document.get("gridfs_file_id"))
+    document_category = document.get("document_category") or infer_document_category(
+        str(document.get("filename") or "")
+    )
     return {
         str(path.resolve()): {
             "document_id": document_id,
@@ -197,6 +233,7 @@ def _qdrant_metadata_for_path(path: Path, document: Dict[str, Any]) -> Dict[str,
             "source_id": f"mongo-{document_id}",
             "source_key": f"gridfs/{gridfs_file_id}",
             "source_path": f"gridfs://{gridfs_file_id}",
+            "document_category": document_category,
         }
     }
 
@@ -342,6 +379,7 @@ def get_session_messages(
 def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    document_category: str | None = Form(default=None),
     rebuild: bool = False,
     user_id: str | None = Header(default=None, alias="X-User-Id"),
     user_role: str | None = Header(default=None, alias="X-User-Role"),
@@ -349,6 +387,7 @@ def upload_document(
     """Nhận file PDF từ admin và xếp lịch ingest tài liệu."""
     _require_admin(user_role)
     filename = _safe_filename(file.filename or "")
+    normalized_category = _normalize_document_category(document_category, filename)
 
     job_id = str(uuid.uuid4())
     try:
@@ -357,6 +396,7 @@ def upload_document(
             content_type=file.content_type,
             file_obj=file.file,
             uploaded_by_user_id=user_id,
+            document_category=normalized_category,
         )
         status = DocumentJobStatus(
             job_id=job_id,

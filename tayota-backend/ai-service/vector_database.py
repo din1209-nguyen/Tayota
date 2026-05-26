@@ -29,6 +29,41 @@ EMBED_DIM = 384
 BATCH_SIZE = 100
 T = TypeVar("T")
 
+DOCUMENT_CATEGORY_SUMMARY = "summary"
+DOCUMENT_CATEGORY_BASIC_ADVICE = "basic_advice"
+DOCUMENT_CATEGORY_HILUX = "hilux"
+DOCUMENT_CATEGORY_SEDAN = "sedan"
+DOCUMENT_CATEGORY_SUV = "suv"
+DOCUMENT_CATEGORY_WIGO = "wigo"
+DOCUMENT_CATEGORY_MPV = "mpv"
+
+
+def infer_document_category(source: str | None) -> str | None:
+    """Suy ra category ổn định từ tên/source tài liệu khi chưa có metadata rõ ràng."""
+    if not source:
+        return None
+    normalized = source.casefold()
+    if normalized == DOCUMENT_CATEGORY_SUMMARY or "summary" in normalized:
+        return DOCUMENT_CATEGORY_SUMMARY
+    if "tu van co ban" in normalized or "tư vấn cơ bản" in normalized:
+        return DOCUMENT_CATEGORY_BASIC_ADVICE
+    if "hilux" in normalized or "ban tai" in normalized or "bán tải" in normalized:
+        return DOCUMENT_CATEGORY_HILUX
+    if "sedan" in normalized or any(model in normalized for model in ("vios", "camry", "altis")):
+        return DOCUMENT_CATEGORY_SEDAN
+    if "suv" in normalized or any(
+        model in normalized
+        for model in ("fortuner", "land cruiser", "prado", "yaris cross", "corolla cross", "raize")
+    ):
+        return DOCUMENT_CATEGORY_SUV
+    if "wigo" in normalized or "hatchback" in normalized:
+        return DOCUMENT_CATEGORY_WIGO
+    if "da dung" in normalized or "đa dụng" in normalized or any(
+        model in normalized for model in ("mpv", "avanza", "veloz", "innova", "alphard")
+    ):
+        return DOCUMENT_CATEGORY_MPV
+    return None
+
 
 def _qdrant_hint() -> str:
     """Tạo hướng dẫn khắc phục khi không kết nối được Qdrant."""
@@ -91,12 +126,17 @@ def create_collection(recreate: bool = False) -> bool:
 def _chunk_payload(chunk: Dict[str, Any]) -> Dict[str, Any]:
     """Chuyển chunk nội bộ thành payload lưu trong Qdrant."""
     metadata = chunk.get("metadata", {})
+    source = metadata.get("source")
+    document_category = metadata.get("document_category") or infer_document_category(
+        f"{source or ''}\n{chunk.get('content') or ''}"
+    )
     return {
         "chunk_id": chunk["chunk_id"],
         "content": chunk["content"],
-        "source": metadata.get("source"),
+        "source": source,
         "source_id": metadata.get("source_id"),
         "source_path": metadata.get("source_path"),
+        "document_category": document_category,
         "page": metadata.get("page"),
         "total_pages": metadata.get("total_pages"),
         "chunk_index": metadata.get("chunk_index"),
@@ -138,10 +178,11 @@ def search(
     top_k: int = 5,
     score_threshold: float = 0.4,
     source_names: List[str] | None = None,
+    document_categories: List[str] | None = None,
 ) -> List[Dict[str, Any]]:
     """Tìm các chunk gần nhất trong Qdrant theo vector truy vấn."""
     client = get_client()
-    query_filter = _source_filter(source_names)
+    query_filter = _source_filter(source_names, document_categories)
 
     if hasattr(client, "query_points"):
         results = _qdrant_call(
@@ -222,6 +263,7 @@ def search_neighbor_chunks(
 def scroll_chunks(
     *,
     source_names: List[str] | None = None,
+    document_categories: List[str] | None = None,
     limit: int = 1000,
 ) -> List[Dict[str, Any]]:
     """Scroll chunk từ Qdrant, tùy chọn lọc theo danh sách source."""
@@ -230,7 +272,7 @@ def scroll_chunks(
         "scroll chunks",
         lambda: client.scroll(
             collection_name=COLLECTION,
-            scroll_filter=_source_filter(source_names),
+            scroll_filter=_source_filter(source_names, document_categories),
             limit=limit,
             with_payload=True,
             with_vectors=False,
@@ -239,19 +281,37 @@ def scroll_chunks(
     return [_point_payload_result(p.payload, score=0.0) for p in points]
 
 
-def _source_filter(source_names: List[str] | None) -> Filter | None:
-    """Tạo filter Qdrant theo trường source nếu có danh sách source."""
-    query_filter = None
-    if source_names:
-        query_filter = Filter(
-            must=[
-                FieldCondition(
-                    key="source",
-                    match=MatchAny(any=source_names),
-                )
-            ]
+def _source_filter(
+    source_names: List[str] | None,
+    document_categories: List[str] | None = None,
+) -> Filter | None:
+    """Tạo filter Qdrant theo category ổn định, kèm fallback source cũ nếu có."""
+    source_names = [source for source in (source_names or []) if source]
+    document_categories = [
+        category for category in (document_categories or []) if category
+    ]
+    if not source_names and not document_categories:
+        return None
+
+    conditions = []
+    if document_categories:
+        conditions.append(
+            FieldCondition(
+                key="document_category",
+                match=MatchAny(any=document_categories),
+            )
         )
-    return query_filter
+    if source_names:
+        conditions.append(
+            FieldCondition(
+                key="source",
+                match=MatchAny(any=source_names),
+            )
+        )
+
+    if len(conditions) == 1:
+        return Filter(must=conditions)
+    return Filter(should=conditions)
 
 
 def _point_payload_result(payload: Dict[str, Any], score: float = 1.0) -> Dict[str, Any]:
@@ -262,6 +322,10 @@ def _point_payload_result(payload: Dict[str, Any], score: float = 1.0) -> Dict[s
         "page": payload["page"],
         "source": payload["source"],
         "source_id": payload.get("source_id"),
+        "document_category": payload.get("document_category")
+        or infer_document_category(
+            f"{payload.get('source') or ''}\n{payload.get('content') or ''}"
+        ),
         "chunk_id": payload.get("chunk_id"),
         "chunk_index": payload.get("chunk_index"),
         "char_start": payload.get("char_start"),
@@ -366,6 +430,7 @@ def upsert_summary_chunk(car_names: List[str]) -> None:
                         "source": "summary",
                         "source_id": "summary",
                         "source_path": None,
+                        "document_category": DOCUMENT_CATEGORY_SUMMARY,
                         "page": 0,
                         "total_pages": 0,
                         "chunk_index": -1,

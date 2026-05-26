@@ -194,6 +194,7 @@ Lưu metadata của file PDF admin upload. Nội dung PDF thật nằm trong Gri
 | `document_id` | `string` | Có | UUID do app sinh, dùng làm khóa nghiệp vụ. |
 | `gridfs_file_id` | `ObjectId` | Có | Trỏ đến `ai_pdfs.files._id`. |
 | `filename` | `string` | Có | Tên file PDF đã chuẩn hóa bằng `Path(filename).name`. |
+| `document_category` | `string/null` | Không | Nhóm tài liệu ổn định dùng để filter RAG; nếu không truyền thì service tự suy ra từ filename/content. |
 | `content_type` | `string` | Có | Thường là `application/pdf`. |
 | `size_bytes` | `int` | Có | Kích thước file upload. |
 | `sha256` | `string` | Có | Hash SHA-256 của nội dung PDF. |
@@ -277,6 +278,7 @@ Schema phần tử trong `sources[]`:
 | Field | Kiểu | Mô tả |
 | --- | --- | --- |
 | `source` | `string/null` | Tên PDF/source trong Qdrant payload. |
+| `document_category` | `string/null` | Nhóm tài liệu ổn định dùng để lọc RAG, ví dụ `basic_advice`, `summary`, `suv`, `sedan`. |
 | `page` | `int/null` | Trang PDF. |
 | `score` | `float/null` | Điểm truy xuất sau search/rerank. |
 | `chunk_id` | `string/null` | Khóa chunk trong Qdrant payload. |
@@ -303,6 +305,7 @@ Lưu metadata file binary.
 | `metadata.document_id` | `string` | Trùng `ai_documents.document_id`. |
 | `metadata.uploaded_by_user_id` | `string/null` | User id admin upload. |
 | `metadata.sha256` | `string` | Hash SHA-256 của PDF. |
+| `metadata.document_category` | `string/null` | Snapshot category tài liệu nếu có khi upload. |
 
 ### `ai_pdfs.chunks`
 
@@ -334,6 +337,7 @@ Payload của mỗi point:
 | `source` | `string/null` | Tên tài liệu, thường là filename PDF hoặc `summary`. |
 | `source_id` | `string/null` | Id nguồn ổn định, ví dụ `mongo-{document_id}` khi ingest từ GridFS. |
 | `source_path` | `string/null` | Đường dẫn nguồn; với GridFS là `gridfs://{gridfs_file_id}`. |
+| `document_category` | `string/null` | Nhóm tài liệu ổn định để lọc retrieval thay vì phụ thuộc exact filename. |
 | `page` | `int/null` | Trang PDF. |
 | `total_pages` | `int/null` | Tổng số trang của PDF. |
 | `chunk_index` | `int/null` | Thứ tự chunk trong trang. |
@@ -347,6 +351,7 @@ Point đặc biệt `summary_all_cars`:
 
 - `source = "summary"`
 - `source_id = "summary"`
+- `document_category = "summary"`
 - `page = 0`
 - `chunk_index = -1`
 - Thường không có `document_id` và `gridfs_file_id`.
@@ -394,7 +399,7 @@ Code hiện tại chưa khai báo index MongoDB trong source. Khi thiết kế E
 | `ai_chat_messages` | `session_id`, `created_at` | Non-unique compound | List messages theo session theo thứ tự thời gian. |
 | `ai_pdfs.chunks` | `files_id`, `n` | GridFS standard | Đọc file theo thứ tự chunk. |
 | Qdrant `atbm_httt` | `document_id` payload index | Payload index | Xóa/lọc chunk theo tài liệu. |
-| Qdrant `atbm_httt` | `source`, `source_id`, `page`, `chunk_index` payload index | Payload index | Search theo source và lấy neighbor chunks. |
+| Qdrant `atbm_httt` | `document_category`, `source`, `source_id`, `page`, `chunk_index` payload index | Payload index | Search theo nhóm tài liệu ổn định, fallback source cũ và lấy neighbor chunks. |
 
 ## Những điểm không nên vẽ như bảng chính
 

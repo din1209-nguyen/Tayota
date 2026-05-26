@@ -112,6 +112,7 @@ class MongoDocumentStore:
         content_type: str | None,
         file_obj: BinaryIO,
         uploaded_by_user_id: Optional[str] = None,
+        document_category: Optional[str] = None,
     ) -> Dict[str, object]:
         """Lưu PDF upload vào GridFS và metadata vào MongoDB."""
         document_id = str(uuid.uuid4())
@@ -137,6 +138,7 @@ class MongoDocumentStore:
                         "document_id": document_id,
                         "uploaded_by_user_id": uploaded_by_user_id,
                         "sha256": sha256.hexdigest(),
+                        "document_category": document_category,
                     },
                 )
                 metadata = {
@@ -148,6 +150,7 @@ class MongoDocumentStore:
                     "sha256": sha256.hexdigest(),
                     "uploaded_at": now,
                     "uploaded_by_user_id": uploaded_by_user_id,
+                    "document_category": document_category,
                     "status": "uploaded",
                 }
                 self.documents.insert_one(metadata)

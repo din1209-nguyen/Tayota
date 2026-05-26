@@ -21,10 +21,22 @@ from typing import List, Dict, Any
 from groq import Groq
 
 from embed import embed_query
-from vector_database import search, scroll_chunks, search_neighbor_chunks
+from vector_database import (
+    DOCUMENT_CATEGORY_BASIC_ADVICE,
+    DOCUMENT_CATEGORY_HILUX,
+    DOCUMENT_CATEGORY_MPV,
+    DOCUMENT_CATEGORY_SEDAN,
+    DOCUMENT_CATEGORY_SUMMARY,
+    DOCUMENT_CATEGORY_SUV,
+    DOCUMENT_CATEGORY_WIGO,
+    infer_document_category,
+    search,
+    scroll_chunks,
+    search_neighbor_chunks,
+)
 from intent_classifier import classify_intent
 from business_rules import rules_engine
-from slot_extractor import empty_slots, extract_slots, should_extract_slots
+from slot_extractor import extract_slots, should_extract_slots
 from conversation_state_manager import state_manager, ConversationState
 from logic_smart_car_consultant import smart_consultant
 
@@ -46,21 +58,30 @@ LIST_CONTEXT_TOP_K = 15
 MAX_CONTEXT_CHUNKS = 12
 MAX_CONTEXT_CHARS = 10000
 
-BASIC_ADVICE_DOCUMENT_SOURCE = "file tư vấn cơ bản.pdf"
-SUMMARY_DOCUMENT_SOURCE = "summary"
-GENERAL_DOCUMENT_SOURCES = [BASIC_ADVICE_DOCUMENT_SOURCE, SUMMARY_DOCUMENT_SOURCE]
-VEHICLE_DOCUMENT_SOURCES = [
-    "Toyota HILUX .pdf",
-    "TOYOTA SEDAN.pdf",
-    "TOYOTA SUV.pdf",
-    "TOYOTA WIGO.pdf",
-    "TOYOTA ĐA DỤNG.pdf",
+GENERAL_DOCUMENT_CATEGORIES = [
+    DOCUMENT_CATEGORY_BASIC_ADVICE,
+    DOCUMENT_CATEGORY_SUMMARY,
 ]
-HYBRID_DOCUMENT_SOURCES = [
-    BASIC_ADVICE_DOCUMENT_SOURCE,
-    SUMMARY_DOCUMENT_SOURCE,
-    *VEHICLE_DOCUMENT_SOURCES,
+VEHICLE_DOCUMENT_CATEGORIES = [
+    DOCUMENT_CATEGORY_HILUX,
+    DOCUMENT_CATEGORY_SEDAN,
+    DOCUMENT_CATEGORY_SUV,
+    DOCUMENT_CATEGORY_WIGO,
+    DOCUMENT_CATEGORY_MPV,
 ]
+HYBRID_DOCUMENT_CATEGORIES = [
+    *GENERAL_DOCUMENT_CATEGORIES,
+    *VEHICLE_DOCUMENT_CATEGORIES,
+]
+LEGACY_DOCUMENT_SOURCES_BY_CATEGORY = {
+    DOCUMENT_CATEGORY_BASIC_ADVICE: ["file tư vấn cơ bản.pdf"],
+    DOCUMENT_CATEGORY_SUMMARY: ["summary"],
+    DOCUMENT_CATEGORY_HILUX: ["Toyota HILUX .pdf"],
+    DOCUMENT_CATEGORY_SEDAN: ["TOYOTA SEDAN.pdf"],
+    DOCUMENT_CATEGORY_SUV: ["TOYOTA SUV.pdf"],
+    DOCUMENT_CATEGORY_WIGO: ["TOYOTA WIGO.pdf"],
+    DOCUMENT_CATEGORY_MPV: ["TOYOTA ĐA DỤNG.pdf"],
+}
 TOYOTA_MODEL_KEYWORDS = [
     "alphard",
     "altis",
@@ -192,6 +213,7 @@ Nguyên tắc chung:
 - Luôn trả lời bằng tiếng Việt, giọng văn chuyên nghiệp, thân thiện.
 - Chỉ dùng thông tin có trong dữ liệu tham khảo và ngữ cảnh hội thoại được cung cấp.
 - Không bịa giá, thông số, phiên bản, trang bị hoặc khuyến mãi.
+- Không đề cập đến bất kì xe nào khác ngoài dữ liệu tham khảo.
 - Nếu dữ liệu không đủ, nói rõ phần nào chưa có thông tin thay vì suy đoán.
 - Không tự đặt câu hỏi follow-up ở cuối câu trả lời; hệ thống sẽ xử lý việc hỏi thêm.
 Phạm vi dữ liệu tham khảo:
@@ -387,19 +409,34 @@ def _contains_vehicle_keyword(normalized_text: str) -> bool:
     )
 
 
-def _unique_sources(sources: List[str]) -> List[str]:
-    """Loại bỏ source trùng lặp nhưng vẫn giữ nguyên thứ tự ưu tiên."""
+def _unique_values(values: List[str]) -> List[str]:
+    """Loại bỏ giá trị trùng lặp nhưng vẫn giữ nguyên thứ tự ưu tiên."""
     unique = []
     seen = set()
-    for source in sources:
-        if source and source not in seen:
-            seen.add(source)
-            unique.append(source)
+    for value in values:
+        if value and value not in seen:
+            seen.add(value)
+            unique.append(value)
     return unique
 
 
-def _preferred_sources_for_query(query: str, state: ConversationState) -> List[str]:
-    """Suy ra danh sách tài liệu nên ưu tiên dựa trên keyword trong query/ngữ cảnh."""
+def _legacy_sources_for_categories(categories: List[str]) -> List[str]:
+    """Lấy source cũ theo category để hỗ trợ dữ liệu Qdrant chưa re-index."""
+    sources = []
+    for category in categories:
+        sources.extend(LEGACY_DOCUMENT_SOURCES_BY_CATEGORY.get(category, []))
+    return _unique_values(sources)
+
+
+def _document_category_for_doc(doc: Dict[str, Any]) -> str | None:
+    """Lấy category ổn định của chunk, fallback bằng source/content khi cần."""
+    return doc.get("document_category") or infer_document_category(
+        f"{doc.get('source') or ''}\n{doc.get('content') or ''}"
+    )
+
+
+def _preferred_document_categories_for_query(query: str, state: ConversationState) -> List[str]:
+    """Suy ra nhóm tài liệu nên ưu tiên dựa trên keyword trong query/ngữ cảnh."""
     lookup_text = _normalize_lookup_text(query)
     previous_user_turns = [
         msg["content"]
@@ -411,14 +448,14 @@ def _preferred_sources_for_query(query: str, state: ConversationState) -> List[s
             f"{query}\n" + "\n".join(previous_user_turns)
         )
 
-    source_rules = [
+    category_rules = [
         (
             [
                 "hilux",
                 "ban tai",
                 "pickup",
             ],
-            "Toyota HILUX .pdf",
+            DOCUMENT_CATEGORY_HILUX,
         ),
         (
             [
@@ -428,7 +465,7 @@ def _preferred_sources_for_query(query: str, state: ConversationState) -> List[s
                 "corolla",
                 "altis",
             ],
-            "TOYOTA SEDAN.pdf",
+            DOCUMENT_CATEGORY_SEDAN,
         ),
         (
             [
@@ -440,14 +477,14 @@ def _preferred_sources_for_query(query: str, state: ConversationState) -> List[s
                 "corolla cross",
                 "raize",
             ],
-            "TOYOTA SUV.pdf",
+            DOCUMENT_CATEGORY_SUV,
         ),
         (
             [
                 "wigo",
                 "hatchback",
             ],
-            "TOYOTA WIGO.pdf",
+            DOCUMENT_CATEGORY_WIGO,
         ),
         (
             [
@@ -461,12 +498,12 @@ def _preferred_sources_for_query(query: str, state: ConversationState) -> List[s
                 "innova",
                 "alphard",
             ],
-            "TOYOTA ĐA DỤNG.pdf",
+            DOCUMENT_CATEGORY_MPV,
         ),
     ]
 
     preferred = []
-    for keywords, source in source_rules:
+    for keywords, category in category_rules:
         if any(
             _contains_lookup_keyword(lookup_text, keyword)
             for keyword in keywords
@@ -475,8 +512,8 @@ def _preferred_sources_for_query(query: str, state: ConversationState) -> List[s
                 and _contains_lookup_keyword(lookup_text, "corolla cross")
             )
         ):
-            preferred.append(source)
-    return _unique_sources(preferred)
+            preferred.append(category)
+    return _unique_values(preferred)
 
 
 def _mentioned_specific_models(query: str, state: ConversationState) -> List[str]:
@@ -511,7 +548,8 @@ def _is_overview_query(query: str) -> bool:
 def _lexical_support_docs(
     query: str,
     state: ConversationState,
-    source_names: List[str],
+    document_categories: List[str],
+    legacy_source_names: List[str],
     *,
     limit: int = 8,
 ) -> List[Dict[str, Any]]:
@@ -520,7 +558,11 @@ def _lexical_support_docs(
     if not mentioned_models:
         return []
 
-    all_docs = scroll_chunks(source_names=source_names, limit=1000)
+    all_docs = scroll_chunks(
+        source_names=legacy_source_names,
+        document_categories=document_categories,
+        limit=1000,
+    )
     scored_docs = []
     overview_query = _is_overview_query(query)
 
@@ -642,33 +684,38 @@ def _document_scope_for_query(
     query: str,
     state: ConversationState,
 ) -> tuple[str, List[str]]:
-    """Chọn scope tài liệu và danh sách source được phép retrieve cho query."""
+    """Chọn scope tài liệu và danh sách category được phép retrieve cho query."""
     if _is_general_information_query(query):
-        return "general", GENERAL_DOCUMENT_SOURCES
+        return "general", GENERAL_DOCUMENT_CATEGORIES
 
-    preferred_sources = _preferred_sources_for_query(query, state)
+    preferred_categories = _preferred_document_categories_for_query(query, state)
     if _mentions_vehicle_detail(query, state):
-        if preferred_sources:
-            return "vehicle", preferred_sources
+        if preferred_categories:
+            return "vehicle", preferred_categories
 
         return (
             "vehicle",
-            VEHICLE_DOCUMENT_SOURCES,
+            VEHICLE_DOCUMENT_CATEGORIES,
         )
 
     if _is_offroad_need(query, state) or _is_need_based_query(query, state):
-        return "hybrid", HYBRID_DOCUMENT_SOURCES
+        return "hybrid", HYBRID_DOCUMENT_CATEGORIES
 
-    return "general", GENERAL_DOCUMENT_SOURCES
+    return "general", GENERAL_DOCUMENT_CATEGORIES
 
 
 def _is_offroad_need(query: str, state: ConversationState) -> bool:
     """Xác định người dùng có nhu cầu đi địa hình/off-road không."""
-    q = query.lower()
-    if any(keyword in q for keyword in OFFROAD_KEYWORDS):
+    normalized_query = _normalize_lookup_text(query)
+    normalized_offroad_keywords = [
+        _normalize_lookup_text(keyword) for keyword in OFFROAD_KEYWORDS
+    ]
+    if any(keyword in normalized_query for keyword in normalized_offroad_keywords):
         return True
     slots = state.get_filled_slots()
-    return slots.get("region") == "địa hình" or slots.get("purpose") == "off-road"
+    normalized_region = _normalize_lookup_text(str(slots.get("region") or ""))
+    normalized_purpose = _normalize_lookup_text(str(slots.get("purpose") or ""))
+    return normalized_region == "dia hinh" or normalized_purpose == "off-road"
 
 
 def _expand_retrieval_query_for_domain(query: str, offroad_need: bool) -> str:
@@ -693,9 +740,9 @@ def _rerank_retrieved_docs(
     offroad_need: bool,
     limit: int,
 ) -> List[Dict[str, Any]]:
-    """Rerank chunk truy xuất theo source ưu tiên, model được nhắc và nhu cầu domain."""
+    """Rerank chunk truy xuất theo category ưu tiên, model được nhắc và nhu cầu domain."""
     normalized_query = _normalize_lookup_text(query)
-    preferred_sources = set(_preferred_sources_for_query(query, state))
+    preferred_categories = set(_preferred_document_categories_for_query(query, state))
     mentioned_models = _mentioned_specific_models(query, state)
     catalog_query = _is_general_catalog_query(query)
     need_based_query = _is_need_based_query(query, state)
@@ -704,15 +751,16 @@ def _rerank_retrieved_docs(
 
     for doc in retrieved:
         source = doc.get("source") or ""
+        document_category = _document_category_for_doc(doc)
         normalized_doc = _normalize_lookup_text(
             f"{source}\n{doc.get('content') or ''}"
         )
         text = f"{source}\n{doc.get('content') or ''}".lower()
         score = float(doc.get("score") or 0)
 
-        if source in preferred_sources:
+        if document_category in preferred_categories:
             score += 0.35
-        elif preferred_sources and source in VEHICLE_DOCUMENT_SOURCES:
+        elif preferred_categories and document_category in VEHICLE_DOCUMENT_CATEGORIES:
             score -= 0.05
 
         if mentioned_models:
@@ -726,15 +774,15 @@ def _rerank_retrieved_docs(
                     term in normalized_doc for term in HIGH_VALUE_VEHICLE_TERMS
                 ):
                     score += 0.25
-            elif source in VEHICLE_DOCUMENT_SOURCES:
+            elif document_category in VEHICLE_DOCUMENT_CATEGORIES:
                 score -= 0.35
 
         if doc.get("lexical_match"):
             score += 0.25
 
-        if catalog_query and source == SUMMARY_DOCUMENT_SOURCE:
+        if catalog_query and document_category == DOCUMENT_CATEGORY_SUMMARY:
             score += 0.45
-        if need_based_query and source == BASIC_ADVICE_DOCUMENT_SOURCE:
+        if need_based_query and document_category == DOCUMENT_CATEGORY_BASIC_ADVICE:
             score += 0.08
 
         for keyword in TOYOTA_MODEL_KEYWORDS:
@@ -760,6 +808,7 @@ def _rerank_retrieved_docs(
                 score -= 0.25
 
         adjusted = dict(doc)
+        adjusted["document_category"] = document_category
         adjusted["rerank_score"] = score
         adjusted["document_scope"] = document_scope
         ranked.append(adjusted)
@@ -899,10 +948,8 @@ def answer(
     # ── Bước 3: Slot extraction ───────────────────────────────────────────────
     use_slot_context = should_extract_slots(intent)
     if use_slot_context:
-        new_slots = extract_slots(query)
-        state.update_slots(new_slots)
+        state.update_slots(extract_slots(query))
     else:
-        new_slots = empty_slots()
         print(f"Slot extraction skipped for intent: {intent}")
     state.update_stage(intent)
     print(f"📦 Slots filled: {state.get_filled_slots()}")
@@ -915,10 +962,8 @@ def answer(
     sources = []
     rag_context = ""
     offroad_need = _is_offroad_need(query, state)
-    document_scope, source_names = _document_scope_for_query(query, state)
-
-    # Bước 5: RAG retrieve
-
+    document_scope, document_categories = _document_scope_for_query(query, state)
+    legacy_source_names = _legacy_sources_for_categories(document_categories)
 
     if not prelim_decision.skip_rag:
         # Tăng top_k khi hỏi liệt kê
@@ -940,23 +985,30 @@ def answer(
             offroad_need=offroad_need,
         )
         print(
-            f"Document scope: {document_scope} | sources: {', '.join(source_names)}"
+            f"Document scope: {document_scope} | categories: {', '.join(document_categories)}"
         )
         query_vec = embed_query(retrieval_query)
         retrieved = search(
             query_vec,
             top_k=retrieval_top_k,
             score_threshold=0.35,
-            source_names=source_names,
+            source_names=legacy_source_names,
+            document_categories=document_categories,
         )
         if not retrieved:
             retrieved = search(
                 query_vec,
                 top_k=retrieval_top_k,
                 score_threshold=0.2,
-                source_names=source_names,
+                source_names=legacy_source_names,
+                document_categories=document_categories,
             )
-        lexical_docs = _lexical_support_docs(query, state, source_names)
+        lexical_docs = _lexical_support_docs(
+            query,
+            state,
+            document_categories,
+            legacy_source_names,
+        )
         retrieved = _merge_retrieval_candidates(retrieved, lexical_docs)
         retrieved = _rerank_retrieved_docs(
             retrieved,
@@ -973,6 +1025,7 @@ def answer(
             sources = [
                 {
                     "source": r.get("source"),
+                    "document_category": r.get("document_category"),
                     "page": r["page"],
                     "score": round(r["score"], 3),
                     "chunk_id": r.get("chunk_id"),
@@ -1084,8 +1137,8 @@ if __name__ == "__main__":
     import uuid
 
     SESSION_ID = str(uuid.uuid4())
-    print(f"🤖 Toyota RAG Chatbot  |  session: {SESSION_ID}")
-    print(f"🧠 LLM provider: {LLM_PROVIDER.upper()}  (model: {GROQ_MODEL})")
+    print(f" Toyota RAG Chatbot  |  session: {SESSION_ID}")
+    print(f" LLM provider: {LLM_PROVIDER.upper()}  (model: {GROQ_MODEL})")
     print("Lệnh đặc biệt: 'reset' | 'state' | 'exit'\n")
 
     while True:
@@ -1096,19 +1149,19 @@ if __name__ == "__main__":
             break
         if query.lower() == "reset":
             state_manager.reset(SESSION_ID)
-            print("🔄 Đã reset hội thoại.\n")
+            print(" Đã reset hội thoại.\n")
             continue
         if query.lower() == "state":
             s = state_manager.get(SESSION_ID)
-            print(f"📊 {s.summary() if s else 'Không có state'}\n")
+            print(f" {s.summary() if s else 'Không có state'}\n")
             continue
 
         result = answer(query, session_id=SESSION_ID)
         print(
-            f"\n🤖 ({result['model_used']}) [intent={result['intent']} | stage={result['stage']}]:"
+            f"\n ({result['model_used']}) [intent={result['intent']} | stage={result['stage']}]:"
         )
         print(result["answer"])
-        print(f"\n📦 Slots : {result['slots']}")
-        print(f"📚 Nguồn : {result['sources']}")
-        print(f"🔒 Rule  : {result['rule_triggered']}\n")
+        print(f"\n Slots : {result['slots']}")
+        print(f" Nguồn : {result['sources']}")
+        print(f" Rule  : {result['rule_triggered']}\n")
         print("-" * 60)

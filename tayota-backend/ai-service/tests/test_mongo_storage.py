@@ -104,12 +104,14 @@ def test_document_store_saves_pdf_metadata_and_gridfs_file():
         content_type="application/pdf",
         file_obj=BytesIO(b"%PDF-test"),
         uploaded_by_user_id="u1",
+        document_category="suv",
     )
 
     assert document["filename"] == "toyota.pdf"
     assert document["gridfs_file_id"] == "grid-1"
     assert document["size_bytes"] == len(b"%PDF-test")
     assert document["uploaded_by_user_id"] == "u1"
+    assert document["document_category"] == "suv"
     assert store.fake_bucket.files["grid-1"]["content"] == b"%PDF-test"
 
 

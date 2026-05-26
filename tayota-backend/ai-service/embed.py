@@ -51,12 +51,12 @@ def embed_query(query: str) -> List[float]:
 def embed_chunks(chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Thêm vector embedding vào mỗi chunk."""
     texts = [c["content"] for c in chunks]
-    print(f"🔢 Đang embed {len(texts)} chunks...")
+    print(f" Đang embed {len(texts)} chunks...")
 
     vectors = embed_texts(texts)
 
     for chunk, vec in zip(chunks, vectors):
         chunk["embedding"] = vec
 
-    print(f"✅ Đã embed xong {len(chunks)} chunks")
+    print(f" Đã embed xong {len(chunks)} chunks")
     return chunks

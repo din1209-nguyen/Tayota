@@ -1,56 +1,42 @@
 package com.tayota.operationservice.config;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CachingConfigurer;
+import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.cache.RedisCacheConfiguration;
-import org.springframework.data.redis.cache.RedisCacheManager;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.serializer.RedisSerializer;
-import org.springframework.data.redis.serializer.RedisSerializationContext;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
-import tools.jackson.databind.ObjectMapper;
+import org.springframework.cache.support.SimpleCacheManager;
 
 import java.time.Duration;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
 @Configuration
-@ConditionalOnProperty(prefix = "common.redis", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class CacheConfig implements CachingConfigurer {
 
-    // Khai báo cache manager riêng cho nhóm dữ liệu xe để cấu hình TTL theo từng nhóm cache
+    // Khai báo cache manager in-memory cho nhóm dữ liệu xe để cấu hình TTL theo từng nhóm cache.
     @Bean
-    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory, ObjectMapper objectMapper) {
-        // Tạo serializer JSON dùng chung với RedisTemplate trong common code
-        RedisSerializer<Object> jsonRedisSerializer = new LegacyAwareJsonRedisSerializer(objectMapper, false);
+    public CacheManager cacheManager() {
+        List<CaffeineCache> caches = new ArrayList<>();
+        caches.add(createCache("catalogStylesWithVersions", Duration.ofHours(2)));
+        caches.add(createCache("catalogVersionDetail", Duration.ofHours(1)));
+        caches.add(createCache("catalogSpecification", Duration.ofHours(6)));
+        caches.add(createCache("catalogVersionSearch", Duration.ofMinutes(15)));
+        caches.add(createCache("accessorySearch", Duration.ofMinutes(15)));
+        caches.add(createCache("accessoryDetail", Duration.ofMinutes(30)));
+        caches.add(createCache("physicalCarSearch", Duration.ofMinutes(2)));
+        caches.add(createCache("carStyleList", Duration.ofHours(2)));
+        caches.add(createCache("carStyleDetail", Duration.ofHours(2)));
+        caches.add(createCache("carSeriesList", Duration.ofHours(2)));
+        caches.add(createCache("carSeriesDetail", Duration.ofHours(2)));
+        caches.add(createCache("carVersionList", Duration.ofMinutes(30)));
 
-        // Tạo cấu hình cache mặc định
-        RedisCacheConfiguration defaultConfig = createCacheConfiguration(jsonRedisSerializer, Duration.ofMinutes(30));
-
-        // Tạo cấu hình TTL riêng cho từng cache
-        Map<String, RedisCacheConfiguration> cacheConfigs = new LinkedHashMap<>();
-        cacheConfigs.put("catalogStylesWithVersions", createCacheConfiguration(jsonRedisSerializer, Duration.ofHours(2)));
-        cacheConfigs.put("catalogVersionDetail", createCacheConfiguration(jsonRedisSerializer, Duration.ofHours(1)));
-        cacheConfigs.put("catalogSpecification", createCacheConfiguration(jsonRedisSerializer, Duration.ofHours(6)));
-        cacheConfigs.put("catalogVersionSearch", createCacheConfiguration(jsonRedisSerializer, Duration.ofMinutes(15)));
-        cacheConfigs.put("accessorySearch", createCacheConfiguration(jsonRedisSerializer, Duration.ofMinutes(15)));
-        cacheConfigs.put("accessoryDetail", createCacheConfiguration(jsonRedisSerializer, Duration.ofMinutes(30)));
-        cacheConfigs.put("physicalCarSearch", createCacheConfiguration(jsonRedisSerializer, Duration.ofMinutes(2)));
-        cacheConfigs.put("carStyleList", createCacheConfiguration(jsonRedisSerializer, Duration.ofHours(2)));
-        cacheConfigs.put("carStyleDetail", createCacheConfiguration(jsonRedisSerializer, Duration.ofHours(2)));
-        cacheConfigs.put("carSeriesList", createCacheConfiguration(jsonRedisSerializer, Duration.ofHours(2)));
-        cacheConfigs.put("carSeriesDetail", createCacheConfiguration(jsonRedisSerializer, Duration.ofHours(2)));
-        cacheConfigs.put("carVersionList", createCacheConfiguration(jsonRedisSerializer, Duration.ofMinutes(30)));
-
-        // Trả về RedisCacheManager với cấu hình TTL đã khai báo
-        return RedisCacheManager.builder(connectionFactory)
-                .cacheDefaults(defaultConfig)
-                .withInitialCacheConfigurations(cacheConfigs)
-                .build();
+        SimpleCacheManager cacheManager = new SimpleCacheManager();
+        cacheManager.setCaches(caches);
+        return cacheManager;
     }
 
     @Bean
@@ -69,30 +55,26 @@ public class CacheConfig implements CachingConfigurer {
 
             @Override
             public void handleCachePutError(RuntimeException exception, Cache cache, Object key, Object value) {
-                // Bỏ qua lỗi ghi cache để Redis không làm hỏng luồng nghiệp vụ chính.
+                // Bỏ qua lỗi ghi cache để cache hệ thống không làm hỏng luồng nghiệp vụ chính.
             }
 
             @Override
             public void handleCacheEvictError(RuntimeException exception, Cache cache, Object key) {
-                // Bỏ qua lỗi xóa cache đơn lẻ khi Redis tạm thời không sẵn sàng.
+                // Bỏ qua lỗi xóa cache đơn lẻ khi cache hệ thống tạm thời không sẵn sàng.
             }
 
             @Override
             public void handleCacheClearError(RuntimeException exception, Cache cache) {
-                // Bỏ qua lỗi xóa toàn bộ cache khi Redis tạm thời không sẵn sàng.
+                // Bỏ qua lỗi xóa toàn bộ cache khi cache hệ thống tạm thời không sẵn sàng.
             }
         };
     }
 
-    // Tạo cấu hình cache theo TTL truyền vào
-    private RedisCacheConfiguration createCacheConfiguration(
-            RedisSerializer<Object> jsonRedisSerializer,
-            Duration ttl
-    ) {
-        return RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(ttl)
-                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonRedisSerializer))
-                .disableCachingNullValues();
+    // Tạo cache in-memory theo TTL truyền vào.
+    private CaffeineCache createCache(String name, Duration ttl) {
+        return new CaffeineCache(name, Caffeine.newBuilder()
+                .expireAfterWrite(ttl)
+                .maximumSize(10_000)
+                .build(), false);
     }
 }

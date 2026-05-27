@@ -9,6 +9,7 @@ import com.tayota.operationservice.repository.user.ServiceAdvisorRepository;
 import com.tayota.operationservice.repository.user.UserProfileRepository;
 import com.tayota.operationservice.repository.user.UserRepository;
 import com.tayota.operationservice.repository.workorder.MechanicRepository;
+import com.tayota.operationservice.service.cache.SystemCacheService;
 import com.tayota.operationservice.service.auth.AuthService;
 import com.tayota.operationservice.service.notification.EmailService;
 import com.tayota.operationservice.util.JwtUtil;
@@ -20,7 +21,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -44,7 +44,7 @@ class AuthServiceTest {
     @Mock
     private UserRepository userRepository;
     @Mock
-    private RedisTemplate<String, Object> redisTemplate;
+    private SystemCacheService systemCacheService;
     @Mock
     private SessionUtil sessionUtil;
     @Mock
@@ -141,7 +141,7 @@ class AuthServiceTest {
         return new AuthService(
                 passwordEncoder,
                 userRepository,
-                redisTemplate,
+                systemCacheService,
                 sessionUtil,
                 authenticationManager,
                 jwtUtil,

@@ -539,6 +539,3 @@ def _build_state_manager():
 
 
 state_manager = _build_state_manager()
-
-# Backward-compatible names for existing imports/tests during transition.
-RedisStateError = MongoStateError

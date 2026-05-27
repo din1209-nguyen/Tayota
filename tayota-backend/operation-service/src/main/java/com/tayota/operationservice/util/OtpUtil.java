@@ -1,9 +1,9 @@
 package com.tayota.operationservice.util;
 
 import com.tayota.operationservice.exception.CustomException;
+import com.tayota.operationservice.service.cache.SystemCacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.security.SecureRandom;
@@ -14,7 +14,7 @@ import java.time.Duration;
 @ConditionalOnProperty(prefix = "common.otp", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class OtpUtil {
     private final SecureRandom secureRandom = new SecureRandom();
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final SystemCacheService systemCacheService;
 
     // Thời gian chờ (cooldown) bắt buộc giữa 2 lần gửi OTP
     private final Duration OTP_RESEND_COOLDOWN_DURATION = Duration.ofSeconds(60);
@@ -35,7 +35,7 @@ public class OtpUtil {
         // Key để lưu thời gian cooldown theo IP
         String resendCooldownKey = otpKeyPrefix + "cooldown:" + subject + ":" + clientIp;
         // Lấy thời gian còn lại của cooldown
-        Long expireTime = redisTemplate.getExpire(resendCooldownKey);
+        Long expireTime = systemCacheService.getExpire(resendCooldownKey);
 
         // Nếu còn thời gian cooldown, trả về lỗi yêu cầu người dùng đợi
         if (expireTime != null && expireTime > 0) {
@@ -46,12 +46,12 @@ public class OtpUtil {
         // Key để lưu số lần gửi OTP theo IP
         String rateLimitKey = otpKeyPrefix + "limit:" + subject + ":" + clientIp;
         // Tăng số lần gửi OTP lên
-        Long otpRequestCount = redisTemplate.opsForValue().increment(rateLimitKey);
+        Long otpRequestCount = systemCacheService.increment(rateLimitKey);
 
         if (otpRequestCount != null) {
             // Lần đầu tiên gọi, set thời gian hết hạn cho key cooldown
             if (otpRequestCount == 1) {
-                redisTemplate.expire(rateLimitKey, cooldownDuration);
+                systemCacheService.expire(rateLimitKey, cooldownDuration);
             }
             // Kiểm tra số lần gửi OTP vượt quá giới hạn
             else if (otpRequestCount > maxRequest) {
@@ -62,12 +62,12 @@ public class OtpUtil {
         // Tạo mã OTP để xác thực đặt lại mật khẩu
         String otp = generateOtp(otpLength);
 
-        // Lưu thời gian cooldown tiếp theo được gửi OTP vào Redis
-        redisTemplate.opsForValue().set(resendCooldownKey, "cooldown", OTP_RESEND_COOLDOWN_DURATION);
+        // Lưu thời gian cooldown tiếp theo được gửi OTP vào cache hệ thống.
+        systemCacheService.put(resendCooldownKey, "cooldown", OTP_RESEND_COOLDOWN_DURATION);
 
-        // Lưu mã OTP vào Redis
+        // Lưu mã OTP vào cache hệ thống.
         String otpKey = otpKeyPrefix + subject + ":" + clientIp;
-        redisTemplate.opsForValue().set(otpKey, otp, otpExpiry);
+        systemCacheService.put(otpKey, otp, otpExpiry);
 
         // Trả mã OTP về
         return otp;
@@ -78,8 +78,8 @@ public class OtpUtil {
         // Key để lưu mã OTP theo IP
         String otpKey = otpKeyPrefix + subject + ":" + clientIp;
 
-        // Lấy mã OTP được lưu trong Redis
-        String storedOtp = (String) redisTemplate.opsForValue().get(otpKey);
+        // Lấy mã OTP được lưu trong cache hệ thống.
+        String storedOtp = (String) systemCacheService.get(otpKey);
 
         // Nếu mã OTP không tồn tại hoặc đã hết hạn, trả về lỗi
         if (storedOtp == null) {
@@ -89,24 +89,24 @@ public class OtpUtil {
         // Key để lưu số lần nhập sai OTP theo IP
         String failKey = otpKeyPrefix + "fail:" + subject + ":" + clientIp;
 
-        /* Kiểm tra nếu mã gửi lên không khớp với mã trong Redis */
+        /* Kiểm tra nếu mã gửi lên không khớp với mã trong cache hệ thống. */
         if (!storedOtp.equals(otp)) {
             // Tăng số lần nhập sai lên
-            Long failCount = redisTemplate.opsForValue().increment(failKey);
+            Long failCount = systemCacheService.increment(failKey);
 
             if (failCount != null) {
                 // Lần nhập sai đầu tiên, set thời gian sống (TTL) cho failKey bằng với TTL của OTP để tự động xoá
                 if (failCount == 1) {
-                    Long expire = redisTemplate.getExpire(otpKey);
+                    Long expire = systemCacheService.getExpire(otpKey);
                     if (expire != null && expire > 0) {
-                        redisTemplate.expire(failKey, Duration.ofSeconds(expire));
+                        systemCacheService.expire(failKey, Duration.ofSeconds(expire));
                     }
                 }
                 // Kiểm tra nếu nhập sai vượt quá số lần cho phép
                 else if (failCount > maxFailures) {
                     // Xoá OTP đi để bắt buộc người dùng yêu cầu mã mới
-                    redisTemplate.delete(otpKey);
-                    redisTemplate.delete(failKey);
+                    systemCacheService.delete(otpKey);
+                    systemCacheService.delete(failKey);
                     throw new CustomException(403, "Bạn đã nhập sai OTP quá nhiều lần. Vui lòng yêu cầu mã mới!");
                 }
             }
@@ -116,13 +116,13 @@ public class OtpUtil {
         }
 
         // Xoá thời gian tiếp theo được gửi OTP
-        redisTemplate.delete(otpKey);
-        // Xoá mã OTP khỏi Redis
-        redisTemplate.delete(failKey);
+        systemCacheService.delete(otpKey);
+        // Xoá mã OTP khỏi cache hệ thống.
+        systemCacheService.delete(failKey);
 
         // Xoá số lần gửi mã OTP theo IP
         // Có thể không cần xoá số lần gửi OTP tránh trường hợp spam tiếp
         String rateLimitKey = otpKeyPrefix + "limit:" + subject + ":" + clientIp;
-        redisTemplate.delete(rateLimitKey);
+        systemCacheService.delete(rateLimitKey);
     }
 }

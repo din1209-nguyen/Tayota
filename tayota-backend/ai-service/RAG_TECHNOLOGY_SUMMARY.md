@@ -90,7 +90,7 @@ Các công nghệ phụ là những thành phần hỗ trợ để mô hình RAG
 
 - Vấn đề giải quyết: Cần lưu session, lịch sử chat, metadata tài liệu, job index và file PDF gốc.
 - Yêu cầu: Lưu dữ liệu linh hoạt, hỗ trợ document dạng JSON, quản lý file PDF kèm metadata.
-- Lựa chọn: Chọn MongoDB/GridFS vì phù hợp dữ liệu hội thoại và tài liệu hơn Redis hoặc file system đơn thuần.
+- Lựa chọn: Chọn MongoDB/GridFS vì phù hợp dữ liệu hội thoại và tài liệu hơn cache tạm hoặc file system đơn thuần.
 - Vai trò trong RAG: Lưu trạng thái hội thoại, file PDF gốc, trạng thái index và log câu trả lời.
 
 ### 2.3 Qdrant

@@ -2,10 +2,10 @@ package com.tayota.operationservice.util;
 
 import com.tayota.operationservice.object.auth.TokenPair;
 import com.tayota.operationservice.object.auth.UserSession;
+import com.tayota.operationservice.service.cache.SystemCacheService;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
@@ -29,14 +29,13 @@ public class JwtUtil {
     @Value("${jwt.refresh-token-expiration}")
     private long jwtRefreshTokenExpirationMs;
 
-    // RedisTemplate để lưu trữ và truy xuất session người dùng (refresh-token hash) trong Redis
-    private final RedisTemplate<String, Object> redisTemplate;
-    // ObjectMapper để chuyển đổi giữa Object Java và JSON khi lưu trữ trong Redis
+    // Cache hệ thống để lưu trữ và truy xuất session người dùng.
+    private final SystemCacheService systemCacheService;
+    // ObjectMapper để chuyển đổi giữa Object Java và JSON khi cần đọc dữ liệu cũ từ cache hệ thống.
     private final ObjectMapper objectMapper;
 
-    public JwtUtil(@Value("${jwt.secret}") String secret, RedisTemplate<String, Object> redisTemplate, ObjectMapper objectMapper) {
-        // Khởi tạo RedisTemplate
-        this.redisTemplate = redisTemplate;
+    public JwtUtil(@Value("${jwt.secret}") String secret, SystemCacheService systemCacheService, ObjectMapper objectMapper) {
+        this.systemCacheService = systemCacheService;
         // Khởi tạo ObjectMapper
         this.objectMapper = objectMapper;
 
@@ -140,7 +139,7 @@ public class JwtUtil {
         }
     }
 
-    // Băm refresh-token bằng SHA-256 để lưu vào Redis (bảo mật hơn so với lưu token gốc)
+    // Băm refresh-token bằng SHA-256 để lưu vào cache hệ thống.
     public String hashRefreshToken(String token) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -152,18 +151,18 @@ public class JwtUtil {
         }
     }
 
-    // So sánh refresh-token người dùng gửi lên với refresh-token hash đã lưu trong Redis
+    // So sánh refresh-token người dùng gửi lên với refresh-token hash đã lưu trong cache hệ thống.
     // Sử dụng kỹ thuật so sánh thời gian cố định (Constant-time comparison) để chống tấn công Timing Attack
     public boolean compareToRefreshTokenHash(String refreshToken, String sessionKey) {
-        // Truy xuất session của người dùng trong Redis
-        UserSession savedSession = objectMapper.convertValue(redisTemplate.opsForValue().get(sessionKey), UserSession.class);
+        // Truy xuất session của người dùng trong cache hệ thống.
+        UserSession savedSession = objectMapper.convertValue(systemCacheService.get(sessionKey), UserSession.class);
 
         // Trường hợp session tồn tại và chưa hết hạn (TTL) thì mới so sánh hash
         if (savedSession != null) {
             // Lấy refresh-token hash từ session
             String refreshTokenHash = savedSession.getRefreshHash();
 
-            // Băm token người dùng gửi lên bằng cùng thuật toán (SHA-256) để có cùng định dạng với Redis
+            // Băm token người dùng gửi lên bằng cùng thuật toán (SHA-256) để có cùng định dạng với cache hệ thống.
             String hashedInput = hashRefreshToken(refreshToken);
 
             // Sử dụng MessageDigest.isEqual để so sánh mảng byte

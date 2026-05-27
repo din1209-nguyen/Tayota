@@ -2,10 +2,10 @@ package com.tayota.operationservice.util;
 
 import com.tayota.operationservice.dto.response.auth.DeviceResponseDTO;
 import com.tayota.operationservice.object.auth.UserSession;
+import com.tayota.operationservice.service.cache.SystemCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
@@ -19,7 +19,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 @Slf4j
 public class SessionUtil {
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final SystemCacheService systemCacheService;
     private final JwtUtil jwtUtil;
     private final ObjectMapper objectMapper;
 
@@ -35,7 +35,7 @@ public class SessionUtil {
 
         // Lấy danh sách các thiết bị
         String userSessionsKey = USER_SESSIONS_KEY + userId;
-        Set<Object> devices = redisTemplate.opsForSet().members(userSessionsKey);
+        Set<Object> devices = systemCacheService.setMembers(userSessionsKey);
 
         if (devices != null) {
             // Duyệt từng thiết bị trong danh sách user_sessions
@@ -44,8 +44,8 @@ public class SessionUtil {
                 String deviceId = d.toString();
                 String sessionKey = REFRESH_TOKEN_KEY + userId + ":" + deviceId;
 
-                // Lấy session người dùng từ Redis
-                Object sessionData = redisTemplate.opsForValue().get(sessionKey);
+                // Lấy session người dùng từ cache hệ thống.
+                Object sessionData = systemCacheService.get(sessionKey);
 
                 if (sessionData != null) {
                     // Chuyển đổi thành UserSession object
@@ -79,30 +79,30 @@ public class SessionUtil {
         // Tạo session value
         UserSession sessionValue = new UserSession(refreshHash, clientIp, userAgent, Instant.now());
 
-        // Lưu session vào Redis và đặt thời gian sống bằng thời gian refresh-token
-        redisTemplate.opsForValue().set(sessionKey, sessionValue, Duration.ofMillis(jwtRefreshTokenExpirationMs));
+        // Lưu session vào cache hệ thống và đặt thời gian sống bằng thời gian refresh-token.
+        systemCacheService.put(sessionKey, sessionValue, Duration.ofMillis(jwtRefreshTokenExpirationMs));
 
         // Thêm deviceId vào danh sách user_sessions và đặt thời gian sống bằng refresh-token
         String userSessionsKey = USER_SESSIONS_KEY + userId;
-        redisTemplate.opsForSet().add(userSessionsKey, deviceId);
-        redisTemplate.expire(userSessionsKey, Duration.ofMillis(jwtRefreshTokenExpirationMs));
+        systemCacheService.setAdd(userSessionsKey, deviceId);
+        systemCacheService.expire(userSessionsKey, Duration.ofMillis(jwtRefreshTokenExpirationMs));
     }
 
     // Xóa session của thiết bị người dùng
     public void deleteSession(String userId, String deviceId) {
         // Xoá session của deviceId
         String sessionKey = REFRESH_TOKEN_KEY + userId + ":" + deviceId;
-        redisTemplate.delete(sessionKey);
+        systemCacheService.delete(sessionKey);
 
         // Xoá deviceId khỏi danh sách user_sessions
         String userSessionsKey = USER_SESSIONS_KEY + userId;
-        redisTemplate.opsForSet().remove(userSessionsKey, deviceId);
+        systemCacheService.setRemove(userSessionsKey, deviceId);
     }
 
     // Xóa tất cả session của thiết bị người dùng
     public void deleteAllSessions(String userId) {
         /*
-        * Không nên duyệt toàn bộ Redis để tìm và xoá userId sẽ tốn kém
+        * Không nên duyệt toàn bộ cache hệ thống để tìm và xoá userId sẽ tốn kém.
         * Nên ta tạo danh sách thiết bị (user_sessions) để dễ truy xuất từng deviceId và xoá
         */
 
@@ -110,7 +110,7 @@ public class SessionUtil {
         String userSessionsKey = USER_SESSIONS_KEY + userId;
 
         // Lấy danh sách các thiết bị người dùng
-        Set<Object> devices = redisTemplate.opsForSet().members(userSessionsKey);
+        Set<Object> devices = systemCacheService.setMembers(userSessionsKey);
 
         // Duyệt từng thiết bị trong danh sách user_sessions
         if (devices != null) {
@@ -120,12 +120,12 @@ public class SessionUtil {
                 String sessionKey = REFRESH_TOKEN_KEY + userId + ":" + deviceId;
 
                 // Xóa session của từng deviceId
-                redisTemplate.delete(sessionKey);
+                systemCacheService.delete(sessionKey);
             }
         }
 
         // Xóa danh sách deviceId của người dùng
-        redisTemplate.delete(userSessionsKey);
+        systemCacheService.delete(userSessionsKey);
     }
 
     public int countActiveDevices(String userId) {
@@ -133,7 +133,7 @@ public class SessionUtil {
         String userSessionsKey = USER_SESSIONS_KEY + userId;
 
         // Lấy danh sách các thiết bị người dùng
-        Set<Object> devices = redisTemplate.opsForSet().members(userSessionsKey);
+        Set<Object> devices = systemCacheService.setMembers(userSessionsKey);
 
         // Nếu chưa tồn tại thiết bị nào đăng nhập
         if (devices == null) return 0;
@@ -147,13 +147,13 @@ public class SessionUtil {
             String deviceId = d.toString();
             String sessionKey = REFRESH_TOKEN_KEY + userId + ":" + deviceId;
 
-            // Kiểm tra nếu session của thiết bị này còn tồn tại trong Redis
-            if (redisTemplate.hasKey(sessionKey)) {
+            // Kiểm tra nếu session của thiết bị này còn tồn tại trong cache hệ thống.
+            if (systemCacheService.hasKey(sessionKey)) {
                 activeCount++;
             }
             else {
                 // Nếu session đã hết hạn hoặc bị xoá, xoá deviceId khỏi user_sessions để sạch dữ liệu không bị lỗi
-                redisTemplate.opsForSet().remove(userSessionsKey, deviceId);
+                systemCacheService.setRemove(userSessionsKey, deviceId);
             }
         }
         return activeCount;

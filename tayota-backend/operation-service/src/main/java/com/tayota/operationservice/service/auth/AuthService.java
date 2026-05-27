@@ -27,12 +27,12 @@ import com.tayota.operationservice.repository.user.UserRepository;
 import com.tayota.operationservice.exception.CustomException;
 import com.tayota.operationservice.service.notification.EmailService;
 import com.tayota.operationservice.repository.workorder.MechanicRepository;
+import com.tayota.operationservice.service.cache.SystemCacheService;
 import com.tayota.operationservice.util.*;
 import io.jsonwebtoken.Claims;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -51,14 +51,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final SystemCacheService systemCacheService;
     private final SessionUtil sessionUtil;
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
@@ -79,7 +78,7 @@ public class AuthService {
     @Value("${app.frontend.url:http://localhost:3000}")
     private String frontendUrl;
 
-    // Các key Redis
+    // Các key cache hệ thống.
     private static final String VERIFICATION_TOKEN_KEY = "auth:verification_token:";
     private static final String REFRESH_TOKEN_KEY = "auth:refresh:";
     private static final String FORGOT_PASSWORD_KEY = "auth:forgot_password:";
@@ -196,9 +195,9 @@ public class AuthService {
         /* Kiểm tra giới hạn số lần đăng ký tài khoản trên ngày với mỗi IP */
         String ipLimitKey = "auth:register:limit:ip:" + clientIp;
 
-        Integer registerCount = (Integer) redisTemplate.opsForValue().get(ipLimitKey);
+        Number registerCount = (Number) systemCacheService.get(ipLimitKey);
 
-        if (registerCount != null && registerCount > 5) {
+        if (registerCount != null && registerCount.intValue() > 5) {
             throw new CustomException(429, "Bạn đã đăng ký quá nhiều tài khoản. Vui lòng thử lại sau!");
         }
 
@@ -209,8 +208,8 @@ public class AuthService {
             throw new CustomException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
-        // Kiêm tra nếu đã tồn tại token đăng ký chưa xác thực trong Redis để tránh spam đăng ký nhiều lần trên cùng 1 email
-        if (redisTemplate.opsForValue().get(VERIFICATION_TOKEN_KEY + email) != null) {
+        // Kiêm tra nếu đã tồn tại token đăng ký chưa xác thực trong cache hệ thống để tránh spam đăng ký nhiều lần trên cùng 1 email.
+        if (systemCacheService.get(VERIFICATION_TOKEN_KEY + email) != null) {
             throw new CustomException(400, "Bạn đã đăng ký tài khoản. Vui lòng kiểm tra email để xác thực tài khoản!");
         }
 
@@ -230,14 +229,14 @@ public class AuthService {
             // Tạo token ngẫu nhiên
             String token = UUID.randomUUID().toString();
 
-            // Tạo key cho token trong Redis
+            // Tạo key cho token trong cache hệ thống.
             String key = VERIFICATION_TOKEN_KEY + email;
 
-            // Tạo Object chứa thông tin user và token để lưu vào Redis
+            // Tạo Object chứa thông tin user và token để lưu vào cache hệ thống.
              RegisterCacheData registeredUser = new RegisterCacheData(pendingUser, token);
 
-            // Lưu token vào Redis với thời gian hết hạn 1 tiếng
-            redisTemplate.opsForValue().set(key, registeredUser, 1, TimeUnit.HOURS);
+            // Lưu token vào cache hệ thống với thời gian hết hạn 1 tiếng.
+            systemCacheService.put(key, registeredUser, Duration.ofHours(1));
 
             // Tạo link xác thực
             String verificationLink = String.format("%s/verify-account?email=%s&token=%s", frontendUrl, email, token);
@@ -251,12 +250,12 @@ public class AuthService {
                             "Đường dẫn này sẽ hết hạn sau 1 tiếng. Vui lòng không chia sẻ mã này với bất kỳ ai."
             );
 
-            // Lưu số lần đăng ký lên 1 theo IP vào Redis để giới hạn
-            Long newRegisterCount = redisTemplate.opsForValue().increment(ipLimitKey);
+            // Lưu số lần đăng ký lên 1 theo IP vào cache hệ thống để giới hạn.
+            Long newRegisterCount = systemCacheService.increment(ipLimitKey);
 
             // Chỉ set expire cho lần đầu, các lần sau increment() giữ nguyên thời gian đếm ngược
             if (newRegisterCount != null && newRegisterCount == 1) {
-                redisTemplate.expire(ipLimitKey, Duration.ofHours(12));
+                systemCacheService.expire(ipLimitKey, Duration.ofHours(12));
             }
         }
         catch (Exception e) {
@@ -273,21 +272,21 @@ public class AuthService {
         if (!StringUtils.hasText(email) || !StringUtils.hasText(token)) {
             throw new CustomException(400, "Link xác thực không hợp lệ!");
         }
-        // Tạo key cho token trong Redis
+        // Tạo key cho token trong cache hệ thống.
         String key = VERIFICATION_TOKEN_KEY + email;
 
-        // Lấy dữ liệu người dùng đăng ký từ Redis
-        Object registeredUserObject = redisTemplate.opsForValue().get(key);
+        // Lấy dữ liệu người dùng đăng ký từ cache hệ thống.
+        Object registeredUserObject = systemCacheService.get(key);
 
-        // Kiểm tra nếu không tồn tại token trong Redis hoặc đã hết hạn
+        // Kiểm tra nếu không tồn tại token trong cache hệ thống hoặc đã hết hạn.
         if (registeredUserObject == null) {
             throw new CustomException(401, "Link xác thực không hợp lệ hoặc đã hết hạn. Vui lòng đăng ký lại tài khoản!");
         }
 
-        // Chuyển đổi Object lấy từ Redis về đúng kiểu dữ liệu RegisterCacheData
+        // Chuyển đổi Object lấy từ cache hệ thống về đúng kiểu dữ liệu RegisterCacheData.
         RegisterCacheData registeredUser = objectMapper.convertValue(registeredUserObject, RegisterCacheData.class);
 
-        // Kiểm tra token truyền vào có khớp với token đã lưu trong Redis
+        // Kiểm tra token truyền vào có khớp với token đã lưu trong cache hệ thống.
         String storedToken = registeredUser.getToken();
         if (!storedToken.equals(token)) {
             throw new CustomException(401, "Link xác thực không hợp lệ!");
@@ -297,8 +296,8 @@ public class AuthService {
         UserProfile userProfile = registeredUser.getUserProfile();
         userProfileRepository.save(userProfile);
 
-        // Xoá token khỏi Redis
-        redisTemplate.delete(key);
+        // Xoá token khỏi cache hệ thống.
+        systemCacheService.delete(key);
 
         // Gửi email thông báo xác thực thành công
         emailService.sendEmailAsync(
@@ -314,10 +313,10 @@ public class AuthService {
         // Tạo key cho mỗi email để đếm số lần đăng nhập thất bại
         String loginLimitKey = "auth:login:limit:fail:" + loginRequestDTO.getEmail() + ":" + clientIp;
         // Truy xuất số lần nhập sai
-        Integer failedCount = (Integer) redisTemplate.opsForValue().get(loginLimitKey);
+        Number failedCount = (Number) systemCacheService.get(loginLimitKey);
         
         // Kiểm tra số lần nhập sai vượt quá giới hạn
-        if (failedCount != null && failedCount > 5) {
+        if (failedCount != null && failedCount.intValue() > 5) {
             throw new CustomException(403, "Bạn đã nhập sai quá nhiều lần. Vui lòng thử lại sau!");
         }
 
@@ -332,7 +331,7 @@ public class AuthService {
             );
 
             /* Bước 3: Xoá số lần nhập sai mật khẩu */
-            redisTemplate.delete(loginLimitKey);
+            systemCacheService.delete(loginLimitKey);
 
             /* Bước 4: Lấy thông tin user sau khi đăng nhập thành công từ Spring Security */
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
@@ -349,12 +348,12 @@ public class AuthService {
         }
         // Bắt mọi lỗi xác thực để không lộ trạng thái tài khoản và tránh trả 500.
         catch (AuthenticationException e) {
-            // Lưu số lần nhập sai email lên 1 theo IP vào Redis
-            Long newFailedCount = redisTemplate.opsForValue().increment(loginLimitKey);
+            // Lưu số lần nhập sai email lên 1 theo IP vào cache hệ thống.
+            Long newFailedCount = systemCacheService.increment(loginLimitKey);
 
             // Chỉ set expire cho lần đầu, các lần sau increment() giữ nguyên thời gian đếm ngược
             if (newFailedCount != null && newFailedCount == 1) {
-                redisTemplate.expire(loginLimitKey, Duration.ofHours(2));
+                systemCacheService.expire(loginLimitKey, Duration.ofHours(2));
             }
 
             // Ném lỗi cả 2 email hoặc mật khẩu vì bảo mật
@@ -464,19 +463,19 @@ public class AuthService {
             // Xác thực và truy xuất deviceId từ refresh-token cũ
             String oldDeviceId = jwtUtil.getClaims(oldRefreshToken).get("deviceId", String.class);
 
-            // Tạo sessionKey để truy xuất hash refresh-token cũ trong Redis
+            // Tạo sessionKey để truy xuất hash refresh-token cũ trong cache hệ thống.
             String oldSessionKey = REFRESH_TOKEN_KEY + userId + ":" + oldDeviceId;
 
-            // Kiểm tra nếu hash trong Redis khớp với refresh token cũ thì xóa session cũ
+            // Kiểm tra nếu hash trong cache hệ thống khớp với refresh token cũ thì xóa session cũ.
             if (jwtUtil.compareToRefreshTokenHash(oldRefreshToken, oldSessionKey)) {
                 sessionUtil.deleteSession(userId, oldDeviceId);
             }
         }
 
         /* Bước 6: Kiểm tra giới hạn số thiết bị được đăng nhập trên 1 tài khoản */
-        // Lấy số lượng thiết bị đã đăng nhập và xoá các lần đăng nhập hết hạn của user đó từ Redis
+        // Lấy số lượng thiết bị đã đăng nhập và xoá các lần đăng nhập hết hạn của user đó từ cache hệ thống.
         // Kiểm tra nếu số thiết bị đã đăng nhập vượt quá 5 thì từ chối đăng nhập trên thiết bị mới
-        // !!! Khi truy cập đồng thời có thể vượt qua điều kiện, nên dùng Lua script hoặc Redis transaction
+        // !!! Khi truy cập đồng thời có thể vượt qua điều kiện, nên dùng lock nếu cần siết chặt giới hạn.
         if (sessionUtil.countActiveDevices(userId) >= 5) {
             throw new CustomException(403, "Bạn đã đăng nhập quá nhiều thiết bị");
         }
@@ -488,7 +487,7 @@ public class AuthService {
         // Tạo cặp token từ các thông tin trên
         TokenPair tokenPair = jwtUtil.generateTokenPair(userId, email, roles, deviceId);
 
-        /* Bước 8: Lưu session mới và thêm device vào danh sách user_sessions trong Redis*/
+        /* Bước 8: Lưu session mới và thêm device vào danh sách user_sessions trong cache hệ thống. */
         sessionUtil.saveSession(userId, deviceId, tokenPair.getRefreshToken(), clientIp, userAgent);
 
         // Trả cặp token về tầng Controller xử lý
@@ -514,7 +513,7 @@ public class AuthService {
         // Tạo sessionKey
         String sessionKey = REFRESH_TOKEN_KEY + userId + ":" + deviceId;
 
-        // Kiểm tra refresh-token hợp lệ hay không so với refresh-token được lưu trong Redis
+        // Kiểm tra refresh-token hợp lệ hay không so với refresh-token được lưu trong cache hệ thống.
         if (!jwtUtil.compareToRefreshTokenHash(oldRefreshToken, sessionKey)) {
             throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
@@ -693,7 +692,7 @@ public class AuthService {
         resetPassword(existingUser, userId, newPassword, clientIP, CHANGE_PASSWORD_KEY);
     }
 
-    // Xác thực mã OTP và tạo token xác thực lưu vào Redis
+    // Xác thực mã OTP và tạo token xác thực lưu vào cache hệ thống.
     private String verifyOTPAndCreateToken(String subject, String otp, String clientIP, String KEY_PREFIX, int maxFailures, Duration tokenExpiry) {
         // Kiểm tra OTP hợp lệ
         otpUtil.verifyOtp(subject, otp, clientIP, KEY_PREFIX, maxFailures);
@@ -701,17 +700,17 @@ public class AuthService {
         // Tạo token để xác thực đổi mật khẩu sau khi kiểm tra OTP hợp lệ
         String token = UUID.randomUUID().toString();
 
-        // Lưu token vào Redis để xác thực đổi mật khẩu và trả về cho người dùng
+        // Lưu token vào cache hệ thống để xác thực đổi mật khẩu và trả về cho người dùng.
         String tokenKey = KEY_PREFIX + "reset_password:" + subject + ":" + clientIP;
-        redisTemplate.opsForValue().set(tokenKey, token, tokenExpiry);
+        systemCacheService.put(tokenKey, token, tokenExpiry);
         return token;
     }
 
     // Kiểm tra token hợp lệ trước khi đặt lại mật khẩu
     private void checkTokenForResetPassword(String subject, String token, String clientIP, String KEY_PREFIX) {
-        // Lấy token đặt lại mật khẩu đã lưu trước đó trong Redis
+        // Lấy token đặt lại mật khẩu đã lưu trước đó trong cache hệ thống.
         String tokenKey = KEY_PREFIX + "reset_password:" + subject + ":" + clientIP;
-        String storedToken = (String) redisTemplate.opsForValue().get(tokenKey);
+        String storedToken = (String) systemCacheService.get(tokenKey);
 
         // Kiểm tra token hợp lệ
         if (storedToken == null || !storedToken.equals(token)) {
@@ -730,9 +729,9 @@ public class AuthService {
         User user = existingUser.get();
         userRepository.updatePasswordHashById(user.getId(), passwordEncoder.encode(newPassword));
 
-        // Xoá token đặt lại mật khẩu khỏi Redis
+        // Xoá token đặt lại mật khẩu khỏi cache hệ thống.
         String tokenKey = KEY_PREFIX + "reset_password:" + subject + ":" + clientIP;
-        redisTemplate.delete(tokenKey);
+        systemCacheService.delete(tokenKey);
 
         // Đăng xuất tất cả các thiết bị đã đăng nhập của user sau khi đổi mật khẩu để đảm bảo an toàn
         sessionUtil.deleteAllSessions(user.getId().toString());
@@ -823,9 +822,9 @@ public class AuthService {
             }
         }
 
-        // Kiểm tra thiết bị không tồn tại trong Redis
+        // Kiểm tra thiết bị không tồn tại trong cache hệ thống.
         String sessionKey = REFRESH_TOKEN_KEY + userId + ":" + deviceId;
-        if (!redisTemplate.hasKey(sessionKey)) {
+        if (!systemCacheService.hasKey(sessionKey)) {
             throw new CustomException(404, "Thiết bị không được tìm thấy");
         }
 

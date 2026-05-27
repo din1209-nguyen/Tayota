@@ -405,4 +405,4 @@ Code hiện tại chưa khai báo index MongoDB trong source. Khi thiết kế E
 
 - `.processed_pdfs.json`: cache runtime trên file system để bỏ qua PDF không đổi trong ingest incremental, không phải database nguồn sự thật.
 - `documents/*.pdf`: bộ PDF seed/local, không phải bảng runtime.
-- Redis: AI service hiện trả `redis = "unused"` trong health response và không dùng Redis để lưu state.
+- Cache hệ thống: AI service hiện trả `system_cache = "unused"` trong health response và không dùng cache hệ thống để lưu state.

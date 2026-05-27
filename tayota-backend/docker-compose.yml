@@ -59,22 +59,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- Redis ---
-  redis:
-    image: redis:7.2-alpine
-    volumes:
-      - ./docker-data/redis-data:/data
-    ports:
-      - "6379:6379"
-    networks:
-      - tayota-network
-    command: redis-server --appendonly yes # Bật chế độ lưu trữ dữ liệu lên đĩa (Mỗi khi có dữ liệu mới, ghi ngay một bản sao vào ổ cứng)
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
   # --- Qdrant Vector Database ---
   qdrant:
     image: qdrant/qdrant:v1.7.4
@@ -108,9 +92,6 @@ services:
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_IDS=${GOOGLE_CLIENT_IDS:-${GOOGLE_CLIENT_ID:-}}
       - GOOGLE_CSRF_REQUIRED=${GOOGLE_CSRF_REQUIRED:-false}
-      # --- Redis ---
-      - SPRING_DATA_REDIS_HOST=${REDIS_HOST:-redis}
-      - SPRING_DATA_REDIS_PORT=${REDIS_PORT:-6379}
       # --- Cookie ---
       - COOKIE_SECURE=${COOKIE_SECURE:-false}
       - COOKIE_SAME_SITE=${COOKIE_SAME_SITE:-Lax}
@@ -144,8 +125,6 @@ services:
       - CLOUDINARY_FOLDER_PREFIX=${CLOUDINARY_FOLDER_PREFIX:-tayota}
     depends_on:
       postgres-operation-service:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     networks:
       - tayota-network

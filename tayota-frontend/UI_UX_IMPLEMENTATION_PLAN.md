@@ -98,7 +98,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:9090
 - Không refresh cho login, register, verify-account, refresh-token hoặc logout.
 - Khi refresh thất bại, xóa session client để người dùng đăng nhập lại.
 
-Backend giữ refresh token trong cookie `HttpOnly` và xoay token bằng Redis;
+Backend giữ refresh token trong cookie `HttpOnly` và xoay token bằng cache hệ thống in-memory;
 frontend không truy cập hoặc lưu refresh token bằng JavaScript.
 
 ## 5. Quy tắc React và trạng thái dữ liệu

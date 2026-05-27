@@ -146,7 +146,7 @@ class HealthResponse(BaseModel):
     status: str
     qdrant: str
     mongo: str
-    redis: str = "unused"
+    system_cache: str = "unused"
     llm: str
 
 

@@ -15,6 +15,7 @@ import { getMe } from "@/lib/services/auth";
 import { getValidDashboardTab } from "@/lib/dashboard-nav";
 import { providerLabel, roleLabel, statusLabel, unwrapList } from "@/lib/format";
 import { getDashboardPath, setCurrentUser } from "@/lib/session";
+import ProfilePanel from "@/components/dashboard/ProfilePanel";
 
 const ROLES = ["ADMIN", "MANAGER", "SERVICE_ADVISOR", "ASSISTANT", "MECHANIC", "USER"];
 const USER_STATUSES = ["ACTIVE", "BANNED"];
@@ -268,7 +269,9 @@ export default function AdminDashboard() {
       </header>
       {message ? <div className="dashboard-feedback" aria-live="polite"><div className="status-box">{message}</div></div> : null}
 
-      {tab === "accounts" ? (
+      {tab === "profile" ? (
+        <ProfilePanel eyebrow="Quản trị viên" heading="Hồ sơ cá nhân" />
+      ) : tab === "accounts" ? (
         <div className={`admin-account-layout ${showCreateForm ? "" : "list-only"}`}>
           {showCreateForm ? <section className="ops-panel admin-create-panel">
             <div className="ops-panel-head">
@@ -374,7 +377,7 @@ export default function AdminDashboard() {
             </div>
           </section>
         </div>
-      ) : (
+      ) : tab === "documents" ? (
         <section className="ops-panel admin-documents">
           <div className="ops-panel-head">
             <div>
@@ -451,7 +454,7 @@ export default function AdminDashboard() {
             {!documentsLoading && !documents.length && !documentsError ? <div className="status-box">Chưa có tài liệu AI.</div> : null}
           </div>
         </section>
-      )}
+      ) : null}
     </div>
   );
 }

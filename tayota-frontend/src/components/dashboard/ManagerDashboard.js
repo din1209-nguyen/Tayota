@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import StaffChatWorkspace from "@/components/dashboard/StaffChatWorkspace";
 import ManagerContentPanels from "@/components/dashboard/ManagerContentPanels";
+import ProfilePanel from "@/components/dashboard/ProfilePanel";
 import { getMe } from "@/lib/services/auth";
 import { getValidDashboardTab } from "@/lib/dashboard-nav";
 import { getDashboardPath, setCurrentUser } from "@/lib/session";
@@ -50,7 +51,9 @@ export default function ManagerDashboard() {
           <p className="admin-workspace-copy">Cập nhật catalog, tin tức, đại lý, phụ kiện và tư vấn khách hàng.</p>
         </div>
       </header>
-      {tab === "chat" ? (
+      {tab === "profile" ? (
+        <ProfilePanel eyebrow="Manager" heading="Hồ sơ cá nhân" />
+      ) : tab === "chat" ? (
         <StaffChatWorkspace
           eyebrow="Manager"
           heading="Tư vấn khách hàng trực tuyến"

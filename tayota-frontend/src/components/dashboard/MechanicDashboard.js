@@ -16,6 +16,7 @@ import {
   updateServiceItem,
 } from "@/lib/services/workorders";
 import { getMyMechanicReviews, getMyMechanicReviewSummary } from "@/lib/services/reviews";
+import ProfilePanel from "@/components/dashboard/ProfilePanel";
 import { getValidDashboardTab } from "@/lib/dashboard-nav";
 import { formatVnd, statusLabel, unwrapList } from "@/lib/format";
 
@@ -501,7 +502,7 @@ export default function MechanicDashboard() {
     <div className="ops-grid workspace-tabs-layout mechanic-workspace">
       {message ? <div className="status-box wide">{message}</div> : null}
       {loading ? <div className="status-box wide">Đang tải phiếu dịch vụ...</div> : null}
-      {tab === "reviews" ? reviewPanel : ticket ? detailPanel : listPanel}
+      {tab === "profile" ? <ProfilePanel eyebrow="Kỹ thuật viên" heading="Hồ sơ cá nhân" /> : tab === "reviews" ? reviewPanel : ticket ? detailPanel : listPanel}
     </div>
   );
 }

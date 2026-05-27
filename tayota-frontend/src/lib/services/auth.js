@@ -24,6 +24,33 @@ export function verifyAccount(payload) {
   });
 }
 
+export function sendForgotPasswordOtp(email) {
+  const query = new URLSearchParams({ email }).toString();
+  return apiFetch(`/user/forgot-password/send-otp?${query}`, {
+    method: "POST",
+    skipAuthRefresh: true,
+    skipAuthToken: true,
+  });
+}
+
+export function verifyForgotPasswordOtp(payload) {
+  return apiFetch("/user/forgot-password/verify-otp", {
+    method: "POST",
+    body: JSON.stringify(payload),
+    skipAuthRefresh: true,
+    skipAuthToken: true,
+  });
+}
+
+export function resetForgotPassword(payload) {
+  return apiFetch("/user/forgot-password/reset-password", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+    skipAuthRefresh: true,
+    skipAuthToken: true,
+  });
+}
+
 export function logout() {
   return apiFetch("/user/logout", {
     method: "POST",

@@ -36,6 +36,7 @@ import {
   getAdvisorServiceTickets,
 } from "@/lib/services/workorders";
 import { getAdvisorReviewSummary } from "@/lib/services/reviews";
+import ProfilePanel from "@/components/dashboard/ProfilePanel";
 import { getValidDashboardTab } from "@/lib/dashboard-nav";
 import { statusLabel, unwrapList } from "@/lib/format";
 
@@ -1127,6 +1128,10 @@ export default function AdvisorDashboard() {
     <div className="ops-grid workspace-tabs-layout advisor-workspace">
       {message ? <div className="status-box wide">{message}</div> : null}
       {loading ? <div className="status-box wide">Đang tải dữ liệu vận hành...</div> : null}
+
+      {tab === "profile" ? (
+        <ProfilePanel eyebrow="Cố vấn dịch vụ" heading="Hồ sơ cá nhân" />
+      ) : null}
 
       {tab === "overview" ? (
         <section className="ops-panel wide">

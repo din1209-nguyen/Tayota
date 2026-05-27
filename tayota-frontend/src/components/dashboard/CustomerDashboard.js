@@ -2,15 +2,14 @@
 
 import { useEffect, useState } from "react";
 import LiveChatPanel from "@/components/chat/LiveChatPanel";
+import ProfilePanel from "@/components/dashboard/ProfilePanel";
 import { getMyAppointmentDetail, getMyAppointments } from "@/lib/services/appointments";
-import { getMe } from "@/lib/services/auth";
-import { getNotifications, markAllNotificationsAsRead } from "@/lib/services/notifications";
 import { getMyReviews } from "@/lib/services/reviews";
 import { statusLabel, unwrapList } from "@/lib/format";
 
 export default function CustomerDashboard() {
   const [tab, setTab] = useState("profile");
-  const [data, setData] = useState({ me: null, appointments: [], notifications: [], reviews: [] });
+  const [data, setData] = useState({ appointments: [], reviews: [] });
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState("");
@@ -20,16 +19,12 @@ export default function CustomerDashboard() {
     setLoading(true);
     setError("");
     try {
-      const [me, appointments, notifications, reviews] = await Promise.all([
-        getMe(),
+      const [appointments, reviews] = await Promise.all([
         getMyAppointments(),
-        getNotifications(),
         getMyReviews(),
       ]);
       setData({
-        me,
         appointments: unwrapList(appointments),
-        notifications: unwrapList(notifications),
         reviews: unwrapList(reviews),
       });
     } catch (caughtError) {
@@ -42,11 +37,6 @@ export default function CustomerDashboard() {
   useEffect(() => {
     load();
   }, []);
-
-  async function readAll() {
-    await markAllNotificationsAsRead();
-    load();
-  }
 
   async function openAppointment(id) {
     setDetailLoading(true);
@@ -65,17 +55,11 @@ export default function CustomerDashboard() {
       <nav className="role-tabs wide" aria-label="Các mục người dùng">
         <button className={tab === "profile" ? "active" : ""} type="button" onClick={() => setTab("profile")}>Tài khoản</button>
         <button className={tab === "appointments" ? "active" : ""} type="button" onClick={() => setTab("appointments")}>Lịch của tôi</button>
-        <button className={tab === "notifications" ? "active" : ""} type="button" onClick={() => setTab("notifications")}>Thông báo</button>
         <button className={tab === "reviews" ? "active" : ""} type="button" onClick={() => setTab("reviews")}>Đánh giá</button>
         <button className={tab === "chat" ? "active" : ""} type="button" onClick={() => setTab("chat")}>Live chat</button>
       </nav>
 
-      {tab === "profile" ? <section className="ops-panel wide" id="user-profile">
-        <p className="eyebrow">Customer</p>
-        <h2>{data.me?.fullname || "Tài khoản của tôi"}</h2>
-        {loading ? <p>Đang tải...</p> : null}
-        {error ? <div className="status-box">{error}</div> : null}
-      </section> : null}
+      {tab === "profile" ? <ProfilePanel eyebrow="Customer" heading="Hồ sơ cá nhân" /> : null}
 
       {tab === "appointments" ? <section className="ops-panel wide" id="user-appointments">
         <div className="ops-panel-head">
@@ -117,26 +101,6 @@ export default function CustomerDashboard() {
             </dl>
           </div>
         ) : null}
-      </section> : null}
-
-      {tab === "notifications" ? <section className="ops-panel wide" id="user-notifications">
-        <div className="ops-panel-head">
-          <div>
-            <p className="eyebrow">Notifications</p>
-            <h2>Thông báo</h2>
-          </div>
-          <button className="btn btn-ghost" type="button" onClick={readAll}>Đã đọc</button>
-        </div>
-        <div className="ops-list">
-          {data.notifications.map((item) => (
-            <article key={item.id}>
-              <strong>{item.title}</strong>
-              <span>{item.content}</span>
-              <small>{item.read ? "READ" : "NEW"}</small>
-            </article>
-          ))}
-          {!data.notifications.length && !loading ? <p>Không có thông báo.</p> : null}
-        </div>
       </section> : null}
 
       {tab === "reviews" ? <section className="ops-panel wide" id="user-reviews">

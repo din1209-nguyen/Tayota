@@ -5,6 +5,7 @@ export const DASHBOARD_NAV = {
     items: [
       ["accounts", "Tài khoản"],
       ["documents", "Dữ liệu AI"],
+      ["profile", "Hồ sơ"],
     ],
   },
   MANAGER: {
@@ -17,6 +18,7 @@ export const DASHBOARD_NAV = {
       ["dealerships", "Đại lý"],
       ["accessories", "Phụ kiện"],
       ["users", "Người dùng"],
+      ["profile", "Hồ sơ"],
     ],
   },
   SERVICE_ADVISOR: {
@@ -31,12 +33,13 @@ export const DASHBOARD_NAV = {
       ["holidays", "Ngày nghỉ"],
       ["tickets", "Phiếu"],
       ["reports", "Báo cáo"],
+      ["profile", "Hồ sơ"],
     ],
   },
   ASSISTANT: {
     basePath: "/dashboard/assistant",
     defaultTab: "chat",
-    items: [["chat", "Live Chat"]],
+    items: [["chat", "Live Chat"], ["profile", "Hồ sơ"]],
   },
   MECHANIC: {
     basePath: "/dashboard/mechanic",
@@ -46,6 +49,7 @@ export const DASHBOARD_NAV = {
       ["active", "Đang sửa"],
       ["history", "Lịch sử"],
       ["reviews", "Đánh giá"],
+      ["profile", "Hồ sơ"],
     ],
   },
 };

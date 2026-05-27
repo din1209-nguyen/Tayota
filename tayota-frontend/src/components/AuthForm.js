@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { getMe, login, register } from "@/lib/services/auth";
+import {
+  getMe,
+  login,
+  register,
+  resetForgotPassword,
+  sendForgotPasswordOtp,
+  verifyForgotPasswordOtp,
+} from "@/lib/services/auth";
 import { setAccessToken, setCurrentUser } from "@/lib/session";
 
 const PASSWORD_PATTERN = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
@@ -12,12 +19,30 @@ export default function AuthForm({ mode }) {
   const router = useRouter();
   const isRegister = mode === "register";
   const [form, setForm] = useState({ email: "", password: "", confirmPassword: "" });
+  const [forgotStep, setForgotStep] = useState("");
+  const [forgotForm, setForgotForm] = useState({ email: "", otp: "", token: "", newPassword: "", confirmPassword: "" });
   const [message, setMessage] = useState("");
   const [registeredEmail, setRegisteredEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
   function updateField(event) {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
+  }
+
+  function updateForgotField(event) {
+    setForgotForm((current) => ({ ...current, [event.target.name]: event.target.value }));
+  }
+
+  function openForgotPassword() {
+    setMessage("");
+    setForgotStep("email");
+    setForgotForm((current) => ({ ...current, email: form.email.trim() }));
+  }
+
+  function backToLogin() {
+    setMessage("");
+    setForgotStep("");
+    setForgotForm({ email: "", otp: "", token: "", newPassword: "", confirmPassword: "" });
   }
 
   async function submit(event) {
@@ -61,6 +86,58 @@ export default function AuthForm({ mode }) {
     }
   }
 
+  async function submitForgotPassword(event) {
+    event.preventDefault();
+    if (loading) return;
+
+    setLoading(true);
+    setMessage("");
+
+    try {
+      if (forgotStep === "email") {
+        const email = forgotForm.email.trim();
+        await sendForgotPasswordOtp(email);
+        setForgotForm((current) => ({ ...current, email }));
+        setForgotStep("otp");
+        setMessage("Mã OTP đã được gửi đến email của bạn.");
+        return;
+      }
+
+      if (forgotStep === "otp") {
+        const result = await verifyForgotPasswordOtp({
+          email: forgotForm.email.trim(),
+          otp: forgotForm.otp.trim(),
+        });
+        setForgotForm((current) => ({ ...current, token: result?.token || "" }));
+        setForgotStep("password");
+        setMessage("OTP hợp lệ. Bạn có thể đặt mật khẩu mới.");
+        return;
+      }
+
+      if (forgotStep === "password") {
+        if (forgotForm.newPassword !== forgotForm.confirmPassword) {
+          setMessage("Mật khẩu xác nhận không khớp.");
+          return;
+        }
+        if (!PASSWORD_PATTERN.test(forgotForm.newPassword)) {
+          setMessage("Mật khẩu cần 8-20 ký tự, có chữ hoa, số và ký tự đặc biệt.");
+          return;
+        }
+        await resetForgotPassword({
+          email: forgotForm.email.trim(),
+          token: forgotForm.token,
+          newPassword: forgotForm.newPassword,
+        });
+        setForgotStep("success");
+        setMessage("");
+      }
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   if (registeredEmail) {
     return (
       <section className="form-panel auth-success">
@@ -79,6 +156,64 @@ export default function AuthForm({ mode }) {
           </button>
         </div>
       </section>
+    );
+  }
+
+  if (!isRegister && forgotStep) {
+    return (
+      <form className="form-panel auth-form" onSubmit={submitForgotPassword}>
+        <span className="eyebrow">Khôi phục tài khoản</span>
+        <h2>Quên mật khẩu</h2>
+
+        {forgotStep === "email" ? (
+          <label className="label">
+            Email
+            <input className="field" type="email" name="email" value={forgotForm.email} onChange={updateForgotField} required />
+          </label>
+        ) : null}
+
+        {forgotStep === "otp" ? (
+          <>
+            <p className="form-hint">Nhập mã OTP đã gửi đến {forgotForm.email}.</p>
+            <label className="label">
+              OTP
+              <input className="field" name="otp" value={forgotForm.otp} onChange={updateForgotField} required />
+            </label>
+          </>
+        ) : null}
+
+        {forgotStep === "password" ? (
+          <>
+            <p className="form-hint">Mật khẩu cần 8-20 ký tự, gồm chữ hoa, số và ký tự đặc biệt.</p>
+            <label className="label">
+              Mật khẩu mới
+              <input className="field" type="password" name="newPassword" value={forgotForm.newPassword} onChange={updateForgotField} minLength={8} required />
+            </label>
+            <label className="label">
+              Xác nhận mật khẩu
+              <input className="field" type="password" name="confirmPassword" value={forgotForm.confirmPassword} onChange={updateForgotField} minLength={8} required />
+            </label>
+          </>
+        ) : null}
+
+        {forgotStep === "success" ? (
+          <div className="status-box">
+            Đặt lại mật khẩu thành công. Bạn có thể đăng nhập bằng mật khẩu mới.
+          </div>
+        ) : null}
+
+        {message ? <div className="status-box">{message}</div> : null}
+
+        {forgotStep !== "success" ? (
+          <button className="btn btn-primary" type="submit" disabled={loading}>
+            {loading ? "Đang xử lý..." : forgotStep === "email" ? "Gửi OTP" : forgotStep === "otp" ? "Xác thực OTP" : "Đặt lại mật khẩu"}
+          </button>
+        ) : null}
+
+        <button className="auth-switch button-link" type="button" onClick={backToLogin}>
+          Về trang đăng nhập
+        </button>
+      </form>
     );
   }
 
@@ -124,6 +259,12 @@ export default function AuthForm({ mode }) {
       <button className="btn btn-primary" type="submit" disabled={loading}>
         {loading ? "Đang xử lý..." : isRegister ? "Tạo tài khoản" : "Đăng nhập"}
       </button>
+
+      {!isRegister ? (
+        <button className="auth-switch button-link" type="button" onClick={openForgotPassword}>
+          Quên mật khẩu?
+        </button>
+      ) : null}
 
       <Link className="auth-switch" href={isRegister ? "/auth/login" : "/auth/register"}>
         {isRegister ? "Đã có tài khoản? Đăng nhập" : "Chưa có tài khoản? Đăng ký"}

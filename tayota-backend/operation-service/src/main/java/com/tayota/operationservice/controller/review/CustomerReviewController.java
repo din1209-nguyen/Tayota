@@ -2,13 +2,16 @@ package com.tayota.operationservice.controller.review;
 
 import com.tayota.operationservice.dto.common.ApiResponse;
 import com.tayota.operationservice.dto.request.review.CreateCustomerReviewRequest;
+import com.tayota.operationservice.dto.response.review.AdvisorReviewSummaryResponse;
 import com.tayota.operationservice.dto.response.review.CustomerReviewResponse;
+import com.tayota.operationservice.dto.response.review.MechanicReviewSummaryResponse;
 import com.tayota.operationservice.service.review.CustomerReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -78,5 +81,24 @@ public class CustomerReviewController {
         List<CustomerReviewResponse> response = customerReviewService.getMyMechanicReviews();
 
         return ApiResponse.success(200, "Lấy danh sách đánh giá kỹ thuật viên thành công!", response);
+    }
+
+    @GetMapping("/mechanic/my/summary")
+    @PreAuthorize("hasRole('MECHANIC')")
+    public ApiResponse<MechanicReviewSummaryResponse> getMyMechanicReviewSummary() {
+        MechanicReviewSummaryResponse response = customerReviewService.getMyMechanicReviewSummary();
+
+        return ApiResponse.success(200, "Lấy thống kê đánh giá kỹ thuật viên thành công!", response);
+    }
+
+    @GetMapping("/advisor/summary")
+    @PreAuthorize("hasRole('SERVICE_ADVISOR')")
+    public ApiResponse<AdvisorReviewSummaryResponse> getAdvisorReviewSummary(
+            @RequestParam(required = false) Instant from,
+            @RequestParam(required = false) Instant to
+    ) {
+        AdvisorReviewSummaryResponse response = customerReviewService.getAdvisorReviewSummary(from, to);
+
+        return ApiResponse.success(200, "Lấy thống kê đánh giá đại lý thành công!", response);
     }
 }

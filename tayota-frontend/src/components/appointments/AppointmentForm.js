@@ -44,6 +44,85 @@ function getCalendarCells(monthDate, daysByDate) {
   return cells;
 }
 
+function normalizeCalendarDate(value) {
+  if (!value) return "";
+  if (typeof value === "string") return value.slice(0, 10);
+  if (Array.isArray(value) && value.length >= 3) {
+    const [year, month, day] = value;
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+  if (typeof value === "object" && value.year && value.month && value.day) {
+    return `${value.year}-${String(value.month).padStart(2, "0")}-${String(value.day).padStart(2, "0")}`;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : toDateInputValue(date);
+}
+
+function normalizeCalendarDays(days) {
+  return unwrapList(days)
+    .map((day) => ({ ...day, date: normalizeCalendarDate(day?.date) }))
+    .filter((day) => day.date);
+}
+
+function isTruthyAvailability(value) {
+  return value === true || value === "true" || value === 1 || value === "1";
+}
+
+function isFalseAvailability(value) {
+  return value === false || value === "false" || value === 0 || value === "0";
+}
+
+function dayHasAvailableSlots(day) {
+  if (!day || day.holiday) return false;
+  if (isFalseAvailability(day.hasAvailableSlots) || isFalseAvailability(day.available)) return false;
+  if (isTruthyAvailability(day.hasAvailableSlots) || isTruthyAvailability(day.available)) return true;
+  if (Array.isArray(day.slots)) return day.slots.some((slot) => slot?.available !== false);
+  const count = Number(day.availableSlotCount ?? day.availableSlotsCount ?? day.slotCount);
+  return Number.isFinite(count) && count > 0;
+}
+
+function getVisibleMonthDateKeys(monthDate) {
+  const { first, last } = getMonthBounds(monthDate);
+  const todayKey = toDateInputValue(new Date());
+  const dateKeys = [];
+
+  for (let day = 1; day <= last.getDate(); day += 1) {
+    const dateKey = toDateInputValue(new Date(monthDate.getFullYear(), monthDate.getMonth(), day));
+    if (dateKey >= todayKey) {
+      dateKeys.push(dateKey);
+    }
+  }
+
+  if (!dateKeys.length && toDateInputValue(first).slice(0, 7) === todayKey.slice(0, 7)) {
+    dateKeys.push(todayKey);
+  }
+
+  return dateKeys;
+}
+
+async function buildCalendarDaysFromSlots({ dealershipId, appointmentType, monthDate }) {
+  const dateKeys = getVisibleMonthDateKeys(monthDate);
+  const results = await Promise.allSettled(
+    dateKeys.map(async (dateKey) => {
+      const result = await getAvailableSlots({ dealershipId, appointmentType, appointmentDate: dateKey });
+      const slots = Array.isArray(result?.slots)
+        ? result.slots.filter((slot) => slot?.available !== false)
+        : unwrapList(result).filter((slot) => slot?.available !== false);
+
+      return {
+        date: dateKey,
+        holiday: Boolean(result?.holiday),
+        holidayReason: result?.holidayReason || null,
+        hasAvailableSlots: slots.length > 0,
+      };
+    })
+  );
+
+  return results
+    .filter((item) => item.status === "fulfilled")
+    .map((item) => item.value);
+}
+
 function toTimeLabel(slot) {
   if (!slot) return "";
   return slot.endTime ? `${slot.startTime} - ${slot.endTime}` : slot.startTime;
@@ -161,7 +240,19 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
           to: toDateInputValue(last),
         });
         if (!alive) return;
-        setCalendarDays(unwrapList(result));
+        let normalizedDays = normalizeCalendarDays(result);
+        if (!normalizedDays.some(dayHasAvailableSlots)) {
+          normalizedDays = await buildCalendarDaysFromSlots({
+            dealershipId: form.dealershipId,
+            appointmentType: isService ? "SERVICE" : "TEST_DRIVE",
+            monthDate: calendarMonth,
+          });
+          if (!alive) return;
+        }
+        setCalendarDays(normalizedDays);
+        if (!normalizedDays.some(dayHasAvailableSlots)) {
+          setMessage("Chưa có ngày khả dụng. Vui lòng kiểm tra khung giờ làm việc hoặc ngày nghỉ đại lý.");
+        }
       } catch (error) {
         if (!alive) return;
         setCalendarDays([]);
@@ -506,7 +597,7 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
                 {!loadingCalendar && calendarCells.map((cell) => {
                   if (cell.blank) return <span className="calendar-blank" key={cell.key} />;
                   const day = cell.meta;
-                  const disabled = !day || day.holiday || !day.hasAvailableSlots;
+                  const disabled = !dayHasAvailableSlots(day);
                   const selected = form.appointmentDate === cell.date;
                   return (
                     <button

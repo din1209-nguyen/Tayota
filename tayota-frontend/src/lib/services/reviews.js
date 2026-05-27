@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api";
+import { apiFetch, buildQuery } from "@/lib/api";
 
 export function getReviewByToken(token) {
   return apiFetch(`/operation/reviews/token/${encodeURIComponent(token)}`, { cache: "no-store" });
@@ -17,4 +17,12 @@ export function getMyReviews() {
 
 export function getMyMechanicReviews() {
   return apiFetch("/operation/reviews/mechanic/my", { cache: "no-store" });
+}
+
+export function getMyMechanicReviewSummary() {
+  return apiFetch("/operation/reviews/mechanic/my/summary", { cache: "no-store" });
+}
+
+export function getAdvisorReviewSummary(params = {}) {
+  return apiFetch(`/operation/reviews/advisor/summary${buildQuery(params)}`, { cache: "no-store" });
 }

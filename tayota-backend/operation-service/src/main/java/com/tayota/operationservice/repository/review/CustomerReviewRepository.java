@@ -2,6 +2,7 @@ package com.tayota.operationservice.repository.review;
 
 import com.tayota.operationservice.entity.review.CustomerReview;
 import com.tayota.operationservice.enums.review.ReviewStatus;
+import com.tayota.operationservice.enums.review.ReviewType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -23,6 +24,10 @@ public interface CustomerReviewRepository extends JpaRepository<CustomerReview, 
     List<CustomerReview> findByUserIdOrderByCreatedAtDesc(UUID userId);
 
     List<CustomerReview> findByMechanicIdOrderByCreatedAtDesc(UUID mechanicId);
+
+    long countByMechanicId(UUID mechanicId);
+
+    long countByMechanicIdAndStatus(UUID mechanicId, ReviewStatus status);
 
     Optional<CustomerReview> findByReviewToken(String reviewToken);
 
@@ -50,6 +55,57 @@ public interface CustomerReviewRepository extends JpaRepository<CustomerReview, 
               and review.mechanicRating is not null
             """)
     Double findAverageMechanicRating(@Param("mechanicId") UUID mechanicId);
+
+    @Query("""
+            select avg(review.serviceRating)
+            from CustomerReview review
+            where review.dealershipId = :dealershipId
+              and review.reviewType = :reviewType
+              and review.status = :status
+              and review.serviceRating is not null
+            """)
+    Double findAverageServiceRatingByDealershipAndTypeAndStatus(
+            @Param("dealershipId") UUID dealershipId,
+            @Param("reviewType") ReviewType reviewType,
+            @Param("status") ReviewStatus status
+    );
+
+    @Query("""
+            select avg(review.serviceRating)
+            from CustomerReview review
+            where review.dealershipId = :dealershipId
+              and review.reviewType = :reviewType
+              and review.status = :status
+              and review.serviceRating is not null
+              and review.submittedAt >= :fromInclusive
+              and review.submittedAt < :toExclusive
+            """)
+    Double findAverageServiceRatingByDealershipAndTypeAndStatusAndSubmittedAtRange(
+            @Param("dealershipId") UUID dealershipId,
+            @Param("reviewType") ReviewType reviewType,
+            @Param("status") ReviewStatus status,
+            @Param("fromInclusive") Instant fromInclusive,
+            @Param("toExclusive") Instant toExclusive
+    );
+
+    long countByDealershipIdAndReviewTypeAndStatus(UUID dealershipId, ReviewType reviewType, ReviewStatus status);
+
+    @Query("""
+            select count(review)
+            from CustomerReview review
+            where review.dealershipId = :dealershipId
+              and review.reviewType = :reviewType
+              and review.status = :status
+              and review.submittedAt >= :fromInclusive
+              and review.submittedAt < :toExclusive
+            """)
+    long countByDealershipIdAndReviewTypeAndStatusAndSubmittedAtRange(
+            @Param("dealershipId") UUID dealershipId,
+            @Param("reviewType") ReviewType reviewType,
+            @Param("status") ReviewStatus status,
+            @Param("fromInclusive") Instant fromInclusive,
+            @Param("toExclusive") Instant toExclusive
+    );
 
     // Tự động chuyển các đánh giá có trạng thái PENDING nhưng đã quá thời gian tokenExpiresAt sang EXPIRED.
     @Modifying(clearAutomatically = true, flushAutomatically = true)

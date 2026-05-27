@@ -3,10 +3,13 @@ package com.tayota.operationservice.service.review;
 import com.tayota.operationservice.exception.CustomException;
 import com.tayota.operationservice.util.SecurityContextUtil;
 import com.tayota.operationservice.dto.request.review.CreateCustomerReviewRequest;
+import com.tayota.operationservice.dto.response.review.AdvisorReviewSummaryResponse;
 import com.tayota.operationservice.dto.response.review.CustomerReviewResponse;
+import com.tayota.operationservice.dto.response.review.MechanicReviewSummaryResponse;
 import com.tayota.operationservice.entity.appointment.Appointment;
 import com.tayota.operationservice.entity.appointment.GuestInformation;
 import com.tayota.operationservice.entity.review.CustomerReview;
+import com.tayota.operationservice.entity.user.ServiceAdvisor;
 import com.tayota.operationservice.entity.workorder.Mechanic;
 import com.tayota.operationservice.entity.workorder.ServiceTicket;
 import com.tayota.operationservice.enums.appointment.AppointmentStatus;
@@ -16,6 +19,7 @@ import com.tayota.operationservice.enums.review.ReviewType;
 import com.tayota.operationservice.enums.workorder.ServiceTicketStatus;
 import com.tayota.operationservice.repository.appointment.AppointmentRepository;
 import com.tayota.operationservice.repository.review.CustomerReviewRepository;
+import com.tayota.operationservice.repository.user.ServiceAdvisorRepository;
 import com.tayota.operationservice.repository.workorder.MechanicRepository;
 import com.tayota.operationservice.repository.workorder.ServiceTicketRepository;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +45,7 @@ public class CustomerReviewService {
     private final ServiceTicketRepository serviceTicketRepository;
     private final CustomerReviewRepository customerReviewRepository;
     private final MechanicRepository mechanicRepository;
+    private final ServiceAdvisorRepository serviceAdvisorRepository;
 
     // Đánh giá lịch hẹn sau khi hoàn thành.
     // Chỉ dành cho khách hàng đã đăng nhập.
@@ -102,6 +107,34 @@ public class CustomerReviewService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public MechanicReviewSummaryResponse getMyMechanicReviewSummary() {
+        UUID mechanicId = getCurrentUserId();
+        BigDecimal averageRating = mechanicRepository.findById(mechanicId)
+                .map(Mechanic::getAverageRating)
+                .orElse(null);
+
+        return new MechanicReviewSummaryResponse(
+                averageRating,
+                customerReviewRepository.countByMechanicIdAndStatus(mechanicId, ReviewStatus.SUBMITTED),
+                customerReviewRepository.countByMechanicIdAndStatus(mechanicId, ReviewStatus.PENDING),
+                customerReviewRepository.countByMechanicId(mechanicId)
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public AdvisorReviewSummaryResponse getAdvisorReviewSummary(Instant fromInclusive, Instant toExclusive) {
+        UUID dealershipId = getCurrentAdvisorDealershipId();
+        ReviewStatus submitted = ReviewStatus.SUBMITTED;
+
+        return new AdvisorReviewSummaryResponse(
+                toRating(findAverageAdvisorServiceRating(dealershipId, ReviewType.SERVICE, submitted, fromInclusive, toExclusive)),
+                toRating(findAverageAdvisorServiceRating(dealershipId, ReviewType.TEST_DRIVE, submitted, fromInclusive, toExclusive)),
+                countAdvisorSubmittedReviews(dealershipId, ReviewType.SERVICE, submitted, fromInclusive, toExclusive),
+                countAdvisorSubmittedReviews(dealershipId, ReviewType.TEST_DRIVE, submitted, fromInclusive, toExclusive)
+        );
     }
 
     // Tạo một đánh giá pending mới cho một lịch hẹn đã hoàn thành. Nếu đã tồn tại đánh giá cho lịch hẹn này, trả về token của đánh giá đó.
@@ -345,5 +378,57 @@ public class CustomerReviewService {
 
     private UUID getCurrentUserId() {
         return UUID.fromString(SecurityContextUtil.getCurrentUserId());
+    }
+
+    private UUID getCurrentAdvisorDealershipId() {
+        UUID currentUserId = getCurrentUserId();
+        ServiceAdvisor advisor = serviceAdvisorRepository.findById(currentUserId)
+                .orElseThrow(() -> new CustomException(403, "Tài khoản cố vấn dịch vụ chưa được gán đại lý"));
+
+        return advisor.getDealershipId();
+    }
+
+    private BigDecimal toRating(Double value) {
+        return value == null ? null : BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private Double findAverageAdvisorServiceRating(
+            UUID dealershipId,
+            ReviewType reviewType,
+            ReviewStatus status,
+            Instant fromInclusive,
+            Instant toExclusive
+    ) {
+        if (fromInclusive == null || toExclusive == null) {
+            return customerReviewRepository.findAverageServiceRatingByDealershipAndTypeAndStatus(dealershipId, reviewType, status);
+        }
+
+        return customerReviewRepository.findAverageServiceRatingByDealershipAndTypeAndStatusAndSubmittedAtRange(
+                dealershipId,
+                reviewType,
+                status,
+                fromInclusive,
+                toExclusive
+        );
+    }
+
+    private long countAdvisorSubmittedReviews(
+            UUID dealershipId,
+            ReviewType reviewType,
+            ReviewStatus status,
+            Instant fromInclusive,
+            Instant toExclusive
+    ) {
+        if (fromInclusive == null || toExclusive == null) {
+            return customerReviewRepository.countByDealershipIdAndReviewTypeAndStatus(dealershipId, reviewType, status);
+        }
+
+        return customerReviewRepository.countByDealershipIdAndReviewTypeAndStatusAndSubmittedAtRange(
+                dealershipId,
+                reviewType,
+                status,
+                fromInclusive,
+                toExclusive
+        );
     }
 }

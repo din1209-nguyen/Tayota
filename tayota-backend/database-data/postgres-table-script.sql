@@ -34,6 +34,7 @@ CREATE TYPE payment_method_enum AS ENUM ('CASH', 'BANK_LOAN');
 
 CREATE TYPE service_status_type AS ENUM (
   'CONFIRMED',
+  'NEEDS_REASSIGNMENT',
   'RECEIVING',
   'IN_PROGRESS',
   'COMPLETED',

@@ -35,6 +35,7 @@ import {
   getAdvisorServiceTicketDetail,
   getAdvisorServiceTickets,
 } from "@/lib/services/workorders";
+import { getAdvisorReviewSummary } from "@/lib/services/reviews";
 import { getValidDashboardTab } from "@/lib/dashboard-nav";
 import { statusLabel, unwrapList } from "@/lib/format";
 
@@ -145,6 +146,9 @@ function normalizeCalendarDate(value) {
     const [year, month, day] = value;
     return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   }
+  if (typeof value === "object" && value.year && value.month && value.day) {
+    return `${value.year}-${String(value.month).padStart(2, "0")}-${String(value.day).padStart(2, "0")}`;
+  }
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "" : toDateInputValue(date);
 }
@@ -157,10 +161,19 @@ function normalizeCalendarDays(days) {
 
 function dayHasAvailableSlots(day) {
   if (!day || day.holiday) return false;
-  if (day.hasAvailableSlots === false || day.available === false) return false;
-  if (day.hasAvailableSlots === true || day.available === true) return true;
+  if (isFalseAvailability(day.hasAvailableSlots) || isFalseAvailability(day.available)) return false;
+  if (isTruthyAvailability(day.hasAvailableSlots) || isTruthyAvailability(day.available)) return true;
   if (Array.isArray(day.slots)) return day.slots.some((slot) => slot?.available !== false);
-  return false;
+  const count = Number(day.availableSlotCount ?? day.availableSlotsCount ?? day.slotCount);
+  return Number.isFinite(count) && count > 0;
+}
+
+function isTruthyAvailability(value) {
+  return value === true || value === "true" || value === 1 || value === "1";
+}
+
+function isFalseAvailability(value) {
+  return value === false || value === "false" || value === 0 || value === "0";
 }
 
 function toDateTime(item) {
@@ -187,6 +200,20 @@ function isInReportRange(item, range, monthValue) {
   const dateKey = String(value).slice(0, 10);
   if (range === "month") return dateKey.startsWith(monthValue);
   return dateKey === toDateInputValue(new Date());
+}
+
+function getReportRangeBounds(range, monthValue) {
+  if (range === "month") {
+    const [year, month] = monthValue.split("-").map(Number);
+    const start = new Date(year, month - 1, 1);
+    const end = new Date(year, month, 1);
+    return { from: start.toISOString(), to: end.toISOString() };
+  }
+
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  return { from: start.toISOString(), to: end.toISOString() };
 }
 
 function sortByNewest(items = []) {
@@ -225,6 +252,12 @@ function formatVndZero(value) {
 function serviceTicketAmountLabel(ticket) {
   if (ticket?.status !== "COMPLETED") return "Chưa chốt";
   return formatVndZero(ticket?.totalAmount);
+}
+
+function ratingLabel(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) return "Chưa có";
+  return `${numeric.toFixed(1)} / 5`;
 }
 
 function Pagination({ page, totalPages, totalItems, start, count, onChange }) {
@@ -299,6 +332,7 @@ export default function AdvisorDashboard() {
   const [holidayForm, setHolidayForm] = useState({ holidayDate: "", reason: "" });
   const [reportRange, setReportRange] = useState("today");
   const [reportMonth, setReportMonth] = useState(() => toMonthInputValue(new Date()));
+  const [reviewSummary, setReviewSummary] = useState(null);
 
   const visibleAppointments = useMemo(() => {
     const typeFiltered = appointments.filter((item) => item.type === appointmentTypeFilter);
@@ -340,12 +374,13 @@ export default function AdvisorDashboard() {
     activeTickets: reportTickets.filter((item) => ["CONFIRMED", "RECEIVING", "IN_PROGRESS"].includes(item.status)).length,
     completedTickets: reportTickets.filter((item) => item.status === "COMPLETED").length,
   }), [reportAppointments, reportTickets]);
+  const reviewSummaryRange = useMemo(() => getReportRangeBounds(reportRange, reportMonth), [reportMonth, reportRange]);
 
   const loadBase = useCallback(async function loadBase() {
     setLoading(true);
     setMessage("");
     try {
-      const [nextAppointments, nextSlots, nextHolidays, nextMechanics, nextTickets, dealership, versions, nextAllAppointments, nextAllTickets] = await Promise.all([
+      const [nextAppointments, nextSlots, nextHolidays, nextMechanics, nextTickets, dealership, versions, nextAllAppointments, nextAllTickets, nextReviewSummary] = await Promise.all([
         getAdvisorAppointments(APPOINTMENT_STATUS_QUERY[status] || status),
         getAdvisorTimeSlots(),
         getAdvisorHolidays(),
@@ -355,6 +390,7 @@ export default function AdvisorDashboard() {
         getAllCarVersions(),
         status === "ALL" ? Promise.resolve(null) : getAdvisorAppointments("ALL"),
         ticketStatus === "ALL" ? Promise.resolve(null) : getAdvisorServiceTickets({ status: "ALL" }),
+        getAdvisorReviewSummary(reviewSummaryRange),
       ]);
       setAppointments(unwrapList(nextAppointments));
       setSlots(unwrapList(nextSlots));
@@ -365,12 +401,13 @@ export default function AdvisorDashboard() {
       setAllTickets(ticketStatus === "ALL" ? unwrapList(nextTickets) : unwrapList(nextAllTickets));
       setAdvisorDealershipId(dealership?.dealershipId || "");
       setCarVersions(unwrapList(versions));
+      setReviewSummary(nextReviewSummary || null);
     } catch (error) {
       setMessage(error.message || "Không thể tải dashboard cố vấn.");
     } finally {
       setLoading(false);
     }
-  }, [status, ticketStatus]);
+  }, [reviewSummaryRange, status, ticketStatus]);
 
   useEffect(() => {
     loadBase();
@@ -1410,6 +1447,8 @@ export default function AdvisorDashboard() {
             <article><strong>{reportAppointments.length}</strong><span>Lịch hẹn</span></article>
             <article><strong>{reportTickets.length}</strong><span>Phiếu dịch vụ</span></article>
             <article><strong>{formatVndZero(reportTickets.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0))}</strong><span>Tổng tiền</span></article>
+            <article><strong>{ratingLabel(reviewSummary?.serviceAverageRating)}</strong><span>Sao dịch vụ</span></article>
+            <article><strong>{ratingLabel(reviewSummary?.testDriveAverageRating)}</strong><span>Sao lái thử</span></article>
           </div>
         </section>
       ) : null}

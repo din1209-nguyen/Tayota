@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import LiveChatPanel from "@/components/chat/LiveChatPanel";
 import ProfilePanel from "@/components/dashboard/ProfilePanel";
 import { getMyAppointmentDetail, getMyAppointments } from "@/lib/services/appointments";
+import { getMyVehicles } from "@/lib/services/car";
 import { getMyReviews } from "@/lib/services/reviews";
 import { statusLabel, unwrapList } from "@/lib/format";
 
@@ -24,6 +25,13 @@ function appointmentTypeLabel(type) {
   return type === "SERVICE" ? "Dịch vụ" : "Lái thử";
 }
 
+function vehicleStatusLabel(status) {
+  if (status === "SOLD") return "Đang sở hữu";
+  if (status === "MAINTENANCE") return "Đang bảo dưỡng";
+  if (status === "IN_STOCK") return "Trong kho";
+  return statusLabel(status);
+}
+
 function ratingText(value) {
   const rating = Number(value || 0);
   if (!rating) return "Chưa đánh giá";
@@ -36,7 +44,7 @@ function compactReviewComment(item) {
 
 export default function CustomerDashboard() {
   const [tab, setTab] = useState("profile");
-  const [data, setData] = useState({ appointments: [], reviews: [] });
+  const [data, setData] = useState({ appointments: [], reviews: [], vehicles: [] });
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [selectedReview, setSelectedReview] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -47,13 +55,15 @@ export default function CustomerDashboard() {
     setLoading(true);
     setError("");
     try {
-      const [appointments, reviews] = await Promise.all([
+      const [appointments, reviews, vehicles] = await Promise.all([
         getMyAppointments(),
         getMyReviews(),
+        getMyVehicles(),
       ]);
       setData({
         appointments: unwrapList(appointments),
         reviews: unwrapList(reviews),
+        vehicles: unwrapList(vehicles),
       });
     } catch (caughtError) {
       setError(caughtError.message);
@@ -82,12 +92,46 @@ export default function CustomerDashboard() {
     <div className="ops-grid workspace-tabs-layout">
       <nav className="role-tabs wide" aria-label="Các mục người dùng">
         <button className={tab === "profile" ? "active" : ""} type="button" onClick={() => setTab("profile")}>Tài khoản</button>
+        <button className={tab === "vehicles" ? "active" : ""} type="button" onClick={() => setTab("vehicles")}>Xe cá nhân</button>
         <button className={tab === "appointments" ? "active" : ""} type="button" onClick={() => setTab("appointments")}>Lịch của tôi</button>
         <button className={tab === "reviews" ? "active" : ""} type="button" onClick={() => setTab("reviews")}>Đánh giá</button>
         <button className={tab === "chat" ? "active" : ""} type="button" onClick={() => setTab("chat")}>Live chat</button>
       </nav>
 
       {tab === "profile" ? <ProfilePanel eyebrow="Customer" heading="Hồ sơ cá nhân" /> : null}
+
+      {tab === "vehicles" ? <section className="ops-panel wide" id="user-vehicles">
+        <div className="ops-panel-head">
+          <div>
+            <p className="eyebrow">Vehicles</p>
+            <h2>Xe cá nhân</h2>
+          </div>
+        </div>
+        {error ? <div className="status-box">{error}</div> : null}
+        <div className="customer-card-grid">
+          {data.vehicles.map((vehicle) => (
+            <article className="customer-info-card" key={vehicle.vinId}>
+              <div className="customer-card-head">
+                <div>
+                  <span>{vehicle.carVersionName || "Xe Tayota"}</span>
+                  <strong>{vehicle.vinId}</strong>
+                </div>
+                <small className="status-pill">{vehicleStatusLabel(vehicle.status)}</small>
+              </div>
+              <dl className="mini-meta">
+                <div><dt>Đại lý</dt><dd>{vehicle.dealershipId || "Đang cập nhật"}</dd></div>
+                <div><dt>Ngày gán</dt><dd>{formatDateTime(vehicle.assignedAt)}</dd></div>
+                <div><dt>Chủ xe</dt><dd>{vehicle.customerFullName || "Tài khoản của tôi"}</dd></div>
+              </dl>
+              <div className="row-actions">
+                <a className="btn btn-ghost" href={`/appointments/service?vinId=${encodeURIComponent(vehicle.vinId)}`}>Đặt lịch dịch vụ</a>
+                {vehicle.carVersionId ? <a className="btn btn-ghost" href={`/vehicles/${vehicle.carVersionId}`}>Xem mẫu xe</a> : null}
+              </div>
+            </article>
+          ))}
+          {!data.vehicles.length && !loading ? <div className="status-box">Chưa có xe cá nhân được gán vào tài khoản.</div> : null}
+        </div>
+      </section> : null}
 
       {tab === "appointments" ? <section className="ops-panel wide" id="user-appointments">
         <div className="ops-panel-head">

@@ -47,6 +47,7 @@ public class ChatService {
     private final UserProfileRepository userProfileRepository;
     private final CookieUtil cookieUtil;
     private final SimpMessagingTemplate messagingTemplate;
+    private final ChatMapper chatMapper;
 
     // Gửi tin nhắn khách hàng trong phiên chat hiện tại
     @Transactional
@@ -147,7 +148,7 @@ public class ChatService {
         ChatSession chatSession = getOrCreateCurrentSession(request, response);
 
         // Chuyển phiên chat sang DTO phản hồi
-        return toSessionResponse(chatSession);
+        return mapSessionResponse(chatSession);
     }
 
     // Gộp phiên chat hiện tại vào tài khoản đã đăng nhập
@@ -184,7 +185,7 @@ public class ChatService {
         publishChatSessionUpdate(savedChatSession);
 
         // Chuyển phiên chat sang DTO phản hồi
-        return toSessionResponse(savedChatSession);
+        return mapSessionResponse(savedChatSession);
     }
 
     // Lấy lịch sử tin nhắn của phiên chat hiện tại
@@ -201,7 +202,7 @@ public class ChatService {
         // Tìm danh sách phiên chat theo trạng thái và sắp xếp mới nhất trước
         return chatSessionRepository.findByStatusOrderByUpdatedAtDesc(chatSessionStatus)
                 .stream()
-                .map(this::toSessionResponse)
+                .map(this::mapSessionResponse)
                 .toList();
     }
 
@@ -236,7 +237,7 @@ public class ChatService {
         publishChatSessionUpdate(savedChatSession);
 
         // Chuyển phiên chat sang DTO phản hồi
-        return toSessionResponse(savedChatSession);
+        return mapSessionResponse(savedChatSession);
     }
 
     // Đánh dấu phiên chat đã xử lý
@@ -260,7 +261,7 @@ public class ChatService {
         publishChatSessionUpdate(savedChatSession);
 
         // Chuyển phiên chat sang DTO phản hồi
-        return toSessionResponse(savedChatSession);
+        return mapSessionResponse(savedChatSession);
     }
 
     // Đóng phiên chat
@@ -284,7 +285,7 @@ public class ChatService {
         publishChatSessionUpdate(savedChatSession);
 
         // Chuyển phiên chat sang DTO phản hồi
-        return toSessionResponse(savedChatSession);
+        return mapSessionResponse(savedChatSession);
     }
 
     // Lấy danh sách tin nhắn của một phiên chat
@@ -292,7 +293,7 @@ public class ChatService {
         // Tìm danh sách tin nhắn theo phiên chat và sắp xếp từ cũ đến mới
         return chatMessageRepository.findBySessionIdOrderByCreatedAtAsc(chatSessionId)
                 .stream()
-                .map(ChatMapper::toMessageResponse)
+                .map(chatMapper::toMessageResponse)
                 .toList();
     }
 
@@ -471,23 +472,6 @@ public class ChatService {
         return chatSessionRepository.save(chatSession);
     }
 
-    // Gán assistant cho phiên chat nếu chưa có assistant phụ trách
-    private ChatSession assignSessionIfNeeded(ChatSession chatSession, UUID assistantId) {
-        // Bỏ qua nếu phiên chat đã có assistant phụ trách
-        if (chatSession.getAssignedAssistantId() != null) {
-            return chatSession;
-        }
-
-        // Gán assistant hiện tại vào phiên chat
-        chatSession.setAssignedAssistantId(assistantId);
-
-        // Chuyển trạng thái phiên chat sang đang trò chuyện
-        chatSession.setStatus(ChatSessionStatus.CHATTING);
-
-        // Lưu phiên chat đã được gán assistant
-        return chatSessionRepository.save(chatSession);
-    }
-
     // Tạo phản hồi tin nhắn sau khi lưu vào database
     private ChatMessageResponseDTO createMessageResponse(
             ChatSession chatSession,
@@ -500,19 +484,14 @@ public class ChatService {
             throw new CustomException(400, "Nội dung tin nhắn không được để trống");
         }
 
-        // Tạo tin nhắn mới và liên kết với phiên chat
-        ChatMessage chatMessage = ChatMessage.builder()
-                .session(chatSession)
-                .senderId(senderId)
-                .senderType(senderType)
-                .content(content.trim())
-                .build();
+        // Tạo tin nhắn mới qua mapper để service không tự dựng entity thủ công.
+        ChatMessage chatMessage = chatMapper.toMessageEntity(chatSession, senderId, senderType, content);
 
         // Lưu tin nhắn mới vào database
         ChatMessage savedChatMessage = chatMessageRepository.save(chatMessage);
 
         // Chuyển tin nhắn sang DTO phản hồi
-        return ChatMapper.toMessageResponse(savedChatMessage);
+        return chatMapper.toMessageResponse(savedChatMessage);
     }
 
     // Gửi tin nhắn mới đến topic của phiên chat
@@ -524,7 +503,7 @@ public class ChatService {
     // Gửi trạng thái phiên chat mới nhất đến các topic liên quan
     private void publishChatSessionUpdate(ChatSession chatSession) {
         // Chuyển phiên chat sang DTO phản hồi
-        ChatSessionResponseDTO chatSessionResponse = toSessionResponse(chatSession);
+        ChatSessionResponseDTO chatSessionResponse = mapSessionResponse(chatSession);
 
         // Gửi dữ liệu phiên chat đến client đang theo dõi phiên chat
         messagingTemplate.convertAndSend(CHAT_SESSION_TOPIC_PREFIX + chatSession.getId(), chatSessionResponse);
@@ -533,25 +512,11 @@ public class ChatService {
         messagingTemplate.convertAndSend(ASSISTANT_CHAT_SESSIONS_TOPIC, chatSessionResponse);
     }
 
-    private ChatSessionResponseDTO toSessionResponse(ChatSession chatSession) {
+    private ChatSessionResponseDTO mapSessionResponse(ChatSession chatSession) {
         var lastMessageResult = chatMessageRepository.findFirstBySessionIdOrderByCreatedAtDesc(chatSession.getId());
         ChatMessage lastMessage = lastMessageResult == null ? null : lastMessageResult.orElse(null);
 
-        return ChatSessionResponseDTO.builder()
-                .id(chatSession.getId())
-                .userId(chatSession.getUserId())
-                .guestId(chatSession.getGuestId())
-                .assignedAssistantId(chatSession.getAssignedAssistantId())
-                .status(chatSession.getStatus())
-                .customerDisplayName(resolveCustomerDisplayName(chatSession))
-                .lastMessageContent(lastMessage == null ? null : lastMessage.getContent())
-                .lastMessageSenderType(lastMessage == null ? null : lastMessage.getSenderType())
-                .lastMessageAt(lastMessage == null ? null : lastMessage.getCreatedAt())
-                .createdAt(chatSession.getCreatedAt())
-                .updatedAt(chatSession.getUpdatedAt())
-                .closedAt(chatSession.getClosedAt())
-                .resolvedAt(chatSession.getResolvedAt())
-                .build();
+        return chatMapper.toSessionResponse(chatSession, lastMessage, resolveCustomerDisplayName(chatSession));
     }
 
     private String resolveCustomerDisplayName(ChatSession chatSession) {

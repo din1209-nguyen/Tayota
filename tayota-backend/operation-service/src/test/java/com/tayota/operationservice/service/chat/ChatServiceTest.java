@@ -5,6 +5,7 @@ import com.tayota.operationservice.entity.chat.ChatSession;
 import com.tayota.operationservice.enums.chat.ChatSenderType;
 import com.tayota.operationservice.enums.chat.ChatSessionStatus;
 import com.tayota.operationservice.exception.CustomException;
+import com.tayota.operationservice.mapper.chat.ChatMapper;
 import com.tayota.operationservice.repository.chat.ChatMessageRepository;
 import com.tayota.operationservice.repository.chat.ChatSessionRepository;
 import com.tayota.operationservice.repository.user.UserProfileRepository;
@@ -226,7 +227,7 @@ class ChatServiceTest {
     }
 
     private ChatService service() {
-        return new ChatService(chatSessionRepository, chatMessageRepository, userProfileRepository, cookieUtil, messagingTemplate);
+        return new ChatService(chatSessionRepository, chatMessageRepository, userProfileRepository, cookieUtil, messagingTemplate, new ChatMapper());
     }
 
     private ChatSession session(UUID id, UUID userId, ChatSessionStatus status, UUID assignedAssistantId) {

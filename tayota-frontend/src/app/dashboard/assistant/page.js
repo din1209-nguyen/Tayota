@@ -8,7 +8,7 @@ export const metadata = {
 export default function AssistantDashboardPage() {
   return (
     <section className="section ops-page">
-      <div className="shell-container">
+      <div className="assistant-dashboard-shell">
         <Suspense fallback={<div className="status-box">Đang tải dashboard...</div>}>
           <AssistantDashboard />
         </Suspense>

@@ -1,29 +1,19 @@
 package com.tayota.operationservice.service.car;
 
-import com.tayota.operationservice.dto.response.car.AccessoryResponseDTO;
-import com.tayota.operationservice.dto.response.car.CarArticleResponseDTO;
-import com.tayota.operationservice.dto.response.car.CarGalleryResponseDTO;
-import com.tayota.operationservice.dto.response.car.CarPriceResponseDTO;
 import com.tayota.operationservice.dto.response.car.CarSeriesWithVersionsResponseDTO;
 import com.tayota.operationservice.dto.response.car.CarSpecificationResponseDTO;
 import com.tayota.operationservice.dto.response.car.CarStyleWithVersionsResponseDTO;
 import com.tayota.operationservice.dto.response.car.CarVersionDetailResponseDTO;
 import com.tayota.operationservice.dto.response.car.CarVersionItemResponseDTO;
 import com.tayota.operationservice.dto.response.car.PaginationResponseDTO;
-import com.tayota.operationservice.entity.car.CarGallery;
-import com.tayota.operationservice.entity.car.CarPrice;
+import com.tayota.operationservice.entity.car.CarArticle;
 import com.tayota.operationservice.entity.car.CarSeries;
 import com.tayota.operationservice.entity.car.CarSpecification;
 import com.tayota.operationservice.entity.car.CarStyle;
 import com.tayota.operationservice.entity.car.CarVersion;
-import com.tayota.operationservice.mapper.car.AccessoryMapper;
-import com.tayota.operationservice.mapper.car.CarArticleMapper;
-import com.tayota.operationservice.mapper.car.CarGalleryMapper;
-import com.tayota.operationservice.mapper.car.CarPriceMapper;
-import com.tayota.operationservice.mapper.car.CarSeriesMapper;
+import com.tayota.operationservice.exception.CustomException;
+import com.tayota.operationservice.mapper.car.CarCatalogMapper;
 import com.tayota.operationservice.mapper.car.CarSpecificationMapper;
-import com.tayota.operationservice.mapper.car.CarStyleMapper;
-import com.tayota.operationservice.mapper.car.CarVersionMapper;
 import com.tayota.operationservice.repository.car.CarAccessoryRepository;
 import com.tayota.operationservice.repository.car.CarArticleRepository;
 import com.tayota.operationservice.repository.car.CarGalleryRepository;
@@ -32,19 +22,16 @@ import com.tayota.operationservice.repository.car.CarSeriesRepository;
 import com.tayota.operationservice.repository.car.CarSpecificationRepository;
 import com.tayota.operationservice.repository.car.CarStyleRepository;
 import com.tayota.operationservice.repository.car.CarVersionRepository;
-import com.tayota.operationservice.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
-import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -59,30 +46,26 @@ public class CarCatalogService {
     private final CarGalleryRepository carGalleryRepository;
     private final CarArticleRepository carArticleRepository;
     private final CarAccessoryRepository carAccessoryRepository;
-    private final AccessoryMapper accessoryMapper;
-    private final CarArticleMapper carArticleMapper;
-    private final CarGalleryMapper carGalleryMapper;
-    private final CarPriceMapper carPriceMapper;
-    private final CarSeriesMapper carSeriesMapper;
     private final CarSpecificationMapper carSpecificationMapper;
-    private final CarStyleMapper carStyleMapper;
-    private final CarVersionMapper carVersionMapper;
+    private final CarCatalogMapper carCatalogMapper;
 
-    // Lấy danh sách tất cả kiểu dáng kèm dòng xe và phiên bản xe.
+    // Lấy danh sách tất cả kiểu dáng kèm dòng xe và phiên bản xe từ cache catalog 2 giờ.
     @Cacheable(value = "catalogStylesWithVersions", key = "'all'")
     public List<CarStyleWithVersionsResponseDTO> getStylesWithVersions() {
         // Lấy toàn bộ phiên bản xe đang hiển thị để gom nhóm theo dòng xe.
-        List<CarVersion> versions = carVersionRepository.findByVisibleTrue(Sort.by("modelYear").descending().and(Sort.by("name")));
+        List<CarVersion> versions = carVersionRepository.findByVisibleTrue(
+                Sort.by("modelYear").descending().and(Sort.by("name"))
+        );
 
         // Lấy toàn bộ kiểu dáng và chuyển sang cấu trúc cây.
         return carStyleRepository.findAll(Sort.by("name"))
                 .stream()
-                .map(style -> toStyleWithVersions(style, versions))
+                .map(style -> mapStyleWithVersions(style, versions))
                 .filter(style -> !style.getSeries().isEmpty())
                 .toList();
     }
 
-    // Lấy danh sách phiên bản xe theo điều kiện lọc
+    // Lấy danh sách phiên bản xe theo điều kiện lọc.
     public PaginationResponseDTO<CarVersionItemResponseDTO> searchCarVersions(
             String keyword,
             String styleId,
@@ -94,9 +77,13 @@ public class CarCatalogService {
             int size
     ) {
         // Tạo cấu hình phân trang và sắp xếp phiên bản mới nhất lên trước.
-        Pageable pageable = PageRequest.of(Math.max(page, 0), normalizeSize(size), Sort.by("modelYear").descending().and(Sort.by("name")));
+        Pageable pageable = PageRequest.of(
+                Math.max(page, 0),
+                normalizeSize(size),
+                Sort.by("modelYear").descending().and(Sort.by("name"))
+        );
 
-        // Lọc danh sách phiên bản xe theo các điều kiện truyền vào
+        // Lọc danh sách phiên bản xe theo các điều kiện truyền vào.
         Page<CarVersion> result = carVersionRepository.search(
                 toLikePattern(keyword),
                 parseNullableUuid(styleId, "Id kiểu dáng không hợp lệ."),
@@ -109,7 +96,7 @@ public class CarCatalogService {
 
         // Chuyển danh sách phiên bản xe sang response phân trang.
         return new PaginationResponseDTO<>(
-                result.getContent().stream().map(this::mapToVersionItem).toList(),
+                result.getContent().stream().map(this::mapVersionItem).toList(),
                 result.getNumber(),
                 result.getSize(),
                 result.getTotalElements(),
@@ -117,25 +104,31 @@ public class CarCatalogService {
         );
     }
 
-    // Lấy tất cả thông tin xe cụ thể.
+    // Lấy tất cả thông tin xe cụ thể từ cache chi tiết 1 giờ.
     @Cacheable(value = "catalogVersionDetail", key = "#carVersionId")
     public CarVersionDetailResponseDTO getCarVersionDetail(String carVersionId) {
-        // Tìm phiên bản xe cần xem chi tiết.
+        // Tìm phiên bản xe đang hiển thị cần xem chi tiết.
         CarVersion carVersion = findVisibleCarVersion(carVersionId);
 
         // Chuyển phiên bản xe sang response chi tiết.
-        return toVersionDetail(carVersion, false);
+        return mapVersionDetail(carVersion, false);
     }
 
+    // Lấy chi tiết phiên bản xe cho màn hình quản lý, bao gồm bài viết ẩn.
     public CarVersionDetailResponseDTO getCarVersionDetailForManagement(String carVersionId) {
+        // Tìm phiên bản xe bất kể trạng thái hiển thị.
         CarVersion carVersion = findCarVersion(carVersionId);
-        return toVersionDetail(carVersion, true);
+
+        // Chuyển phiên bản xe sang response chi tiết quản lý.
+        return mapVersionDetail(carVersion, true);
     }
 
-    // Lấy thông số kỹ thuật của xe.
+    // Lấy thông số kỹ thuật của xe từ cache thông số 6 giờ.
     @Cacheable(value = "catalogSpecification", key = "#carVersionId")
     public CarSpecificationResponseDTO getCarSpecification(String carVersionId) {
+        // Kiểm tra phiên bản xe phải đang hiển thị trước khi trả thông số công khai.
         findVisibleCarVersion(carVersionId);
+
         // Chuyển id phiên bản xe sang UUID.
         UUID id = parseUuid(carVersionId, "Id phiên bản xe không hợp lệ.");
 
@@ -166,180 +159,69 @@ public class CarCatalogService {
     }
 
     // Chuyển kiểu dáng sang response kèm phiên bản.
-    private CarStyleWithVersionsResponseDTO toStyleWithVersions(CarStyle style, List<CarVersion> versions) {
+    private CarStyleWithVersionsResponseDTO mapStyleWithVersions(CarStyle style, List<CarVersion> versions) {
         // Lấy các dòng xe thuộc kiểu dáng hiện tại.
         List<CarSeriesWithVersionsResponseDTO> series = carSeriesRepository.findByCarStyleId(style.getId())
                 .stream()
-                .map(item -> toSeriesWithVersions(item, versions))
+                .map(item -> mapSeriesWithVersions(item, versions))
                 .filter(item -> !item.getVersions().isEmpty())
                 .toList();
 
-        // Trả về kiểu dáng kèm danh sách dòng xe.
-        return carStyleMapper.toWithVersions(style, series);
+        // Trả về kiểu dáng kèm danh sách dòng xe qua mapper object.
+        return carCatalogMapper.toStyleWithVersions(style, series);
     }
 
     // Chuyển dòng xe sang response kèm phiên bản.
-    private CarSeriesWithVersionsResponseDTO toSeriesWithVersions(CarSeries series, List<CarVersion> versions) {
+    private CarSeriesWithVersionsResponseDTO mapSeriesWithVersions(CarSeries series, List<CarVersion> versions) {
         // Lọc các phiên bản thuộc dòng xe hiện tại.
         List<CarVersionItemResponseDTO> items = versions.stream()
                 .filter(version -> version.getCarSeries().getId().equals(series.getId()))
-                .map(this::mapToVersionItem)
+                .map(this::mapVersionItem)
                 .toList();
 
-        // Trả về dòng xe kèm danh sách phiên bản.
-        return carSeriesMapper.toWithVersions(series, items);
+        // Trả về dòng xe kèm danh sách phiên bản qua mapper object.
+        return carCatalogMapper.toSeriesWithVersions(series, items);
     }
 
     // Chuyển phiên bản xe sang response danh sách.
-    private CarVersionItemResponseDTO mapToVersionItem(CarVersion carVersion) {
-        // Lấy danh sách giá theo màu nội thất và ngoại thất.
-        List<CarPrice> prices = carPriceRepository.findByCarVersionId(carVersion.getId());
+    private CarVersionItemResponseDTO mapVersionItem(CarVersion carVersion) {
+        // Lấy dữ liệu giá để mapper tính giá hiển thị thấp nhất.
+        var prices = carPriceRepository.findByCarVersionId(carVersion.getId());
 
-        // Lấy giá thấp nhất để hiển thị ở danh sách.
-        BigDecimal minPrice = prices.stream()
-                .map(CarPrice::getPrice)
-                .min(Comparator.naturalOrder())
-                .orElse(null);
+        // Lấy dữ liệu gallery để mapper chọn ảnh fallback khi xe chưa có ảnh đại diện.
+        var galleries = carGalleryRepository.findByCarVersionId(carVersion.getId());
 
-        // Lấy ảnh đại diện riêng của xe, fallback về dữ liệu media cũ nếu chưa có.
-        String imageUrl = StringUtils.hasText(carVersion.getImageUrl())
-                ? carVersion.getImageUrl()
-                : prices.stream()
-                        .map(CarPrice::getExImageUrl)
-                        .filter(StringUtils::hasText)
-                        .findFirst()
-                        .orElseGet(() -> carGalleryRepository.findByCarVersionId(carVersion.getId()).stream()
-                                .map(CarGallery::getImageUrl)
-                                .filter(StringUtils::hasText)
-                                .findFirst()
-                                .orElse(null));
+        // Lấy thông số kỹ thuật nếu phiên bản xe đã được cấu hình.
+        CarSpecification specification = carSpecificationRepository.findById(carVersion.getId()).orElse(null);
 
-        // Trả về response rút gọn cho danh sách phiên bản xe
-        CarSpecificationResponseDTO specification = carSpecificationRepository.findById(carVersion.getId())
-                .map(carSpecificationMapper::toResponse)
-                .orElse(null);
-        return carVersionMapper.toItem(carVersion, minPrice, imageUrl, specification);
+        // Chuyển phiên bản xe sang response danh sách qua mapper object.
+        return carCatalogMapper.toVersionItem(carVersion, prices, galleries, specification);
     }
 
     // Chuyển phiên bản xe sang response chi tiết.
-    private CarVersionDetailResponseDTO toVersionDetail(CarVersion carVersion, boolean includeHiddenArticles) {
+    private CarVersionDetailResponseDTO mapVersionDetail(CarVersion carVersion, boolean includeHiddenArticles) {
         // Lấy id phiên bản xe để truy vấn các bảng liên quan.
         UUID id = carVersion.getId();
 
         // Lấy thông số kỹ thuật nếu đã được cấu hình.
-        CarSpecificationResponseDTO specification = carSpecificationRepository.findById(id)
-                .map(carSpecificationMapper::toResponse)
-                .orElse(null);
+        CarSpecification specification = carSpecificationRepository.findById(id).orElse(null);
 
         // Lấy danh sách giá theo từng tổ hợp màu.
-        List<CarPriceResponseDTO> prices = carPriceRepository.findByCarVersionId(id)
-                .stream()
-                .map(carPriceMapper::toResponse)
-                .toList();
+        var prices = carPriceRepository.findByCarVersionId(id);
 
         // Lấy danh sách hình ảnh của phiên bản xe.
-        List<CarGalleryResponseDTO> galleries = carGalleryRepository.findByCarVersionId(id)
-                .stream()
-                .map(carGalleryMapper::toResponse)
-                .toList();
+        var galleries = carGalleryRepository.findByCarVersionId(id);
 
-        // Lấy danh sách bài viết giới thiệu phiên bản xe.
-        List<CarArticleResponseDTO> articles = (includeHiddenArticles
+        // Lấy danh sách bài viết giới thiệu phiên bản xe theo quyền xem dữ liệu ẩn.
+        List<CarArticle> articles = includeHiddenArticles
                 ? carArticleRepository.findByCarVersionId(id)
-                : carArticleRepository.findByCarVersionIdAndPublishedTrue(id))
-                .stream()
-                .map(carArticleMapper::toResponse)
-                .toList();
+                : carArticleRepository.findByCarVersionIdAndPublishedTrue(id);
 
         // Lấy danh sách phụ kiện tương thích với phiên bản xe.
-        List<AccessoryResponseDTO> accessories = carAccessoryRepository.findByCarVersionId(id)
-                .stream()
-                .filter(carAccessory -> carAccessory.getAccessory().isVisible())
-                .map(carAccessory -> accessoryMapper.toResponse(carAccessory.getAccessory()))
-                .toList();
+        var accessories = carAccessoryRepository.findByCarVersionId(id);
 
-        // Trả về toàn bộ thông tin chi tiết cho trang giới thiệu xe.
-        return carVersionMapper.toDetail(
-                carVersion,
-                carSeriesMapper.toResponse(carVersion.getCarSeries()),
-                specification,
-                prices,
-                galleries,
-                articles,
-                accessories
-        );
-    }
-
-    // Tao dieu kien loc phien ban xe theo cac tham so duoc truyen vao
-    private Specification<CarVersion> buildSpecification(
-            String keyword,
-            String styleId,
-            String seriesId,
-            Integer modelYear,
-            BigDecimal minPrice,
-            BigDecimal maxPrice
-    ) {
-        return (root, query, criteriaBuilder) -> {
-            var predicates = criteriaBuilder.conjunction();
-            String normalizedKeyword = normalizeText(keyword);
-            UUID parsedStyleId = parseNullableUuid(styleId, "Id kiểu dáng không hợp lệ.");
-            UUID parsedSeriesId = parseNullableUuid(seriesId, "Id dòng xe không hợp lệ.");
-
-            if (normalizedKeyword != null) {
-                String keywordPattern = "%" + normalizedKeyword.toLowerCase() + "%";
-                predicates = criteriaBuilder.and(
-                        predicates,
-                        criteriaBuilder.or(
-                                criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), keywordPattern),
-                                criteriaBuilder.like(criteriaBuilder.lower(root.get("carSeries").get("name")), keywordPattern),
-                                criteriaBuilder.like(criteriaBuilder.lower(root.get("carSeries").get("carStyle").get("name")), keywordPattern)
-                        )
-                );
-            }
-
-            if (parsedStyleId != null) {
-                predicates = criteriaBuilder.and(
-                        predicates,
-                        criteriaBuilder.equal(root.get("carSeries").get("carStyle").get("id"), parsedStyleId)
-                );
-            }
-
-            if (parsedSeriesId != null) {
-                predicates = criteriaBuilder.and(
-                        predicates,
-                        criteriaBuilder.equal(root.get("carSeries").get("id"), parsedSeriesId)
-                );
-            }
-
-            if (modelYear != null) {
-                predicates = criteriaBuilder.and(predicates, criteriaBuilder.equal(root.get("modelYear"), modelYear));
-            }
-
-            if (minPrice != null || maxPrice != null) {
-                var priceSubquery = query.subquery(Integer.class);
-                var priceRoot = priceSubquery.from(CarPrice.class);
-                var pricePredicates = criteriaBuilder.equal(priceRoot.get("carVersion"), root);
-
-                if (minPrice != null) {
-                    pricePredicates = criteriaBuilder.and(
-                            pricePredicates,
-                            criteriaBuilder.greaterThanOrEqualTo(priceRoot.get("price"), minPrice)
-                    );
-                }
-
-                if (maxPrice != null) {
-                    pricePredicates = criteriaBuilder.and(
-                            pricePredicates,
-                            criteriaBuilder.lessThanOrEqualTo(priceRoot.get("price"), maxPrice)
-                    );
-                }
-
-                priceSubquery.select(criteriaBuilder.literal(1)).where(pricePredicates);
-                predicates = criteriaBuilder.and(predicates, criteriaBuilder.exists(priceSubquery));
-            }
-
-            return predicates;
-        };
+        // Chuyển dữ liệu chi tiết sang response qua mapper object.
+        return carCatalogMapper.toVersionDetail(carVersion, specification, prices, galleries, articles, accessories);
     }
 
     // Tìm phiên bản xe theo id.
@@ -352,11 +234,17 @@ public class CarCatalogService {
                 .orElseThrow(() -> new CustomException(404, "Không tìm thấy phiên bản xe."));
     }
 
+    // Tìm phiên bản xe công khai theo id.
     private CarVersion findVisibleCarVersion(String carVersionId) {
+        // Lấy phiên bản xe theo id.
         CarVersion carVersion = findCarVersion(carVersionId);
+
+        // Chặn phiên bản xe đã bị ẩn khỏi catalog công khai.
         if (!carVersion.isVisible()) {
             throw new CustomException(404, "Không tìm thấy phiên bản xe.");
         }
+
+        // Trả về phiên bản xe đang hiển thị.
         return carVersion;
     }
 
@@ -388,12 +276,16 @@ public class CarCatalogService {
         return StringUtils.hasText(value) ? value.trim() : null;
     }
 
+    // Chuyển keyword thành pattern tìm kiếm SQL LIKE.
     private String toLikePattern(String value) {
+        // Chuẩn hóa keyword trước khi đưa vào query.
         String normalized = normalizeText(value);
+
+        // Trả pattern tất cả nếu không có keyword.
         return normalized == null ? "%" : "%" + normalized.toLowerCase() + "%";
     }
 
-    // Chuẩn hóa kích thước trang
+    // Chuẩn hóa kích thước trang.
     private int normalizeSize(int size) {
         // Dùng kích thước mặc định nếu request truyền giá trị không hợp lệ.
         if (size <= 0) {

@@ -48,6 +48,10 @@ export default function LiveChatPanel({
   sessionId: providedSessionId = "",
   variant = "dashboard",
   readOnly = false,
+  readOnlyMessage = "Phiên này đang được xử lý bởi nhân viên khác. Bạn chỉ có thể xem lịch sử.",
+  showHeader = true,
+  onStatusChange,
+  onSessionUpdate,
   onRestrictedAction,
 }) {
   const isAssistant = mode === "assistant";
@@ -60,6 +64,10 @@ export default function LiveChatPanel({
   const [sending, setSending] = useState(false);
   const clientRef = useRef(null);
   const liveChatAllowed = isAssistant || canUseCustomerLiveChat(currentUser);
+
+  useEffect(() => {
+    onStatusChange?.(status);
+  }, [onStatusChange, status]);
 
   useEffect(() => {
     setCurrentUser(getCurrentUser());
@@ -104,6 +112,10 @@ export default function LiveChatPanel({
             setStatus("connected");
             client.subscribe(`/topic/chat.sessions.${resolvedSessionId}`, (frame) => {
               const payload = JSON.parse(frame.body);
+              if (payload?.status && !payload?.content) {
+                onSessionUpdate?.(payload);
+                return;
+              }
               if (!payload?.content) return;
               setMessages((current) => appendUnique(current, payload));
             });
@@ -134,7 +146,7 @@ export default function LiveChatPanel({
       clientRef.current = null;
       if (client) client.deactivate();
     };
-  }, [isAssistant, liveChatAllowed, providedSessionId]);
+  }, [isAssistant, liveChatAllowed, onSessionUpdate, providedSessionId]);
 
   async function send(event) {
     event.preventDefault();
@@ -159,18 +171,20 @@ export default function LiveChatPanel({
   }
 
   return (
-    <section className={`ops-panel live-chat-panel ${variant === "widget" ? "live-chat-widget-panel" : ""}`}>
-      <div className="ops-panel-head">
-        <div>
-          <p className="eyebrow">Tư vấn trực tuyến</p>
-          <h2>{isAssistant ? "Hỗ trợ khách hàng" : "Tư vấn trực tiếp"}</h2>
-          {sessionId && variant !== "widget" ? <p className="muted-text">Phiên {sessionId}</p> : null}
+    <section className={`ops-panel live-chat-panel ${variant === "widget" ? "live-chat-widget-panel" : ""} ${!showHeader ? "live-chat-panel-no-head" : ""}`}>
+      {showHeader ? (
+        <div className="ops-panel-head">
+          <div>
+            <p className="eyebrow">Tư vấn trực tuyến</p>
+            <h2>{isAssistant ? "Hỗ trợ khách hàng" : "Tư vấn trực tiếp"}</h2>
+            {sessionId && variant !== "widget" ? <p className="muted-text">Phiên {sessionId}</p> : null}
+          </div>
+          <span className={`status-pill ${statusClass(status)}`}>{statusLabel(status.toUpperCase())}</span>
         </div>
-        <span className={`status-pill ${statusClass(status)}`}>{statusLabel(status.toUpperCase())}</span>
-      </div>
+      ) : null}
 
       <div className="live-chat-feedback" aria-live="polite">
-        {readOnly ? <div className="status-box">Phiên này đang được xử lý bởi nhân viên khác. Bạn chỉ có thể xem lịch sử.</div> : null}
+        {readOnly ? <div className="status-box">{readOnlyMessage}</div> : null}
         {!liveChatAllowed ? <div className="status-box">Tư vấn trực tiếp chỉ dành cho khách hàng và khách vãng lai.</div> : null}
         {error ? <div className="status-box">{error}</div> : null}
       </div>

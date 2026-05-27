@@ -7,6 +7,13 @@ export function getCurrentChatSession() {
   });
 }
 
+export function mergeCurrentChatSession() {
+  return apiFetch("/user/chat/sessions/merge", {
+    method: "POST",
+    cache: "no-store",
+  });
+}
+
 export function getCurrentChatMessages() {
   return apiFetch("/user/chat/sessions/current/messages", { cache: "no-store" });
 }

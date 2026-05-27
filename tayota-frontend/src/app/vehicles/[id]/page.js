@@ -11,19 +11,29 @@ import {
 } from "@/lib/format";
 import SpecificationTable from "@/components/vehicles/SpecificationTable";
 
+// Lấy chi tiết xe ở Server Component để trả HTML có dữ liệu ngay từ server.
 async function getDetail(id) {
   try {
+    // Gọi API catalog chi tiết xe từ server và không lưu cache ở tầng Next.js.
     const vehicle = await apiFetch(`/car/catalog/car-versions/${id}`, { cache: "no-store" });
+
+    // Trả dữ liệu xe khi API phản hồi thành công.
     return { vehicle, error: null };
   } catch (error) {
+    // Trả lỗi thân thiện để trang vẫn render được trạng thái thất bại.
     return { vehicle: null, error: error.message };
   }
 }
 
+// Hiển thị trang giới thiệu xe bằng Server Component.
 export default async function VehicleDetailPage({ params }) {
+  // Lấy id xe từ dynamic route của Next.js.
   const { id } = await params;
+
+  // Lấy dữ liệu chi tiết trước khi render HTML.
   const { vehicle, error } = await getDetail(id);
 
+  // Hiển thị lỗi nếu backend không trả được dữ liệu xe.
   if (error) {
     return (
       <section className="section">
@@ -32,11 +42,19 @@ export default async function VehicleDetailPage({ params }) {
     );
   }
 
+  // Chuẩn hóa ảnh hero để dùng làm background nếu có.
   const imageUrl = getVehicleImage(vehicle);
+
+  // Chuẩn hóa danh sách giá để tránh lỗi khi API trả thiếu dữ liệu.
   const prices = Array.isArray(vehicle?.prices) ? vehicle.prices : [];
+
+  // Chuẩn hóa danh sách bài viết giới thiệu để render có điều kiện.
   const articles = Array.isArray(vehicle?.articles) ? vehicle.articles : [];
+
+  // Chuẩn hóa danh sách phụ kiện để render có điều kiện.
   const accessories = Array.isArray(vehicle?.accessories) ? vehicle.accessories : [];
 
+  // Trả về toàn bộ nội dung giới thiệu xe đã có dữ liệu server-side.
   return (
     <section className="detail-page">
       <div className="detail-hero" style={imageUrl ? { backgroundImage: `linear-gradient(90deg, rgba(5, 5, 5, 0.94), rgba(5, 5, 5, 0.28)), linear-gradient(180deg, transparent 72%, #ffffff 100%), url(${imageUrl})` } : undefined}>

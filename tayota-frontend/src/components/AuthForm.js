@@ -11,6 +11,7 @@ import {
   sendForgotPasswordOtp,
   verifyForgotPasswordOtp,
 } from "@/lib/services/auth";
+import { mergeCurrentChatSession } from "@/lib/services/chat";
 import { setAccessToken, setCurrentUser } from "@/lib/session";
 
 const PASSWORD_PATTERN = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
@@ -77,6 +78,9 @@ export default function AuthForm({ mode }) {
       if (result?.accessToken) setAccessToken(result.accessToken);
       const user = await getMe();
       setCurrentUser(user);
+      if (["USER", "CUSTOMER"].includes(user?.role)) {
+        await mergeCurrentChatSession().catch(() => {});
+      }
       router.push("/");
       router.refresh();
     } catch (error) {

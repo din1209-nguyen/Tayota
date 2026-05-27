@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { sendAiChatMessage } from "@/lib/services/chat";
 import LiveChatPanel from "@/components/chat/LiveChatPanel";
 import { getCurrentUser, onSessionChange } from "@/lib/session";
+import { statusLabel } from "@/lib/format";
 
 const UNAVAILABLE_TEXT =
   "AI tạm gián đoạn. Vui lòng thử lại sau hoặc chuyển sang live chat để nhân viên Tayota hỗ trợ trực tiếp.";
@@ -114,12 +115,17 @@ function canUseCustomerLiveChat(user) {
   return !user || CUSTOMER_LIVE_CHAT_ROLES.has(user.role);
 }
 
+function liveStatusClass(status) {
+  return `status-${String(status || "idle").toLowerCase()}`;
+}
+
 export default function ChatLauncher() {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState("");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [connectionState, setConnectionState] = useState("ready");
+  const [liveStatus, setLiveStatus] = useState("idle");
   const [currentUser, setCurrentUser] = useState(null);
   const [messages, setMessages] = useState([
     { role: "assistant", text: "Xin chào, tôi có thể tư vấn dòng xe, lịch lái thử và dịch vụ Tayota." },
@@ -148,6 +154,10 @@ export default function ChatLauncher() {
   useEffect(() => {
     if (open && mode === "ai") document.getElementById("ai-chat-input")?.focus();
   }, [open, mode]);
+
+  useEffect(() => {
+    if (mode !== "live") setLiveStatus("idle");
+  }, [mode]);
 
   async function sendMessage(event) {
     event.preventDefault();
@@ -187,8 +197,11 @@ export default function ChatLauncher() {
           <div className="chat-head">
             <div>
               <span className="eyebrow">Tayota concierge</span>
-              <strong>{mode === "live" ? "Live chat" : mode === "ai" ? "Tư vấn AI" : "Chọn kênh hỗ trợ"}</strong>
+              <strong>{mode === "live" ? "Tư vấn trực tiếp" : mode === "ai" ? "Tư vấn AI" : "Chọn kênh hỗ trợ"}</strong>
             </div>
+            {mode === "live" ? (
+              <span className={`status-pill ${liveStatusClass(liveStatus)}`}>{statusLabel(liveStatus.toUpperCase())}</span>
+            ) : null}
             <button className="icon-button" type="button" onClick={() => setOpen(false)} aria-label="Đóng chat">
               ×
             </button>
@@ -241,7 +254,7 @@ export default function ChatLauncher() {
             </>
           ) : null}
 
-          {mode === "live" ? <LiveChatPanel variant="widget" /> : null}
+          {mode === "live" ? <LiveChatPanel variant="widget" showHeader={false} onStatusChange={setLiveStatus} /> : null}
 
           {mode ? (
             <button className="chat-mode-back" type="button" onClick={() => setMode("")}>

@@ -764,6 +764,24 @@ public class AuthService {
         sessionUtil.deleteAllSessions(userId);
     }
 
+    @Transactional
+    public void changePasswordDirect(ChangePasswordDirectRequestDTO request) {
+        String currentUserId = SecurityContextUtil.getCurrentUserId();
+        User user = userRepository.findById(UUID.fromString(currentUserId))
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.getLoginProvider() != ProviderType.LOCAL || user.getPasswordHash() == null || user.getPasswordHash().isBlank()) {
+            throw new CustomException(400, "Tài khoản này không hỗ trợ đổi mật khẩu bằng mật khẩu hiện tại.");
+        }
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new CustomException(400, "Mật khẩu hiện tại không chính xác.");
+        }
+
+        userRepository.updatePasswordHashById(user.getId(), passwordEncoder.encode(request.getNewPassword()));
+        sessionUtil.deleteAllSessions(currentUserId);
+    }
+
     // Lấy danh sách thiết bị đã đăng nhập của một tài khoản
     public List<DeviceResponseDTO> getDevices(String userId) {
         // Lấy userId của user hiện tại

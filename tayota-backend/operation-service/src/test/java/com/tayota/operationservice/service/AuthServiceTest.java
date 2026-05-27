@@ -1,7 +1,9 @@
 package com.tayota.operationservice.service;
 
 import com.tayota.operationservice.dto.request.admin.AdminResetPasswordRequest;
+import com.tayota.operationservice.dto.request.auth.ChangePasswordDirectRequestDTO;
 import com.tayota.operationservice.entity.user.User;
+import com.tayota.operationservice.enums.user.ProviderType;
 import com.tayota.operationservice.enums.user.RoleType;
 import com.tayota.operationservice.enums.user.StatusType;
 import com.tayota.operationservice.exception.CustomException;
@@ -26,6 +28,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
@@ -33,6 +36,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -116,6 +120,56 @@ class AuthServiceTest {
     }
 
     @Test
+    void changePasswordDirectUpdatesPasswordWhenCurrentPasswordMatches() {
+        UUID userId = UUID.randomUUID();
+        authenticateUser(userId);
+        ChangePasswordDirectRequestDTO request = directPasswordRequest("Oldpass1!", "Newpass1!");
+        User user = user(userId, RoleType.USER);
+        user.setPasswordHash("old-hash");
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("Oldpass1!", "old-hash")).thenReturn(true);
+        when(passwordEncoder.encode("Newpass1!")).thenReturn("new-hash");
+
+        service().changePasswordDirect(request);
+
+        verify(userRepository).updatePasswordHashById(userId, "new-hash");
+        verify(sessionUtil).deleteAllSessions(userId.toString());
+    }
+
+    @Test
+    void changePasswordDirectRejectsWrongCurrentPassword() {
+        UUID userId = UUID.randomUUID();
+        authenticateUser(userId);
+        ChangePasswordDirectRequestDTO request = directPasswordRequest("Wrongpass1!", "Newpass1!");
+        User user = user(userId, RoleType.USER);
+        user.setPasswordHash("old-hash");
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("Wrongpass1!", "old-hash")).thenReturn(false);
+
+        assertThatThrownBy(() -> service().changePasswordDirect(request))
+                .isInstanceOf(CustomException.class);
+
+        verify(userRepository, never()).updatePasswordHashById(any(), any());
+        verify(sessionUtil, never()).deleteAllSessions(any());
+    }
+
+    @Test
+    void changePasswordDirectRejectsNonLocalAccount() {
+        UUID userId = UUID.randomUUID();
+        authenticateUser(userId);
+        ChangePasswordDirectRequestDTO request = directPasswordRequest("Oldpass1!", "Newpass1!");
+        User user = user(userId, RoleType.USER);
+        user.setLoginProvider(ProviderType.GOOGLE);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> service().changePasswordDirect(request))
+                .isInstanceOf(CustomException.class);
+
+        verify(userRepository, never()).updatePasswordHashById(any(), any());
+        verify(sessionUtil, never()).deleteAllSessions(any());
+    }
+
+    @Test
     void changeUserStatusBansLowerRoleAndDeletesSessions() {
         UUID userId = UUID.randomUUID();
         when(userRepository.findById(userId)).thenReturn(Optional.of(user(userId, RoleType.USER)));
@@ -158,6 +212,21 @@ class AuthServiceTest {
         AdminResetPasswordRequest request = new AdminResetPasswordRequest();
         request.setPassword("Newpass1!");
         return request;
+    }
+
+    private ChangePasswordDirectRequestDTO directPasswordRequest(String currentPassword, String newPassword) {
+        ChangePasswordDirectRequestDTO request = new ChangePasswordDirectRequestDTO();
+        ReflectionTestUtils.setField(request, "currentPassword", currentPassword);
+        ReflectionTestUtils.setField(request, "newPassword", newPassword);
+        return request;
+    }
+
+    private void authenticateUser(UUID userId) {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                userId.toString(),
+                null,
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        ));
     }
 
     private User user(UUID id, RoleType role) {

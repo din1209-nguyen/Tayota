@@ -32,7 +32,7 @@ public class AppointmentNotificationService {
     // User đăng nhập sẽ nhận cả notification trong app và email; guest chỉ nhận email vì không có userId.
     public void notifyAppointmentConfirmed(Appointment appointment) {
         CustomerContact customer = buildCustomerContact(appointment);
-        String title = "Tayota - Xác nhận lịch hẹn thành công";
+        String title = "Tayota - Lịch hẹn đã được xác nhận";
         String content = buildConfirmationContent(appointment, customer.fullName());
 
         if (appointment.getUserId() != null) {
@@ -110,18 +110,18 @@ public class AppointmentNotificationService {
 
         String greetingName = StringUtils.hasText(customerName) ? customerName : "quý khách";
         String appointmentType = switch (appointment.getType()) {
-            case SERVICE -> "bảo dưỡng/sửa chữa";
+            case SERVICE -> "bảo dưỡng/sửa chữa";
             case TEST_DRIVE -> "lái thử";
         };
 
         return """
                 Xin chào %s,
 
-                Lịch hẹn %s của bạn đã được cố vấn dịch vụ xác nhận.
+                Lịch hẹn %s của quý khách đã được cố vấn dịch vụ xác nhận.
 
                 Thời gian: %s - %s, ngày %s
 
-                Cảm ơn bạn đã sử dụng dịch vụ Tayota.
+                Cảm ơn quý khách đã sử dụng dịch vụ Tayota.
                 """.formatted(
                 greetingName,
                 appointmentType,
@@ -135,16 +135,16 @@ public class AppointmentNotificationService {
     private String buildCompletionContent(Appointment appointment, String customerName, String reviewLink) {
         String greetingName = StringUtils.hasText(customerName) ? customerName : "quý khách";
         String appointmentType = switch (appointment.getType()) {
-            case SERVICE -> "Dịch vụ bảo dưỡng/sửa chữa";
-            case TEST_DRIVE -> "Buổi lái thử";
+            case SERVICE -> "lịch hẹn bảo dưỡng/sửa chữa";
+            case TEST_DRIVE -> "lịch hẹn lái thử";
         };
 
         return """
                 Xin chào %s,
 
-                Cảm ơn bạn đã tin tưởng Tayota. %s của bạn đã được hoàn tất.
+                Cảm ơn quý khách đã tin tưởng Tayota. %s của quý khách đã được hoàn tất.
 
-                Rất mong bạn dành ít phút để đánh giá trải nghiệm, giúp Tayota tiếp tục cải thiện chất lượng phục vụ.
+                Rất mong quý khách dành ít phút để đánh giá trải nghiệm, giúp Tayota tiếp tục cải thiện chất lượng phục vụ.
 
                 Link đánh giá: %s
 

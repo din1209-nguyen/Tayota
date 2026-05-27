@@ -192,6 +192,14 @@ public class AuthController {
         return ApiResponse.success(200, "Đặt lại mật khẩu thành công!", null);
     }
 
+    @PatchMapping("/change-password/direct")
+    public ApiResponse<Void> changePasswordDirect(
+            @Valid @RequestBody ChangePasswordDirectRequestDTO changePasswordDirectRequestDTO
+    ) {
+        authService.changePasswordDirect(changePasswordDirectRequestDTO);
+        return ApiResponse.success(200, "Đổi mật khẩu thành công!", null);
+    }
+
     // Lấy danh sách thiết bị đã đăng nhập của một tài khoản
     @GetMapping("/devices/{userId}")
     public ApiResponse<List<DeviceResponseDTO>> getDevices(@PathVariable String userId) {

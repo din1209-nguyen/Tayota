@@ -51,6 +51,13 @@ export function resetForgotPassword(payload) {
   });
 }
 
+export function changePasswordDirect(payload) {
+  return apiFetch("/user/change-password/direct", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function logout() {
   return apiFetch("/user/logout", {
     method: "POST",

@@ -1184,7 +1184,7 @@ export default function AdvisorDashboard() {
               <form className="ops-form advisor-create-appointment" onSubmit={submitAdvisorAppointment}>
                 <div className="form-grid compact-form-grid">
                   <label className="label">Loại lịch<select className="field" value={advisorAppointmentForm.appointmentType} onChange={(event) => changeAdvisorAppointmentType(event.target.value)}><option value="SERVICE">Dịch vụ</option><option value="TEST_DRIVE">Lái thử</option></select></label>
-                  <label className="label">Khách hàng<select className="field" value={advisorAppointmentForm.customerMode} onChange={(event) => changeAdvisorCustomerMode(event.target.value)}><option value="guest">Khách vãng lai</option><option value="user">User có tài khoản</option></select></label>
+                  <label className="label">Khách hàng<select className="field" value={advisorAppointmentForm.customerMode} onChange={(event) => changeAdvisorCustomerMode(event.target.value)}><option value="guest">Khách vãng lai</option><option value="user">Khách có tài khoản</option></select></label>
                 </div>
 
                 {advisorAppointmentForm.customerMode === "user" ? (
@@ -1302,9 +1302,9 @@ export default function AdvisorDashboard() {
             <div className="form-grid">
               {!walkInForm.userId ? (
                 <>
-                  <label className="label">Họ tên guest<input className="field" value={walkInForm.guestFullName} onChange={(event) => setWalkInForm({ ...walkInForm, guestFullName: event.target.value })} /></label>
-                  <label className="label">Email guest<input className="field" type="email" value={walkInForm.guestEmail} onChange={(event) => setWalkInForm({ ...walkInForm, guestEmail: event.target.value })} /></label>
-                  <label className="label">Số điện thoại guest<input className="field" value={walkInForm.guestPhone} onChange={(event) => setWalkInForm({ ...walkInForm, guestPhone: event.target.value })} /></label>
+                  <label className="label">Họ tên<input className="field" value={walkInForm.guestFullName} onChange={(event) => setWalkInForm({ ...walkInForm, guestFullName: event.target.value })} /></label>
+                  <label className="label">Email<input className="field" type="email" value={walkInForm.guestEmail} onChange={(event) => setWalkInForm({ ...walkInForm, guestEmail: event.target.value })} /></label>
+                  <label className="label">Số điện thoại<input className="field" value={walkInForm.guestPhone} onChange={(event) => setWalkInForm({ ...walkInForm, guestPhone: event.target.value })} /></label>
                 </>
               ) : null}
               {walkInForm.userId ? (

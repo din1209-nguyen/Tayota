@@ -33,7 +33,6 @@ export default async function VehicleDetailPage({ params }) {
   }
 
   const imageUrl = getVehicleImage(vehicle);
-  const galleries = Array.isArray(vehicle?.galleries) ? vehicle.galleries : [];
   const prices = Array.isArray(vehicle?.prices) ? vehicle.prices : [];
   const articles = Array.isArray(vehicle?.articles) ? vehicle.articles : [];
   const accessories = Array.isArray(vehicle?.accessories) ? vehicle.accessories : [];
@@ -95,26 +94,19 @@ export default async function VehicleDetailPage({ params }) {
           <div className="price-grid">
             {prices.map((price, index) => (
               <article className="price-card card" key={`${price.exteriorColorId}-${price.interiorColorId}-${index}`}>
-                <div className="price-image" style={price.exImageUrl ? { backgroundImage: `url(${price.exImageUrl})` } : undefined} />
+                <div className="price-image-pair">
+                  <div>
+                    <span>Ngoại thất</span>
+                    <div className="price-image" style={price.exImageUrl ? { backgroundImage: `url(${price.exImageUrl})` } : undefined} />
+                  </div>
+                  <div>
+                    <span>Nội thất</span>
+                    <div className="price-image" style={price.inImageUrl ? { backgroundImage: `url(${price.inImageUrl})` } : undefined} />
+                  </div>
+                </div>
                 <h3>{price.exteriorColorName || "Ngoại thất"} / {price.interiorColorName || "Nội thất"}</h3>
                 <strong>{formatVnd(price.price)}</strong>
               </article>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {galleries.length ? (
-        <section className="shell-container detail-section">
-          <div className="section-heading compact">
-            <div>
-              <p className="eyebrow">Thư viện ảnh</p>
-              <h2>Hình ảnh thực tế</h2>
-            </div>
-          </div>
-          <div className="gallery-grid">
-            {galleries.map((item) => (
-              <div className="gallery-tile" key={item.id || item.imageUrl} style={{ backgroundImage: `url(${item.imageUrl})` }} />
             ))}
           </div>
         </section>

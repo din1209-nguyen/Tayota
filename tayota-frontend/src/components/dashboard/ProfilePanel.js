@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getMe } from "@/lib/services/auth";
+import { changePasswordDirect, getMe } from "@/lib/services/auth";
 import { getUserProfile, updateUserProfile } from "@/lib/services/user";
 import { roleLabel } from "@/lib/format";
 import { setCurrentUser } from "@/lib/session";
@@ -14,6 +14,12 @@ const EMPTY_PROFILE = {
   birthDate: "",
   address: "",
   avatarUrl: "",
+};
+
+const EMPTY_PASSWORD_FORM = {
+  currentPassword: "",
+  newPassword: "",
+  confirmPassword: "",
 };
 
 function toProfileForm(user, profile) {
@@ -34,6 +40,9 @@ export default function ProfilePanel({ eyebrow = "Hồ sơ", heading = "Thông t
   const [form, setForm] = useState(EMPTY_PROFILE);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [passwordForm, setPasswordForm] = useState(EMPTY_PASSWORD_FORM);
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
   const [message, setMessage] = useState("");
 
   async function loadProfile() {
@@ -66,6 +75,11 @@ export default function ProfilePanel({ eyebrow = "Hồ sơ", heading = "Thông t
     setForm((current) => ({ ...current, [name]: value }));
   }
 
+  function updatePasswordField(event) {
+    const { name, value } = event.target;
+    setPasswordForm((current) => ({ ...current, [name]: value }));
+  }
+
   async function submitProfile(event) {
     event.preventDefault();
     if (saving) return;
@@ -88,6 +102,31 @@ export default function ProfilePanel({ eyebrow = "Hồ sơ", heading = "Thông t
       setMessage(error.message || "Không thể cập nhật hồ sơ.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function submitPassword(event) {
+    event.preventDefault();
+    if (passwordSaving) return;
+
+    setPasswordMessage("");
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordMessage("Mật khẩu mới và xác nhận mật khẩu mới không khớp.");
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      await changePasswordDirect({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+      setPasswordForm(EMPTY_PASSWORD_FORM);
+      setPasswordMessage("Đã đổi mật khẩu. Vui lòng đăng nhập lại ở các thiết bị khác nếu cần.");
+    } catch (error) {
+      setPasswordMessage(error.message || "Không thể đổi mật khẩu.");
+    } finally {
+      setPasswordSaving(false);
     }
   }
 
@@ -135,6 +174,22 @@ export default function ProfilePanel({ eyebrow = "Hồ sơ", heading = "Thông t
             </div>
             <button className="btn btn-primary" type="submit" disabled={saving}>
               {saving ? "Đang lưu..." : "Lưu hồ sơ"}
+            </button>
+          </form>
+
+          <form className="ops-form password-form" onSubmit={submitPassword}>
+            <div>
+              <p className="eyebrow">Bảo mật</p>
+              <h3>Đổi mật khẩu</h3>
+            </div>
+            {passwordMessage ? <div className="status-box compact-status" aria-live="polite">{passwordMessage}</div> : null}
+            <div className="form-grid">
+              <label className="label">Mật khẩu cũ<input className="field" name="currentPassword" type="password" value={passwordForm.currentPassword} onChange={updatePasswordField} required autoComplete="current-password" /></label>
+              <label className="label">Mật khẩu mới<input className="field" name="newPassword" type="password" value={passwordForm.newPassword} onChange={updatePasswordField} required minLength={8} maxLength={20} autoComplete="new-password" /></label>
+              <label className="label">Xác nhận mật khẩu mới<input className="field" name="confirmPassword" type="password" value={passwordForm.confirmPassword} onChange={updatePasswordField} required minLength={8} maxLength={20} autoComplete="new-password" /></label>
+            </div>
+            <button className="btn btn-secondary" type="submit" disabled={passwordSaving}>
+              {passwordSaving ? "Đang đổi..." : "Đổi mật khẩu"}
             </button>
           </form>
         </div>

@@ -103,6 +103,19 @@ export function providerLabel(provider) {
 }
 
 export function statusLabel(status) {
+  const chatLabels = {
+    WAITING: "Đang chờ",
+    CHATTING: "Đang tư vấn",
+    RESOLVED: "Đã xử lý",
+    CLOSED: "Đã đóng",
+    IDLE: "Chưa kết nối",
+    CONNECTING: "Đang kết nối",
+    CONNECTED: "Đã kết nối",
+    DISCONNECTED: "Mất kết nối",
+    ERROR: "Có lỗi",
+  };
+  if (chatLabels[status]) return chatLabels[status];
+
   const labels = {
     ACTIVE: "Hoạt động",
     BANNED: "Đã khóa",

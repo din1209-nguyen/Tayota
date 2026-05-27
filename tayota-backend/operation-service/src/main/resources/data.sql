@@ -1,346 +1,342 @@
-DROP TABLE IF EXISTS "ACCESSORY_INVENTORY";
-ALTER TABLE "DEALERSHIP" DROP COLUMN IF EXISTS accessory_quantity;
+--
+-- PostgreSQL database dump
+--
 
-INSERT INTO "USER" (id, created_at, email, login_provider, password_hash, provider_user_id, role, status)
-VALUES
-    ('00000000-0000-0000-0000-000000000001'::uuid, CURRENT_TIMESTAMP, 'admin@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ADMIN', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000002'::uuid, CURRENT_TIMESTAMP, 'manager@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MANAGER', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000003'::uuid, CURRENT_TIMESTAMP, 'advisor@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'SERVICE_ADVISOR', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000004'::uuid, CURRENT_TIMESTAMP, 'mechanic@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MECHANIC', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000005'::uuid, CURRENT_TIMESTAMP, 'customer@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'USER', 'ACTIVE')
-ON CONFLICT (id) DO NOTHING;
+\restrict YvFKhkbBtdJCxdxjawqag6bq610zGe50g7L9h20mNq7M075iGsN8oZ4ygTokFrt
 
-INSERT INTO "USER_PROFILE" (user_id, fullname, phone, gender, birth_date, address, avatar_url)
-VALUES
-    ('00000000-0000-0000-0000-000000000001'::uuid, 'Tayota Admin', '0901000001', TRUE, DATE '1988-01-01', 'Tayota Head Office', '/default-avatar.png'),
-    ('00000000-0000-0000-0000-000000000002'::uuid, 'Tayota Manager', '0901000002', TRUE, DATE '1990-01-01', 'Tayota Head Office', '/default-avatar.png'),
-    ('00000000-0000-0000-0000-000000000003'::uuid, 'Tayota Service Advisor', '0901000003', TRUE, DATE '1992-01-01', 'Tayota District 1', '/default-avatar.png'),
-    ('00000000-0000-0000-0000-000000000004'::uuid, 'Tayota Mechanic', '0901000004', TRUE, DATE '1993-01-01', 'Tayota District 1', '/default-avatar.png'),
-    ('00000000-0000-0000-0000-000000000005'::uuid, 'Tayota Customer', '0901000005', TRUE, DATE '1998-01-01', 'Ho Chi Minh City', '/default-avatar.png')
-ON CONFLICT (user_id) DO NOTHING;
+-- Dumped from database version 17.10 (Debian 17.10-1.pgdg13+1)
+-- Dumped by pg_dump version 17.10 (Debian 17.10-1.pgdg13+1)
 
-INSERT INTO "DEALERSHIP" (id, name, address, car_quantity, latitude, longitude, place_id, phone, operating_hours, is_active, created_at)
-VALUES
-    ('10000000-0000-0000-0000-000000000001'::uuid, 'Tayota District 1', '12 Le Duan, District 1, Ho Chi Minh City', 2, 10.78123456, 106.70234567, 'tayota-district-1', '02811112222', '08:00 - 18:00', TRUE, CURRENT_TIMESTAMP)
-ON CONFLICT (id) DO NOTHING;
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
 
-INSERT INTO "SERVICE_ADVISOR" (id, dealership_id)
-VALUES
-    ('00000000-0000-0000-0000-000000000003'::uuid, '10000000-0000-0000-0000-000000000001'::uuid)
-ON CONFLICT (id) DO NOTHING;
+--
+-- Data for Name: ACCESSORY; Type: TABLE DATA; Schema: public; Owner: tayota
+--
 
-INSERT INTO "MECHANIC" (id, dealership_id, specialty, average_rating, is_active)
-VALUES
-    ('00000000-0000-0000-0000-000000000004'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, 'General maintenance', 4.80, TRUE)
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO public."ACCESSORY" VALUES ('30000000-0000-0000-0000-000000000001', 'Tayota', 'Front dash camera package', 'Dash Camera Basic', 2500000.00, 'Check recording status monthly.', 'ELECTRONIC', 'Install on windshield and connect to vehicle power.', true);
+INSERT INTO public."ACCESSORY" VALUES ('30000000-0000-0000-0000-000000000002', 'Tayota', 'Durable all-weather floor mat', 'Floor Mat Standard', 1200000.00, 'Clean with water and dry before reuse.', 'INTERIOR', 'Place mats in correct seating position.', true);
 
-INSERT INTO "CAR_STYLE" (id, name, description)
-VALUES
-    ('20000000-0000-0000-0000-000000000001'::uuid, 'Sedan', 'Comfortable passenger cars for city and family usage'),
-    ('20000000-0000-0000-0000-000000000002'::uuid, 'SUV', 'High-clearance cars for family and long-distance trips')
-ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO "CAR_SERIES" (id, car_style_id, name, description, created_at)
-VALUES
-    ('21000000-0000-0000-0000-000000000001'::uuid, '20000000-0000-0000-0000-000000000001'::uuid, 'Vios', 'Compact sedan series', CURRENT_TIMESTAMP),
-    ('21000000-0000-0000-0000-000000000002'::uuid, '20000000-0000-0000-0000-000000000002'::uuid, 'Corolla Cross', 'Urban SUV series', CURRENT_TIMESTAMP)
-ON CONFLICT (id) DO NOTHING;
+--
+-- Data for Name: GUEST_INFORMATION; Type: TABLE DATA; Schema: public; Owner: tayota
+--
 
-INSERT INTO "CAR_VERSION" (id, car_series_id, name, sale_percent, model_year, video_url, created_at)
-VALUES
-    ('22000000-0000-0000-0000-000000000001'::uuid, '21000000-0000-0000-0000-000000000001'::uuid, 'Vios 1.5G CVT', 0.00, 2026, 'https://example.com/videos/vios-15g.mp4', CURRENT_TIMESTAMP),
-    ('22000000-0000-0000-0000-000000000002'::uuid, '21000000-0000-0000-0000-000000000002'::uuid, 'Corolla Cross 1.8V', 0.00, 2026, 'https://example.com/videos/corolla-cross-18v.mp4', CURRENT_TIMESTAMP)
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO public."GUEST_INFORMATION" VALUES ('50000000-0000-0000-0000-000000000001', 'guest.customer@example.com', 'Nguyen Van Guest', '0911000001');
+INSERT INTO public."GUEST_INFORMATION" VALUES ('50000000-0000-0000-0000-000000000002', 'guest.service@example.com', 'Tran Mai Guest', '0911000002');
 
-INSERT INTO "CAR_SPECIFICATION" (car_version_id, origin, fuel, number_of_seats, length, width, height, capacity, cylinder_capacity, cylinder, gearbox, maximum_speed, acceleration, torque, gross_weight_allowance, trademarks)
-VALUES
-    ('22000000-0000-0000-0000-000000000001'::uuid, 'Vietnam', 'Gasoline', 5, 4425, 1730, 1475, 42, '1496 cc', 4, 'CVT', 180, '11.0s', '140 Nm', 1550, 'Toyota'),
-    ('22000000-0000-0000-0000-000000000002'::uuid, 'Thailand', 'Gasoline', 5, 4460, 1825, 1620, 47, '1798 cc', 4, 'CVT', 185, '10.5s', '172 Nm', 1850, 'Toyota')
-ON CONFLICT (car_version_id) DO NOTHING;
 
-INSERT INTO "EXTERIOR_COLOR" (id, color_name)
-VALUES
-    ('23000000-0000-0000-0000-000000000001'::uuid, 'White Pearl'),
-    ('23000000-0000-0000-0000-000000000002'::uuid, 'Attitude Black')
-ON CONFLICT (id) DO NOTHING;
+--
+-- Data for Name: APPOINTMENT; Type: TABLE DATA; Schema: public; Owner: tayota
+--
 
-INSERT INTO "INTERIOR_COLOR" (id, color_name)
-VALUES
-    ('24000000-0000-0000-0000-000000000001'::uuid, 'Black'),
-    ('24000000-0000-0000-0000-000000000002'::uuid, 'Beige')
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO public."APPOINTMENT" VALUES ('51000000-0000-0000-0000-000000000001', NULL, NULL, '22000000-0000-0000-0000-000000000006', '2026-05-10 03:00:00+00', '2026-05-08 03:00:00+00', '2026-05-07 03:00:00+00', '10000000-0000-0000-0000-000000000001', NULL, NULL, 'Customer compared hybrid models.', '2026-05-10 03:00:00+00', '2026-05-10 02:00:00+00', 'COMPLETED', 'TEST_DRIVE', '2026-05-10 03:00:00+00', '00000000-0000-0000-0000-000000000015', NULL, NULL);
+INSERT INTO public."APPOINTMENT" VALUES ('51000000-0000-0000-0000-000000000002', NULL, NULL, NULL, '2026-05-18 05:00:00+00', '2026-05-17 02:00:00+00', '2026-05-16 02:00:00+00', '10000000-0000-0000-0000-000000000001', NULL, '00000000-0000-0000-0000-000000000014', 'Periodic maintenance at 10,000 km.', '2026-05-18 05:00:00+00', '2026-05-18 03:00:00+00', 'COMPLETED', 'SERVICE', '2026-05-18 05:00:00+00', '00000000-0000-0000-0000-000000000015', 'TAYOTA00000000008', NULL);
+INSERT INTO public."APPOINTMENT" VALUES ('51000000-0000-0000-0000-000000000003', NULL, NULL, '22000000-0000-0000-0000-000000000004', NULL, '2026-05-24 03:00:00+00', '2026-05-24 02:00:00+00', '10000000-0000-0000-0000-000000000002', NULL, NULL, 'Customer wants to test Camry Hybrid.', '2026-06-05 03:30:00+00', '2026-06-05 02:30:00+00', 'CONFIRMED', 'TEST_DRIVE', '2026-05-24 03:00:00+00', '00000000-0000-0000-0000-000000000015', NULL, NULL);
+INSERT INTO public."APPOINTMENT" VALUES ('51000000-0000-0000-0000-000000000004', NULL, NULL, '22000000-0000-0000-0000-000000000005', NULL, NULL, '2026-05-25 04:00:00+00', '10000000-0000-0000-0000-000000000004', NULL, NULL, 'Guest requested seven-seat SUV.', '2026-06-10 03:00:00+00', '2026-06-10 02:00:00+00', 'PENDING', 'TEST_DRIVE', '2026-05-25 04:00:00+00', NULL, NULL, '50000000-0000-0000-0000-000000000001');
 
-INSERT INTO "CAR_PRICE" (car_version_id, exterior_color_id, interior_color_id, price, ex_image_url, in_image_url)
-VALUES
-    ('22000000-0000-0000-0000-000000000001'::uuid, '23000000-0000-0000-0000-000000000001'::uuid, '24000000-0000-0000-0000-000000000001'::uuid, 545000000.00, '/images/cars/vios-white.png', '/images/cars/interior-black.png'),
-    ('22000000-0000-0000-0000-000000000002'::uuid, '23000000-0000-0000-0000-000000000002'::uuid, '24000000-0000-0000-0000-000000000002'::uuid, 860000000.00, '/images/cars/corolla-cross-black.png', '/images/cars/interior-beige.png')
-ON CONFLICT (car_version_id, exterior_color_id, interior_color_id) DO NOTHING;
 
-INSERT INTO "CAR_GALLERY" (id, car_version_id, image_url)
-VALUES
-    ('25000000-0000-0000-0000-000000000001'::uuid, '22000000-0000-0000-0000-000000000001'::uuid, '/images/cars/vios-gallery-1.png'),
-    ('25000000-0000-0000-0000-000000000002'::uuid, '22000000-0000-0000-0000-000000000002'::uuid, '/images/cars/corolla-cross-gallery-1.png')
-ON CONFLICT (id) DO NOTHING;
+--
+-- Data for Name: APPOINTMENT_HOLIDAY; Type: TABLE DATA; Schema: public; Owner: tayota
+--
 
-INSERT INTO "CAR_ARTICLE" (id, car_version_id, type, title, content, image_url, is_published, created_at, updated_at)
-VALUES
-    ('26000000-0000-0000-0000-000000000001'::uuid, '22000000-0000-0000-0000-000000000001'::uuid, 'FEATURE', 'Vios 1.5G CVT overview', 'Reliable sedan for daily commuting.', '/images/articles/vios-overview.png', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('26000000-0000-0000-0000-000000000002'::uuid, '22000000-0000-0000-0000-000000000002'::uuid, 'FEATURE', 'Corolla Cross 1.8V overview', 'Flexible SUV for family trips.', '/images/articles/corolla-cross-overview.png', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO public."APPOINTMENT_HOLIDAY" VALUES ('58000000-0000-0000-0000-000000000001', true, '2026-05-26 17:10:28.406964+00', '10000000-0000-0000-0000-000000000001', '2026-09-02', 'National holiday', '2026-05-26 17:10:28.406964+00');
+INSERT INTO public."APPOINTMENT_HOLIDAY" VALUES ('58000000-0000-0000-0000-000000000002', true, '2026-05-26 17:10:28.406964+00', '10000000-0000-0000-0000-000000000002', '2026-09-02', 'National holiday', '2026-05-26 17:10:28.406964+00');
 
-INSERT INTO "CAR" (vin_id, car_version_id, dealership_id, engine_number, owner_user_id, status, producted_year, created_at)
-VALUES
-    ('TAYOTA00000000001', '22000000-0000-0000-0000-000000000001'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, 'ENG-TAYOTA-0001', NULL, 'IN_STOCK', TIMESTAMP '2026-01-01 00:00:00', CURRENT_TIMESTAMP),
-    ('TAYOTA00000000002', '22000000-0000-0000-0000-000000000002'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, 'ENG-TAYOTA-0002', '00000000-0000-0000-0000-000000000005'::uuid, 'SOLD', TIMESTAMP '2026-01-01 00:00:00', CURRENT_TIMESTAMP)
-ON CONFLICT (vin_id) DO NOTHING;
 
-INSERT INTO "ACCESSORY" (id, model, brand, price, description, use_content, reminder_content, type)
-VALUES
-    ('30000000-0000-0000-0000-000000000001'::uuid, 'Dash Camera Basic', 'Tayota', 2500000.00, 'Front dash camera package', 'Install on windshield and connect to vehicle power.', 'Check recording status monthly.', 'ELECTRONIC'),
-    ('30000000-0000-0000-0000-000000000002'::uuid, 'Floor Mat Standard', 'Tayota', 1200000.00, 'Durable all-weather floor mat', 'Place mats in correct seating position.', 'Clean with water and dry before reuse.', 'INTERIOR')
-ON CONFLICT (id) DO NOTHING;
+--
+-- Data for Name: CAR_STYLE; Type: TABLE DATA; Schema: public; Owner: tayota
+--
 
-INSERT INTO "CAR_ACCESSORY" (car_version_id, accessory_id)
-VALUES
-    ('22000000-0000-0000-0000-000000000001'::uuid, '30000000-0000-0000-0000-000000000001'::uuid),
-    ('22000000-0000-0000-0000-000000000002'::uuid, '30000000-0000-0000-0000-000000000002'::uuid)
-ON CONFLICT (car_version_id, accessory_id) DO NOTHING;
+INSERT INTO public."CAR_STYLE" VALUES ('20000000-0000-0000-0000-000000000001', 'Comfortable passenger cars for city and family usage', 'Sedan');
+INSERT INTO public."CAR_STYLE" VALUES ('20000000-0000-0000-0000-000000000002', 'High-clearance cars for family and long-distance trips', 'SUV');
+INSERT INTO public."CAR_STYLE" VALUES ('20000000-0000-0000-0000-000000000003', 'Efficient electrified driving for city and long-distance usage', 'Hybrid');
+INSERT INTO public."CAR_STYLE" VALUES ('20000000-0000-0000-0000-000000000004', 'Flexible multi-purpose cars for families and business transport', 'MPV');
+INSERT INTO public."CAR_STYLE" VALUES ('20000000-0000-0000-0000-000000000005', 'Premium technology, comfort and executive presence', 'Luxury');
 
-INSERT INTO "SERVICE_TIME_SLOT" (id, dealership_id, appointment_type, start_time, end_time, is_active, created_at, updated_at)
-VALUES
-    ('40000000-0000-0000-0000-000000000001'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, 'TEST_DRIVE', TIME '09:00:00', TIME '10:00:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('40000000-0000-0000-0000-000000000002'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, 'TEST_DRIVE', TIME '14:00:00', TIME '15:00:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('40000000-0000-0000-0000-000000000003'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, 'SERVICE', TIME '10:00:00', TIME '11:00:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('40000000-0000-0000-0000-000000000004'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, 'SERVICE', TIME '15:00:00', TIME '16:00:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO "USER" (id, created_at, email, login_provider, password_hash, provider_user_id, role, status)
-VALUES
-    ('00000000-0000-0000-0000-000000000006'::uuid, CURRENT_TIMESTAMP, 'assistant@tayota.vn', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ASSISTANT', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000007'::uuid, CURRENT_TIMESTAMP, 'admin@tayota.vn', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ADMIN', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000008'::uuid, CURRENT_TIMESTAMP, 'mechanic@tayota.vn', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MECHANIC', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000009'::uuid, CURRENT_TIMESTAMP, 'user@tayota.vn', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'USER', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000010'::uuid, CURRENT_TIMESTAMP, 'admin.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ADMIN', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000011'::uuid, CURRENT_TIMESTAMP, 'manager.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MANAGER', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000012'::uuid, CURRENT_TIMESTAMP, 'service.advisor.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'SERVICE_ADVISOR', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000013'::uuid, CURRENT_TIMESTAMP, 'assistant.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ASSISTANT', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000014'::uuid, CURRENT_TIMESTAMP, 'mechanic.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MECHANIC', 'ACTIVE'),
-    ('00000000-0000-0000-0000-000000000015'::uuid, CURRENT_TIMESTAMP, 'customer.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'USER', 'ACTIVE')
-ON CONFLICT (id) DO NOTHING;
+--
+-- Data for Name: CAR_SERIES; Type: TABLE DATA; Schema: public; Owner: tayota
+--
 
-UPDATE "USER"
-SET email = 'service.advisor.demo@tayota.com',
-    role = 'SERVICE_ADVISOR',
-    status = 'ACTIVE',
-    login_provider = 'LOCAL',
-    password_hash = '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq'
-WHERE id = '00000000-0000-0000-0000-000000000012'::uuid;
+INSERT INTO public."CAR_SERIES" VALUES ('21000000-0000-0000-0000-000000000001', '2026-05-26 17:10:28.201304+00', 'Compact sedan series', 'Vios', '20000000-0000-0000-0000-000000000001');
+INSERT INTO public."CAR_SERIES" VALUES ('21000000-0000-0000-0000-000000000002', '2026-05-26 17:10:28.201304+00', 'Urban SUV series', 'Corolla Cross', '20000000-0000-0000-0000-000000000002');
+INSERT INTO public."CAR_SERIES" VALUES ('21000000-0000-0000-0000-000000000003', '2026-05-26 17:10:28.317069+00', 'Executive sedan series', 'Camry', '20000000-0000-0000-0000-000000000001');
+INSERT INTO public."CAR_SERIES" VALUES ('21000000-0000-0000-0000-000000000004', '2026-05-26 17:10:28.317069+00', 'Seven-seat SUV series', 'Fortuner', '20000000-0000-0000-0000-000000000002');
+INSERT INTO public."CAR_SERIES" VALUES ('21000000-0000-0000-0000-000000000005', '2026-05-26 17:10:28.317069+00', 'Compact hybrid crossover series', 'Yaris Cross', '20000000-0000-0000-0000-000000000003');
+INSERT INTO public."CAR_SERIES" VALUES ('21000000-0000-0000-0000-000000000006', '2026-05-26 17:10:28.317069+00', 'Family MPV series', 'Innova Cross', '20000000-0000-0000-0000-000000000004');
+INSERT INTO public."CAR_SERIES" VALUES ('21000000-0000-0000-0000-000000000007', '2026-05-26 17:10:28.317069+00', 'Premium adventure SUV series', 'Land Cruiser Prado', '20000000-0000-0000-0000-000000000005');
 
-UPDATE "USER"
-SET email = 'admin.demo@tayota.com',
-    role = 'ADMIN',
-    status = 'ACTIVE',
-    login_provider = 'LOCAL',
-    password_hash = '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq'
-WHERE id = '00000000-0000-0000-0000-000000000010'::uuid;
 
-UPDATE "USER"
-SET email = 'manager.demo@tayota.com',
-    role = 'MANAGER',
-    status = 'ACTIVE',
-    login_provider = 'LOCAL',
-    password_hash = '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq'
-WHERE id = '00000000-0000-0000-0000-000000000011'::uuid;
+--
+-- Data for Name: CAR_VERSION; Type: TABLE DATA; Schema: public; Owner: tayota
+--
 
-UPDATE "USER"
-SET email = 'mechanic.demo@tayota.com',
-    role = 'MECHANIC',
-    status = 'ACTIVE',
-    login_provider = 'LOCAL',
-    password_hash = '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq'
-WHERE id = '00000000-0000-0000-0000-000000000014'::uuid;
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000003', '2026-05-26 17:10:28.319744+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779872977/tayota/car-gallery/file_kpkdj4.png', 2026, 'Camry 2.0Q', 0.00, 'https://example.com/videos/camry-20q.mp4', true, '21000000-0000-0000-0000-000000000003');
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000004', '2026-05-26 17:10:28.319744+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779874882/tayota/car-gallery/file_iat6zz.png', 2026, 'Camry 2.5HV', 0.00, 'https://example.com/videos/camry-25hv.mp4', true, '21000000-0000-0000-0000-000000000003');
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000009', '2026-05-26 17:10:28.319744+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875135/tayota/car-gallery/file_y554pk.png', 2026, 'Corolla Cross HEV', 0.00, 'https://example.com/videos/corolla-cross-hev.mp4', true, '21000000-0000-0000-0000-000000000002');
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000005', '2026-05-26 17:10:28.319744+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875207/tayota/car-gallery/file_alyczl.png', 2026, 'Fortuner Legender 2.4AT', 0.00, 'https://example.com/videos/fortuner-legender.mp4', true, '21000000-0000-0000-0000-000000000004');
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000007', '2026-05-26 17:10:28.319744+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875263/tayota/car-gallery/file_oimavh.png', 2026, 'Innova Cross 2.0V', 0.00, 'https://example.com/videos/innova-cross.mp4', true, '21000000-0000-0000-0000-000000000006');
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000008', '2026-05-26 17:10:28.319744+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875361/tayota/car-gallery/file_g7mbnf.jpg', 2026, 'Land Cruiser Prado VX', 0.00, 'https://example.com/videos/prado-vx.mp4', true, '21000000-0000-0000-0000-000000000007');
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000010', '2026-05-26 17:10:28.319744+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875416/tayota/car-gallery/file_brjw4t.png', 2026, 'Vios 1.5E CVT', 0.00, 'https://example.com/videos/vios-15e.mp4', true, '21000000-0000-0000-0000-000000000001');
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000001', '2026-05-26 17:10:28.208567+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875497/tayota/car-gallery/file_aee4px.png', 2026, 'Vios 1.5G CVT', 0.00, 'https://example.com/videos/vios-15g.mp4', true, '21000000-0000-0000-0000-000000000001');
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000006', '2026-05-26 17:10:28.319744+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875558/tayota/car-gallery/file_jhvbjz.png', 2026, 'Yaris Cross Hybrid', 0.00, 'https://example.com/videos/yaris-cross-hybrid.mp4', true, '21000000-0000-0000-0000-000000000005');
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000002', '2026-05-26 17:10:28.208567+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875067/tayota/car-gallery/file_nr42th.png', 2026, 'Corolla Cross 1.8V', 50.00, 'https://example.com/videos/corolla-cross-18v.mp4', true, '21000000-0000-0000-0000-000000000002');
 
-INSERT INTO "USER_PROFILE" (user_id, fullname, phone, gender, birth_date, address, avatar_url)
-VALUES
-    ('00000000-0000-0000-0000-000000000006'::uuid, 'Tayota Assistant', '0902000006', TRUE, DATE '1994-02-02', 'Tayota Phu My Hung', '/default-avatar.png'),
-    ('00000000-0000-0000-0000-000000000007'::uuid, 'Tayota Admin VN', '0902000007', TRUE, DATE '1987-02-02', 'Tayota Head Office', '/default-avatar.png'),
-    ('00000000-0000-0000-0000-000000000008'::uuid, 'Tayota Mechanic VN', '0902000008', TRUE, DATE '1991-02-02', 'Tayota Thu Duc', '/default-avatar.png'),
-    ('00000000-0000-0000-0000-000000000009'::uuid, 'Tayota User', '0902000009', TRUE, DATE '1999-02-02', 'Ho Chi Minh City', '/default-avatar.png'),
-    ('00000000-0000-0000-0000-000000000010'::uuid, 'Tayota Demo Admin', '0903000010', TRUE, DATE '1988-01-01', 'Tayota Head Office', '/default-avatar.png'),
-    ('00000000-0000-0000-0000-000000000011'::uuid, 'Tayota Demo Manager', '0903000011', TRUE, DATE '1989-02-01', 'Tayota Head Office', '/default-avatar.png'),
-    ('00000000-0000-0000-0000-000000000012'::uuid, 'Tayota Demo Advisor', '0903000012', TRUE, DATE '1991-03-01', 'Tayota District 1', '/default-avatar.png'),
-    ('00000000-0000-0000-0000-000000000013'::uuid, 'Tayota Demo Assistant', '0903000013', FALSE, DATE '1993-04-01', 'Tayota District 1', '/default-avatar.png'),
-    ('00000000-0000-0000-0000-000000000014'::uuid, 'Tayota Demo Mechanic', '0903000014', TRUE, DATE '1992-05-01', 'Tayota District 1', '/default-avatar.png'),
-    ('00000000-0000-0000-0000-000000000015'::uuid, 'Tayota Demo Customer', '0903000015', FALSE, DATE '1997-06-01', 'Ho Chi Minh City', '/default-avatar.png')
-ON CONFLICT (user_id) DO NOTHING;
 
-INSERT INTO "DEALERSHIP" (id, name, address, car_quantity, latitude, longitude, place_id, phone, operating_hours, is_active, created_at)
-VALUES
-    ('10000000-0000-0000-0000-000000000002'::uuid, 'Tayota Phu My Hung', '105 Nguyen Luong Bang, District 7, Ho Chi Minh City', 18, 10.72981234, 106.70381234, 'tayota-phu-my-hung', '02822223333', '08:00 - 18:30', TRUE, CURRENT_TIMESTAMP),
-    ('10000000-0000-0000-0000-000000000003'::uuid, 'Tayota Thu Duc', '22 Vo Van Ngan, Thu Duc City, Ho Chi Minh City', 22, 10.85061234, 106.77131234, 'tayota-thu-duc', '02833334444', '08:00 - 18:00', TRUE, CURRENT_TIMESTAMP),
-    ('10000000-0000-0000-0000-000000000004'::uuid, 'Tayota Hanoi West', '68 Le Van Luong, Thanh Xuan, Hanoi', 16, 21.00761234, 105.80161234, 'tayota-hanoi-west', '02444445555', '08:00 - 18:00', TRUE, CURRENT_TIMESTAMP),
-    ('10000000-0000-0000-0000-000000000005'::uuid, 'Tayota Da Nang', '09 Nguyen Van Linh, Hai Chau, Da Nang', 14, 16.06041234, 108.22191234, 'tayota-da-nang', '02365556666', '08:00 - 17:30', TRUE, CURRENT_TIMESTAMP),
-    ('10000000-0000-0000-0000-000000000006'::uuid, 'Tayota Can Tho', '188 30/4 Street, Ninh Kieu, Can Tho', 12, 10.03321234, 105.78361234, 'tayota-can-tho', '02926667777', '08:00 - 17:30', TRUE, CURRENT_TIMESTAMP)
-ON CONFLICT (id) DO NOTHING;
+--
+-- Data for Name: DEALERSHIP; Type: TABLE DATA; Schema: public; Owner: tayota
+--
 
-INSERT INTO "MECHANIC" (id, dealership_id, specialty, average_rating, is_active)
-VALUES
-    ('00000000-0000-0000-0000-000000000008'::uuid, '10000000-0000-0000-0000-000000000003'::uuid, 'Hybrid diagnostics', 4.90, TRUE),
-    ('00000000-0000-0000-0000-000000000014'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, 'General maintenance', 4.80, TRUE)
-ON CONFLICT (id) DO UPDATE
-SET dealership_id = EXCLUDED.dealership_id,
-    specialty = EXCLUDED.specialty,
-    average_rating = EXCLUDED.average_rating,
-    is_active = EXCLUDED.is_active;
+INSERT INTO public."DEALERSHIP" VALUES ('10000000-0000-0000-0000-000000000001', '12 Le Duan, District 1, Ho Chi Minh City', 2, '2026-05-26 17:10:28.165831+00', true, 10.78123456, 106.70234567, 'Tayota District 1', '08:00 - 18:00', '02811112222', 'tayota-district-1');
+INSERT INTO public."DEALERSHIP" VALUES ('10000000-0000-0000-0000-000000000002', '105 Nguyen Luong Bang, District 7, Ho Chi Minh City', 18, '2026-05-26 17:10:28.306822+00', true, 10.72981234, 106.70381234, 'Tayota Phu My Hung', '08:00 - 18:30', '02822223333', 'tayota-phu-my-hung');
+INSERT INTO public."DEALERSHIP" VALUES ('10000000-0000-0000-0000-000000000003', '22 Vo Van Ngan, Thu Duc City, Ho Chi Minh City', 22, '2026-05-26 17:10:28.306822+00', true, 10.85061234, 106.77131234, 'Tayota Thu Duc', '08:00 - 18:00', '02833334444', 'tayota-thu-duc');
+INSERT INTO public."DEALERSHIP" VALUES ('10000000-0000-0000-0000-000000000004', '68 Le Van Luong, Thanh Xuan, Hanoi', 16, '2026-05-26 17:10:28.306822+00', true, 21.00761234, 105.80161234, 'Tayota Hanoi West', '08:00 - 18:00', '02444445555', 'tayota-hanoi-west');
+INSERT INTO public."DEALERSHIP" VALUES ('10000000-0000-0000-0000-000000000005', '09 Nguyen Van Linh, Hai Chau, Da Nang', 14, '2026-05-26 17:10:28.306822+00', true, 16.06041234, 108.22191234, 'Tayota Da Nang', '08:00 - 17:30', '02365556666', 'tayota-da-nang');
+INSERT INTO public."DEALERSHIP" VALUES ('10000000-0000-0000-0000-000000000006', '188 30/4 Street, Ninh Kieu, Can Tho', 12, '2026-05-26 17:10:28.306822+00', true, 10.03321234, 105.78361234, 'Tayota Can Tho', '08:00 - 17:30', '02926667777', 'tayota-can-tho');
 
-INSERT INTO "SERVICE_ADVISOR" (id, dealership_id)
-VALUES
-    ('00000000-0000-0000-0000-000000000012'::uuid, '10000000-0000-0000-0000-000000000001'::uuid)
-ON CONFLICT (id) DO UPDATE
-SET dealership_id = EXCLUDED.dealership_id;
 
-INSERT INTO "CAR_STYLE" (id, name, description)
-VALUES
-    ('20000000-0000-0000-0000-000000000003'::uuid, 'Hybrid', 'Efficient electrified driving for city and long-distance usage'),
-    ('20000000-0000-0000-0000-000000000004'::uuid, 'MPV', 'Flexible multi-purpose cars for families and business transport'),
-    ('20000000-0000-0000-0000-000000000005'::uuid, 'Luxury', 'Premium technology, comfort and executive presence')
-ON CONFLICT (id) DO NOTHING;
+--
+-- Data for Name: CAR; Type: TABLE DATA; Schema: public; Owner: tayota
+--
 
-INSERT INTO "CAR_SERIES" (id, car_style_id, name, description, created_at)
-VALUES
-    ('21000000-0000-0000-0000-000000000003'::uuid, '20000000-0000-0000-0000-000000000001'::uuid, 'Camry', 'Executive sedan series', CURRENT_TIMESTAMP),
-    ('21000000-0000-0000-0000-000000000004'::uuid, '20000000-0000-0000-0000-000000000002'::uuid, 'Fortuner', 'Seven-seat SUV series', CURRENT_TIMESTAMP),
-    ('21000000-0000-0000-0000-000000000005'::uuid, '20000000-0000-0000-0000-000000000003'::uuid, 'Yaris Cross', 'Compact hybrid crossover series', CURRENT_TIMESTAMP),
-    ('21000000-0000-0000-0000-000000000006'::uuid, '20000000-0000-0000-0000-000000000004'::uuid, 'Innova Cross', 'Family MPV series', CURRENT_TIMESTAMP),
-    ('21000000-0000-0000-0000-000000000007'::uuid, '20000000-0000-0000-0000-000000000005'::uuid, 'Land Cruiser Prado', 'Premium adventure SUV series', CURRENT_TIMESTAMP)
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO public."CAR" VALUES ('TAYOTA00000000001', '2026-05-26 17:10:28.254098+00', 'ENG-TAYOTA-0001', NULL, '2026-01-01 00:00:00+00', 'IN_STOCK', '22000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001');
+INSERT INTO public."CAR" VALUES ('TAYOTA00000000002', '2026-05-26 17:10:28.254098+00', 'ENG-TAYOTA-0002', '00000000-0000-0000-0000-000000000005', '2026-01-01 00:00:00+00', 'SOLD', '22000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001');
+INSERT INTO public."CAR" VALUES ('TAYOTA00000000003', '2026-05-26 17:10:28.334142+00', 'ENG-TAYOTA-0003', NULL, '2026-01-01 00:00:00+00', 'IN_STOCK', '22000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000002');
+INSERT INTO public."CAR" VALUES ('TAYOTA00000000004', '2026-05-26 17:10:28.334142+00', 'ENG-TAYOTA-0004', NULL, '2026-01-01 00:00:00+00', 'IN_STOCK', '22000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000003');
+INSERT INTO public."CAR" VALUES ('TAYOTA00000000005', '2026-05-26 17:10:28.334142+00', 'ENG-TAYOTA-0005', NULL, '2026-01-01 00:00:00+00', 'IN_STOCK', '22000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000004');
+INSERT INTO public."CAR" VALUES ('TAYOTA00000000006', '2026-05-26 17:10:28.334142+00', 'ENG-TAYOTA-0006', NULL, '2026-01-01 00:00:00+00', 'IN_STOCK', '22000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000005');
+INSERT INTO public."CAR" VALUES ('TAYOTA00000000007', '2026-05-26 17:10:28.334142+00', 'ENG-TAYOTA-0007', NULL, '2026-01-01 00:00:00+00', 'IN_STOCK', '22000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000006');
+INSERT INTO public."CAR" VALUES ('TAYOTA00000000008', '2026-05-26 17:10:28.34029+00', 'ENG-TAYOTA-0008', '00000000-0000-0000-0000-000000000015', '2026-01-01 00:00:00+00', 'SOLD', '22000000-0000-0000-0000-000000000009', '10000000-0000-0000-0000-000000000001');
 
-INSERT INTO "CAR_VERSION" (id, car_series_id, name, sale_percent, model_year, video_url, created_at)
-VALUES
-    ('22000000-0000-0000-0000-000000000003'::uuid, '21000000-0000-0000-0000-000000000003'::uuid, 'Camry 2.0Q', 0.00, 2026, 'https://example.com/videos/camry-20q.mp4', CURRENT_TIMESTAMP),
-    ('22000000-0000-0000-0000-000000000004'::uuid, '21000000-0000-0000-0000-000000000003'::uuid, 'Camry 2.5HV', 0.00, 2026, 'https://example.com/videos/camry-25hv.mp4', CURRENT_TIMESTAMP),
-    ('22000000-0000-0000-0000-000000000005'::uuid, '21000000-0000-0000-0000-000000000004'::uuid, 'Fortuner Legender 2.4AT', 0.00, 2026, 'https://example.com/videos/fortuner-legender.mp4', CURRENT_TIMESTAMP),
-    ('22000000-0000-0000-0000-000000000006'::uuid, '21000000-0000-0000-0000-000000000005'::uuid, 'Yaris Cross Hybrid', 0.00, 2026, 'https://example.com/videos/yaris-cross-hybrid.mp4', CURRENT_TIMESTAMP),
-    ('22000000-0000-0000-0000-000000000007'::uuid, '21000000-0000-0000-0000-000000000006'::uuid, 'Innova Cross 2.0V', 0.00, 2026, 'https://example.com/videos/innova-cross.mp4', CURRENT_TIMESTAMP),
-    ('22000000-0000-0000-0000-000000000008'::uuid, '21000000-0000-0000-0000-000000000007'::uuid, 'Land Cruiser Prado VX', 0.00, 2026, 'https://example.com/videos/prado-vx.mp4', CURRENT_TIMESTAMP),
-    ('22000000-0000-0000-0000-000000000009'::uuid, '21000000-0000-0000-0000-000000000002'::uuid, 'Corolla Cross HEV', 0.00, 2026, 'https://example.com/videos/corolla-cross-hev.mp4', CURRENT_TIMESTAMP),
-    ('22000000-0000-0000-0000-000000000010'::uuid, '21000000-0000-0000-0000-000000000001'::uuid, 'Vios 1.5E CVT', 0.00, 2026, 'https://example.com/videos/vios-15e.mp4', CURRENT_TIMESTAMP)
-ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO "CAR_SPECIFICATION" (car_version_id, origin, fuel, number_of_seats, length, width, height, capacity, cylinder_capacity, cylinder, gearbox, maximum_speed, acceleration, torque, gross_weight_allowance, trademarks)
-VALUES
-    ('22000000-0000-0000-0000-000000000003'::uuid, 'Thailand', 'Gasoline', 5, 4885, 1840, 1445, 60, '1987 cc', 4, 'CVT', 210, '9.5s', '206 Nm', 2100, 'Toyota'),
-    ('22000000-0000-0000-0000-000000000004'::uuid, 'Thailand', 'Hybrid', 5, 4885, 1840, 1445, 50, '2487 cc', 4, 'e-CVT', 220, '8.3s', '221 Nm', 2140, 'Toyota'),
-    ('22000000-0000-0000-0000-000000000005'::uuid, 'Indonesia', 'Diesel', 7, 4795, 1855, 1835, 80, '2393 cc', 4, '6AT', 180, '11.2s', '400 Nm', 2610, 'Toyota'),
-    ('22000000-0000-0000-0000-000000000006'::uuid, 'Indonesia', 'Hybrid', 5, 4310, 1770, 1615, 36, '1490 cc', 3, 'e-CVT', 170, '11.0s', '121 Nm', 1690, 'Toyota'),
-    ('22000000-0000-0000-0000-000000000007'::uuid, 'Indonesia', 'Gasoline', 7, 4755, 1850, 1795, 52, '1987 cc', 4, 'CVT', 180, '10.8s', '205 Nm', 2210, 'Toyota'),
-    ('22000000-0000-0000-0000-000000000008'::uuid, 'Japan', 'Gasoline', 7, 4925, 1980, 1935, 80, '2393 cc', 4, '8AT', 190, '9.7s', '430 Nm', 2950, 'Toyota'),
-    ('22000000-0000-0000-0000-000000000009'::uuid, 'Thailand', 'Hybrid', 5, 4460, 1825, 1620, 43, '1798 cc', 4, 'e-CVT', 180, '10.0s', '142 Nm', 1850, 'Toyota'),
-    ('22000000-0000-0000-0000-000000000010'::uuid, 'Vietnam', 'Gasoline', 5, 4425, 1730, 1475, 42, '1496 cc', 4, 'CVT', 180, '11.5s', '140 Nm', 1550, 'Toyota')
-ON CONFLICT (car_version_id) DO NOTHING;
+--
+-- Data for Name: CAR_ACCESSORY; Type: TABLE DATA; Schema: public; Owner: tayota
+--
 
-INSERT INTO "CAR_PRICE" (car_version_id, exterior_color_id, interior_color_id, price, ex_image_url, in_image_url)
-VALUES
-    ('22000000-0000-0000-0000-000000000003'::uuid, '23000000-0000-0000-0000-000000000001'::uuid, '24000000-0000-0000-0000-000000000001'::uuid, 1220000000.00, '/images/cars/camry-white.png', '/images/cars/interior-black.png'),
-    ('22000000-0000-0000-0000-000000000004'::uuid, '23000000-0000-0000-0000-000000000002'::uuid, '24000000-0000-0000-0000-000000000002'::uuid, 1530000000.00, '/images/cars/camry-hybrid-black.png', '/images/cars/interior-beige.png'),
-    ('22000000-0000-0000-0000-000000000005'::uuid, '23000000-0000-0000-0000-000000000002'::uuid, '24000000-0000-0000-0000-000000000001'::uuid, 1350000000.00, '/images/cars/fortuner-black.png', '/images/cars/interior-black.png'),
-    ('22000000-0000-0000-0000-000000000006'::uuid, '23000000-0000-0000-0000-000000000001'::uuid, '24000000-0000-0000-0000-000000000002'::uuid, 765000000.00, '/images/cars/yaris-cross-white.png', '/images/cars/interior-beige.png'),
-    ('22000000-0000-0000-0000-000000000007'::uuid, '23000000-0000-0000-0000-000000000001'::uuid, '24000000-0000-0000-0000-000000000001'::uuid, 995000000.00, '/images/cars/innova-cross-white.png', '/images/cars/interior-black.png'),
-    ('22000000-0000-0000-0000-000000000008'::uuid, '23000000-0000-0000-0000-000000000002'::uuid, '24000000-0000-0000-0000-000000000001'::uuid, 3480000000.00, '/images/cars/prado-black.png', '/images/cars/interior-black.png'),
-    ('22000000-0000-0000-0000-000000000009'::uuid, '23000000-0000-0000-0000-000000000001'::uuid, '24000000-0000-0000-0000-000000000002'::uuid, 955000000.00, '/images/cars/corolla-cross-hev-white.png', '/images/cars/interior-beige.png'),
-    ('22000000-0000-0000-0000-000000000010'::uuid, '23000000-0000-0000-0000-000000000001'::uuid, '24000000-0000-0000-0000-000000000001'::uuid, 498000000.00, '/images/cars/vios-e-white.png', '/images/cars/interior-black.png')
-ON CONFLICT (car_version_id, exterior_color_id, interior_color_id) DO NOTHING;
+INSERT INTO public."CAR_ACCESSORY" VALUES ('30000000-0000-0000-0000-000000000001', '22000000-0000-0000-0000-000000000001');
+INSERT INTO public."CAR_ACCESSORY" VALUES ('30000000-0000-0000-0000-000000000002', '22000000-0000-0000-0000-000000000002');
 
-INSERT INTO "CAR_GALLERY" (id, car_version_id, image_url)
-VALUES
-    ('25000000-0000-0000-0000-000000000003'::uuid, '22000000-0000-0000-0000-000000000003'::uuid, '/images/cars/camry-gallery-1.png'),
-    ('25000000-0000-0000-0000-000000000004'::uuid, '22000000-0000-0000-0000-000000000004'::uuid, '/images/cars/camry-hybrid-gallery-1.png'),
-    ('25000000-0000-0000-0000-000000000005'::uuid, '22000000-0000-0000-0000-000000000005'::uuid, '/images/cars/fortuner-gallery-1.png'),
-    ('25000000-0000-0000-0000-000000000006'::uuid, '22000000-0000-0000-0000-000000000006'::uuid, '/images/cars/yaris-cross-gallery-1.png'),
-    ('25000000-0000-0000-0000-000000000007'::uuid, '22000000-0000-0000-0000-000000000007'::uuid, '/images/cars/innova-cross-gallery-1.png'),
-    ('25000000-0000-0000-0000-000000000008'::uuid, '22000000-0000-0000-0000-000000000008'::uuid, '/images/cars/prado-gallery-1.png')
-ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO "CAR" (vin_id, car_version_id, dealership_id, engine_number, owner_user_id, status, producted_year, created_at)
-VALUES
-    ('TAYOTA00000000003', '22000000-0000-0000-0000-000000000003'::uuid, '10000000-0000-0000-0000-000000000002'::uuid, 'ENG-TAYOTA-0003', NULL, 'IN_STOCK', TIMESTAMP '2026-01-01 00:00:00', CURRENT_TIMESTAMP),
-    ('TAYOTA00000000004', '22000000-0000-0000-0000-000000000004'::uuid, '10000000-0000-0000-0000-000000000003'::uuid, 'ENG-TAYOTA-0004', NULL, 'IN_STOCK', TIMESTAMP '2026-01-01 00:00:00', CURRENT_TIMESTAMP),
-    ('TAYOTA00000000005', '22000000-0000-0000-0000-000000000005'::uuid, '10000000-0000-0000-0000-000000000004'::uuid, 'ENG-TAYOTA-0005', NULL, 'IN_STOCK', TIMESTAMP '2026-01-01 00:00:00', CURRENT_TIMESTAMP),
-    ('TAYOTA00000000006', '22000000-0000-0000-0000-000000000006'::uuid, '10000000-0000-0000-0000-000000000005'::uuid, 'ENG-TAYOTA-0006', NULL, 'IN_STOCK', TIMESTAMP '2026-01-01 00:00:00', CURRENT_TIMESTAMP),
-    ('TAYOTA00000000007', '22000000-0000-0000-0000-000000000007'::uuid, '10000000-0000-0000-0000-000000000006'::uuid, 'ENG-TAYOTA-0007', NULL, 'IN_STOCK', TIMESTAMP '2026-01-01 00:00:00', CURRENT_TIMESTAMP)
-ON CONFLICT (vin_id) DO NOTHING;
+--
+-- Data for Name: CAR_ARTICLE; Type: TABLE DATA; Schema: public; Owner: tayota
+--
 
-INSERT INTO "SERVICE_TIME_SLOT" (id, dealership_id, appointment_type, start_time, end_time, is_active, created_at, updated_at)
-VALUES
-    ('40000000-0000-0000-0000-000000000005'::uuid, '10000000-0000-0000-0000-000000000002'::uuid, 'TEST_DRIVE', TIME '08:30:00', TIME '09:30:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('40000000-0000-0000-0000-000000000006'::uuid, '10000000-0000-0000-0000-000000000002'::uuid, 'TEST_DRIVE', TIME '10:30:00', TIME '11:30:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('40000000-0000-0000-0000-000000000007'::uuid, '10000000-0000-0000-0000-000000000002'::uuid, 'SERVICE', TIME '13:30:00', TIME '14:30:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('40000000-0000-0000-0000-000000000008'::uuid, '10000000-0000-0000-0000-000000000003'::uuid, 'TEST_DRIVE', TIME '09:30:00', TIME '10:30:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('40000000-0000-0000-0000-000000000009'::uuid, '10000000-0000-0000-0000-000000000003'::uuid, 'SERVICE', TIME '14:30:00', TIME '15:30:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('40000000-0000-0000-0000-000000000010'::uuid, '10000000-0000-0000-0000-000000000004'::uuid, 'TEST_DRIVE', TIME '09:00:00', TIME '10:00:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('40000000-0000-0000-0000-000000000011'::uuid, '10000000-0000-0000-0000-000000000005'::uuid, 'SERVICE', TIME '10:00:00', TIME '11:00:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('40000000-0000-0000-0000-000000000012'::uuid, '10000000-0000-0000-0000-000000000006'::uuid, 'TEST_DRIVE', TIME '15:00:00', TIME '16:00:00', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000001', 'Reliable sedan for daily commuting.', '2026-05-26 17:10:28.247398+00', '/images/articles/vios-overview.png', true, 'Vios 1.5G CVT overview', 'FEATURE', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000001');
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000002', 'Flexible SUV for family trips.', '2026-05-26 17:10:28.247398+00', '/images/articles/corolla-cross-overview.png', true, 'Corolla Cross 1.8V overview', 'FEATURE', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000002');
 
-INSERT INTO "CAR" (vin_id, car_version_id, dealership_id, engine_number, owner_user_id, status, producted_year, created_at)
-VALUES
-    ('TAYOTA00000000008', '22000000-0000-0000-0000-000000000009'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, 'ENG-TAYOTA-0008', '00000000-0000-0000-0000-000000000015'::uuid, 'SOLD', TIMESTAMP '2026-01-01 00:00:00', CURRENT_TIMESTAMP)
-ON CONFLICT (vin_id) DO NOTHING;
 
-INSERT INTO "GUEST_INFORMATION" (id, full_name, email, phone)
-VALUES
-    ('50000000-0000-0000-0000-000000000001'::uuid, 'Nguyen Van Guest', 'guest.customer@example.com', '0911000001'),
-    ('50000000-0000-0000-0000-000000000002'::uuid, 'Tran Mai Guest', 'guest.service@example.com', '0911000002')
-ON CONFLICT (id) DO NOTHING;
+--
+-- Data for Name: CAR_GALLERY; Type: TABLE DATA; Schema: public; Owner: tayota
+--
 
-INSERT INTO "APPOINTMENT" (id, user_id, car_version_id, vin_id, dealership_id, mechanic_id, guest_information_id, type, status, scheduled_start_at, scheduled_end_at, notes, confirmed_at, completed_at, canceled_at, expired_at, cancel_reason, created_at, updated_at)
-VALUES
-    ('51000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000015'::uuid, '22000000-0000-0000-0000-000000000006'::uuid, NULL, '10000000-0000-0000-0000-000000000001'::uuid, NULL, NULL, 'TEST_DRIVE', 'COMPLETED', TIMESTAMP '2026-05-10 02:00:00', TIMESTAMP '2026-05-10 03:00:00', 'Customer compared hybrid models.', TIMESTAMP '2026-05-08 03:00:00', TIMESTAMP '2026-05-10 03:00:00', NULL, NULL, NULL, TIMESTAMP '2026-05-07 03:00:00', TIMESTAMP '2026-05-10 03:00:00'),
-    ('51000000-0000-0000-0000-000000000002'::uuid, '00000000-0000-0000-0000-000000000015'::uuid, NULL, 'TAYOTA00000000008', '10000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000014'::uuid, NULL, 'SERVICE', 'COMPLETED', TIMESTAMP '2026-05-18 03:00:00', TIMESTAMP '2026-05-18 05:00:00', 'Periodic maintenance at 10,000 km.', TIMESTAMP '2026-05-17 02:00:00', TIMESTAMP '2026-05-18 05:00:00', NULL, NULL, NULL, TIMESTAMP '2026-05-16 02:00:00', TIMESTAMP '2026-05-18 05:00:00'),
-    ('51000000-0000-0000-0000-000000000003'::uuid, '00000000-0000-0000-0000-000000000015'::uuid, '22000000-0000-0000-0000-000000000004'::uuid, NULL, '10000000-0000-0000-0000-000000000002'::uuid, NULL, NULL, 'TEST_DRIVE', 'CONFIRMED', TIMESTAMP '2026-06-05 02:30:00', TIMESTAMP '2026-06-05 03:30:00', 'Customer wants to test Camry Hybrid.', TIMESTAMP '2026-05-24 03:00:00', NULL, NULL, NULL, NULL, TIMESTAMP '2026-05-24 02:00:00', TIMESTAMP '2026-05-24 03:00:00'),
-    ('51000000-0000-0000-0000-000000000004'::uuid, NULL, '22000000-0000-0000-0000-000000000005'::uuid, NULL, '10000000-0000-0000-0000-000000000004'::uuid, NULL, '50000000-0000-0000-0000-000000000001'::uuid, 'TEST_DRIVE', 'PENDING', TIMESTAMP '2026-06-10 02:00:00', TIMESTAMP '2026-06-10 03:00:00', 'Guest requested seven-seat SUV.', NULL, NULL, NULL, NULL, NULL, TIMESTAMP '2026-05-25 04:00:00', TIMESTAMP '2026-05-25 04:00:00')
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000001', '/images/cars/vios-gallery-1.png', '22000000-0000-0000-0000-000000000001');
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000002', '/images/cars/corolla-cross-gallery-1.png', '22000000-0000-0000-0000-000000000002');
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000003', '/images/cars/camry-gallery-1.png', '22000000-0000-0000-0000-000000000003');
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000004', '/images/cars/camry-hybrid-gallery-1.png', '22000000-0000-0000-0000-000000000004');
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000005', '/images/cars/fortuner-gallery-1.png', '22000000-0000-0000-0000-000000000005');
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000006', '/images/cars/yaris-cross-gallery-1.png', '22000000-0000-0000-0000-000000000006');
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000007', '/images/cars/innova-cross-gallery-1.png', '22000000-0000-0000-0000-000000000007');
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000008', '/images/cars/prado-gallery-1.png', '22000000-0000-0000-0000-000000000008');
 
-INSERT INTO "SERVICE" (id, user_id, guest_information_id, vin_id, mechanic_id, dealership_id, appointment_id, mileage_at_service, status, total_amount, vehicle_condition, notes, receiving_at, processing_at, completed_at, canceled_at, expired_at, cancel_reason, created_at, updated_at)
-VALUES
-    ('52000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000015'::uuid, NULL, 'TAYOTA00000000008', '00000000-0000-0000-0000-000000000014'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, '51000000-0000-0000-0000-000000000002'::uuid, 10125, 'COMPLETED', 1950000.00, 'Vehicle in good condition, normal tire wear.', 'Changed oil and inspected brake system.', TIMESTAMP '2026-05-18 03:00:00', TIMESTAMP '2026-05-18 03:15:00', TIMESTAMP '2026-05-18 05:00:00', NULL, NULL, NULL, TIMESTAMP '2026-05-18 03:00:00', TIMESTAMP '2026-05-18 05:00:00')
-ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO "SERVICE_ITEM" (id, service_id, item_type, accessory_id, item_name, quantity, unit_price, billing_type, final_price, note, created_at)
-VALUES
-    ('53000000-0000-0000-0000-000000000001'::uuid, '52000000-0000-0000-0000-000000000001'::uuid, 'LABOR', NULL, 'Periodic maintenance labor', 1, 450000.00, 'NORMAL', 450000.00, '10,000 km inspection.', TIMESTAMP '2026-05-18 03:20:00'),
-    ('53000000-0000-0000-0000-000000000002'::uuid, '52000000-0000-0000-0000-000000000001'::uuid, 'PART', NULL, 'Engine oil and filter package', 1, 1500000.00, 'NORMAL', 1500000.00, 'OEM consumables.', TIMESTAMP '2026-05-18 03:20:00')
-ON CONFLICT (id) DO NOTHING;
+--
+-- Data for Name: EXTERIOR_COLOR; Type: TABLE DATA; Schema: public; Owner: tayota
+--
 
-INSERT INTO "CHAT_SESSION" (id, user_id, guest_id, assigned_staff_id, status, closed_at, resolved_at, created_at, updated_at)
-VALUES
-    ('54000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000015'::uuid, NULL, '00000000-0000-0000-0000-000000000013'::uuid, 'RESOLVED', NULL, TIMESTAMP '2026-05-20 05:25:00', TIMESTAMP '2026-05-20 05:00:00', TIMESTAMP '2026-05-20 05:25:00'),
-    ('54000000-0000-0000-0000-000000000002'::uuid, NULL, 'guest-web-0001', '00000000-0000-0000-0000-000000000013'::uuid, 'CHATTING', NULL, NULL, TIMESTAMP '2026-05-25 05:00:00', TIMESTAMP '2026-05-25 05:05:00')
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO public."EXTERIOR_COLOR" VALUES ('23000000-0000-0000-0000-000000000001', 'White Pearl');
+INSERT INTO public."EXTERIOR_COLOR" VALUES ('23000000-0000-0000-0000-000000000002', 'Attitude Black');
 
-INSERT INTO "CHAT_MESSAGE" (id, session_id, sender_id, sender_type, content, created_at)
-VALUES
-    ('55000000-0000-0000-0000-000000000001'::uuid, '54000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000015'::uuid, 'CUSTOMER', 'When should I bring the car for periodic maintenance?', TIMESTAMP '2026-05-20 05:00:00'),
-    ('55000000-0000-0000-0000-000000000002'::uuid, '54000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000013'::uuid, 'ASSISTANT', 'Your maintenance appointment is confirmed for May 18.', TIMESTAMP '2026-05-20 05:10:00'),
-    ('55000000-0000-0000-0000-000000000003'::uuid, '54000000-0000-0000-0000-000000000002'::uuid, NULL, 'CUSTOMER', 'I would like a quotation for Fortuner.', TIMESTAMP '2026-05-25 05:00:00'),
-    ('55000000-0000-0000-0000-000000000004'::uuid, '54000000-0000-0000-0000-000000000002'::uuid, '00000000-0000-0000-0000-000000000013'::uuid, 'ASSISTANT', 'I can arrange a test drive and send the quotation.', TIMESTAMP '2026-05-25 05:05:00')
-ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO "NOTIFICATION" (id, user_id, sender_id, type, title, content, is_read, read_at, created_at)
-VALUES
-    ('56000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000015'::uuid, NULL, 'APPOINTMENT', 'Test drive confirmed', 'Your Camry Hybrid test drive appointment has been confirmed.', FALSE, NULL, TIMESTAMP '2026-05-24 03:00:00'),
-    ('56000000-0000-0000-0000-000000000002'::uuid, '00000000-0000-0000-0000-000000000015'::uuid, '00000000-0000-0000-0000-000000000014'::uuid, 'SERVICE', 'Service completed', 'Your vehicle is ready for collection after periodic maintenance.', TRUE, TIMESTAMP '2026-05-18 06:00:00', TIMESTAMP '2026-05-18 05:00:00'),
-    ('56000000-0000-0000-0000-000000000003'::uuid, '00000000-0000-0000-0000-000000000014'::uuid, NULL, 'SERVICE', 'New assigned job', 'A maintenance service ticket was assigned to you.', TRUE, TIMESTAMP '2026-05-18 03:05:00', TIMESTAMP '2026-05-18 03:00:00')
-ON CONFLICT (id) DO NOTHING;
+--
+-- Data for Name: INTERIOR_COLOR; Type: TABLE DATA; Schema: public; Owner: tayota
+--
 
-INSERT INTO "CUSTOMER_REVIEW" (id, review_type, status, review_token, token_expires_at, submitted_at, appointment_id, service_id, user_id, dealership_id, service_rating, service_comment, mechanic_id, mechanic_rating, mechanic_comment, created_at)
-VALUES
-    ('57000000-0000-0000-0000-000000000001'::uuid, 'TEST_DRIVE', 'SUBMITTED', 'demo-review-test-drive-0001', TIMESTAMP '2026-06-10 03:00:00', TIMESTAMP '2026-05-10 05:00:00', '51000000-0000-0000-0000-000000000001'::uuid, NULL, '00000000-0000-0000-0000-000000000015'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, 5, 'Comfortable test drive experience.', NULL, NULL, NULL, TIMESTAMP '2026-05-10 04:00:00'),
-    ('57000000-0000-0000-0000-000000000002'::uuid, 'SERVICE', 'SUBMITTED', 'demo-review-service-0001', TIMESTAMP '2026-06-18 05:00:00', TIMESTAMP '2026-05-18 07:00:00', NULL, '52000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000015'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, 5, 'Quick and transparent maintenance service.', '00000000-0000-0000-0000-000000000014'::uuid, 5, 'Mechanic explained every completed item.', TIMESTAMP '2026-05-18 06:00:00')
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO public."INTERIOR_COLOR" VALUES ('24000000-0000-0000-0000-000000000001', 'Black');
+INSERT INTO public."INTERIOR_COLOR" VALUES ('24000000-0000-0000-0000-000000000002', 'Beige');
 
-INSERT INTO "APPOINTMENT_HOLIDAY" (id, dealership_id, holiday_date, reason, is_active, created_at, updated_at)
-VALUES
-    ('58000000-0000-0000-0000-000000000001'::uuid, '10000000-0000-0000-0000-000000000001'::uuid, DATE '2026-09-02', 'National holiday', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-    ('58000000-0000-0000-0000-000000000002'::uuid, '10000000-0000-0000-0000-000000000002'::uuid, DATE '2026-09-02', 'National holiday', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-ON CONFLICT (id) DO NOTHING;
+
+--
+-- Data for Name: CAR_PRICE; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875752/tayota/car-price-exterior/file_hs2cgf.png', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875735/tayota/car-price-interior/file_zlbq4n.png', 1220000000.00, '22000000-0000-0000-0000-000000000003', '23000000-0000-0000-0000-000000000001', '24000000-0000-0000-0000-000000000001');
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876136/tayota/car-price-exterior/file_ssoh3b.png', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876161/tayota/car-price-interior/file_htgafx.png', 1530000000.00, '22000000-0000-0000-0000-000000000004', '23000000-0000-0000-0000-000000000002', '24000000-0000-0000-0000-000000000002');
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876192/tayota/car-price-exterior/file_aerp0i.png', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876260/tayota/car-price-interior/file_cwa7xl.png', 860000000.00, '22000000-0000-0000-0000-000000000002', '23000000-0000-0000-0000-000000000002', '24000000-0000-0000-0000-000000000002');
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876529/tayota/car-price-exterior/file_fsflbl.png', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876522/tayota/car-price-interior/file_l5lbmz.png', 955000000.00, '22000000-0000-0000-0000-000000000009', '23000000-0000-0000-0000-000000000001', '24000000-0000-0000-0000-000000000002');
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876599/tayota/car-price-exterior/file_buwp34.png', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876591/tayota/car-price-interior/file_sdbqls.png', 1350000000.00, '22000000-0000-0000-0000-000000000005', '23000000-0000-0000-0000-000000000002', '24000000-0000-0000-0000-000000000001');
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876758/tayota/car-price-exterior/file_fqjmpb.png', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876774/tayota/car-price-interior/file_rzyzkm.png', 995000000.00, '22000000-0000-0000-0000-000000000007', '23000000-0000-0000-0000-000000000001', '24000000-0000-0000-0000-000000000001');
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876860/tayota/car-price-exterior/file_luh4ys.jpg', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876854/tayota/car-price-interior/file_ofnpso.jpg', 3480000000.00, '22000000-0000-0000-0000-000000000008', '23000000-0000-0000-0000-000000000002', '24000000-0000-0000-0000-000000000001');
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876971/tayota/car-price-exterior/file_tv3xdb.png', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876962/tayota/car-price-interior/file_pdhogc.png', 498000000.00, '22000000-0000-0000-0000-000000000010', '23000000-0000-0000-0000-000000000001', '24000000-0000-0000-0000-000000000001');
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779877092/tayota/car-price-exterior/file_u4ahpx.png', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779877055/tayota/car-price-interior/file_bpo39a.png', 545000000.00, '22000000-0000-0000-0000-000000000001', '23000000-0000-0000-0000-000000000001', '24000000-0000-0000-0000-000000000001');
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779877147/tayota/car-price-exterior/file_bjamux.png', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779877155/tayota/car-price-interior/file_csyymc.png', 765000000.00, '22000000-0000-0000-0000-000000000006', '23000000-0000-0000-0000-000000000001', '24000000-0000-0000-0000-000000000002');
+
+
+--
+-- Data for Name: CAR_SPECIFICATION; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000001', '11.0s', 42, 4, '1496 cc', 'Gasoline', 'CVT', 1550, 1475, 4425, 180, 5, 'Vietnam', '140 Nm', 'Toyota', 1730);
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000002', '10.5s', 47, 4, '1798 cc', 'Gasoline', 'CVT', 1850, 1620, 4460, 185, 5, 'Thailand', '172 Nm', 'Toyota', 1825);
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000003', '9.5s', 60, 4, '1987 cc', 'Gasoline', 'CVT', 2100, 1445, 4885, 210, 5, 'Thailand', '206 Nm', 'Toyota', 1840);
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000004', '8.3s', 50, 4, '2487 cc', 'Hybrid', 'e-CVT', 2140, 1445, 4885, 220, 5, 'Thailand', '221 Nm', 'Toyota', 1840);
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000005', '11.2s', 80, 4, '2393 cc', 'Diesel', '6AT', 2610, 1835, 4795, 180, 7, 'Indonesia', '400 Nm', 'Toyota', 1855);
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000006', '11.0s', 36, 3, '1490 cc', 'Hybrid', 'e-CVT', 1690, 1615, 4310, 170, 5, 'Indonesia', '121 Nm', 'Toyota', 1770);
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000007', '10.8s', 52, 4, '1987 cc', 'Gasoline', 'CVT', 2210, 1795, 4755, 180, 7, 'Indonesia', '205 Nm', 'Toyota', 1850);
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000008', '9.7s', 80, 4, '2393 cc', 'Gasoline', '8AT', 2950, 1935, 4925, 190, 7, 'Japan', '430 Nm', 'Toyota', 1980);
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000009', '10.0s', 43, 4, '1798 cc', 'Hybrid', 'e-CVT', 1850, 1620, 4460, 180, 5, 'Thailand', '142 Nm', 'Toyota', 1825);
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000010', '11.5s', 42, 4, '1496 cc', 'Gasoline', 'CVT', 1550, 1475, 4425, 180, 5, 'Vietnam', '140 Nm', 'Toyota', 1730);
+
+
+--
+-- Data for Name: CHAT_SESSION; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."CHAT_SESSION" VALUES ('54000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000013', NULL, '2026-05-20 05:00:00+00', NULL, '2026-05-20 05:25:00+00', 'RESOLVED', '2026-05-20 05:25:00+00', '00000000-0000-0000-0000-000000000015');
+INSERT INTO public."CHAT_SESSION" VALUES ('54000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000013', '2026-05-27 08:54:38.869275+00', '2026-05-25 05:00:00+00', 'guest-web-0001', NULL, 'CLOSED', '2026-05-27 08:54:39.040227+00', NULL);
+INSERT INTO public."CHAT_SESSION" VALUES ('190ff96c-c86e-4f7d-b954-f21f83499e5d', '00000000-0000-0000-0000-000000000013', '2026-05-27 08:55:35.85622+00', '2026-05-27 08:53:42.461715+00', '5432a431-a2ee-47db-ba3b-c9df6e99f963', NULL, 'CLOSED', '2026-05-27 08:55:35.863827+00', NULL);
+INSERT INTO public."CHAT_SESSION" VALUES ('45b2e511-7a9e-4fca-a588-171f441b329e', '00000000-0000-0000-0000-000000000013', '2026-05-27 08:55:39.232877+00', '2026-05-27 08:53:42.461714+00', 'b397c46c-cf95-4b42-bb95-58956d77ab05', NULL, 'CLOSED', '2026-05-27 08:55:39.241622+00', NULL);
+INSERT INTO public."CHAT_SESSION" VALUES ('567a0bdd-6a33-470a-9a56-2e52b7ccb397', '00000000-0000-0000-0000-000000000013', '2026-05-27 08:55:44.900928+00', '2026-05-27 08:48:05.945396+00', 'd7464359-12dc-484e-9c95-e05d1ac0ae67', NULL, 'CLOSED', '2026-05-27 08:55:44.910277+00', NULL);
+INSERT INTO public."CHAT_SESSION" VALUES ('fb867fed-6b85-4067-a0ac-38ca9cfa567f', '00000000-0000-0000-0000-000000000013', NULL, '2026-05-27 08:48:05.945396+00', '9125b36b-f1bf-4312-b720-13a875460c76', NULL, 'CHATTING', '2026-05-27 08:56:16.121876+00', NULL);
+
+
+--
+-- Data for Name: CHAT_MESSAGE; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."CHAT_MESSAGE" VALUES ('55000000-0000-0000-0000-000000000001', 'When should I bring the car for periodic maintenance?', '2026-05-20 05:00:00+00', '00000000-0000-0000-0000-000000000015', 'CUSTOMER', '54000000-0000-0000-0000-000000000001');
+INSERT INTO public."CHAT_MESSAGE" VALUES ('55000000-0000-0000-0000-000000000002', 'Your maintenance appointment is confirmed for May 18.', '2026-05-20 05:10:00+00', '00000000-0000-0000-0000-000000000013', 'ASSISTANT', '54000000-0000-0000-0000-000000000001');
+INSERT INTO public."CHAT_MESSAGE" VALUES ('55000000-0000-0000-0000-000000000003', 'I would like a quotation for Fortuner.', '2026-05-25 05:00:00+00', NULL, 'CUSTOMER', '54000000-0000-0000-0000-000000000002');
+INSERT INTO public."CHAT_MESSAGE" VALUES ('55000000-0000-0000-0000-000000000004', 'I can arrange a test drive and send the quotation.', '2026-05-25 05:05:00+00', '00000000-0000-0000-0000-000000000013', 'ASSISTANT', '54000000-0000-0000-0000-000000000002');
+INSERT INTO public."CHAT_MESSAGE" VALUES ('4b3a048d-0482-44da-9a7c-bfe8b680bc6d', 'hello', '2026-05-27 08:48:09.924107+00', NULL, 'CUSTOMER', 'fb867fed-6b85-4067-a0ac-38ca9cfa567f');
+
+
+--
+-- Data for Name: SERVICE; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."SERVICE" VALUES ('52000000-0000-0000-0000-000000000001', NULL, NULL, '2026-05-18 05:00:00+00', '2026-05-18 03:00:00+00', '10000000-0000-0000-0000-000000000001', NULL, '00000000-0000-0000-0000-000000000014', 10125, 'Changed oil and inspected brake system.', '2026-05-18 03:15:00+00', '2026-05-18 03:00:00+00', 'COMPLETED', 1950000.00, '2026-05-18 05:00:00+00', '00000000-0000-0000-0000-000000000015', 'Vehicle in good condition, normal tire wear.', 'TAYOTA00000000008', '51000000-0000-0000-0000-000000000002', NULL);
+
+
+--
+-- Data for Name: CUSTOMER_REVIEW; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."CUSTOMER_REVIEW" VALUES ('57000000-0000-0000-0000-000000000001', '2026-05-10 04:00:00+00', '10000000-0000-0000-0000-000000000001', NULL, NULL, NULL, NULL, NULL, NULL, 'demo-review-test-drive-0001', 'TEST_DRIVE', 'Comfortable test drive experience.', 5, 'SUBMITTED', '2026-05-10 05:00:00+00', '2026-06-10 03:00:00+00', '00000000-0000-0000-0000-000000000015', '51000000-0000-0000-0000-000000000001', NULL);
+INSERT INTO public."CUSTOMER_REVIEW" VALUES ('57000000-0000-0000-0000-000000000002', '2026-05-18 06:00:00+00', '10000000-0000-0000-0000-000000000001', NULL, NULL, NULL, 'Mechanic explained every completed item.', '00000000-0000-0000-0000-000000000014', 5, 'demo-review-service-0001', 'SERVICE', 'Quick and transparent maintenance service.', 5, 'SUBMITTED', '2026-05-18 07:00:00+00', '2026-06-18 05:00:00+00', '00000000-0000-0000-0000-000000000015', NULL, '52000000-0000-0000-0000-000000000001');
+
+
+--
+-- Data for Name: MECHANIC; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."MECHANIC" VALUES ('00000000-0000-0000-0000-000000000004', true, 4.80, '10000000-0000-0000-0000-000000000001', 'General maintenance');
+INSERT INTO public."MECHANIC" VALUES ('00000000-0000-0000-0000-000000000008', true, 4.90, '10000000-0000-0000-0000-000000000003', 'Hybrid diagnostics');
+INSERT INTO public."MECHANIC" VALUES ('00000000-0000-0000-0000-000000000014', true, 4.80, '10000000-0000-0000-0000-000000000001', 'General maintenance');
+
+
+--
+-- Data for Name: NOTIFICATION; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."NOTIFICATION" VALUES ('56000000-0000-0000-0000-000000000001', 'Your Camry Hybrid test drive appointment has been confirmed.', '2026-05-24 03:00:00+00', false, NULL, NULL, 'Test drive confirmed', 'APPOINTMENT', '00000000-0000-0000-0000-000000000015');
+INSERT INTO public."NOTIFICATION" VALUES ('56000000-0000-0000-0000-000000000002', 'Your vehicle is ready for collection after periodic maintenance.', '2026-05-18 05:00:00+00', true, '2026-05-18 06:00:00+00', '00000000-0000-0000-0000-000000000014', 'Service completed', 'SERVICE', '00000000-0000-0000-0000-000000000015');
+INSERT INTO public."NOTIFICATION" VALUES ('56000000-0000-0000-0000-000000000003', 'A maintenance service ticket was assigned to you.', '2026-05-18 03:00:00+00', true, '2026-05-18 03:05:00+00', NULL, 'New assigned job', 'SERVICE', '00000000-0000-0000-0000-000000000014');
+
+
+--
+-- Data for Name: SERVICE_ADVISOR; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."SERVICE_ADVISOR" VALUES ('00000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001');
+INSERT INTO public."SERVICE_ADVISOR" VALUES ('2914e2b8-d126-40aa-814c-f8b671f4e200', '10000000-0000-0000-0000-000000000001');
+INSERT INTO public."SERVICE_ADVISOR" VALUES ('00000000-0000-0000-0000-000000000012', '10000000-0000-0000-0000-000000000001');
+
+
+--
+-- Data for Name: SERVICE_ITEM; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."SERVICE_ITEM" VALUES ('53000000-0000-0000-0000-000000000001', NULL, 'NORMAL', '2026-05-18 03:20:00+00', 450000.00, 'Periodic maintenance labor', 'LABOR', '10,000 km inspection.', 1, 450000.00, '52000000-0000-0000-0000-000000000001');
+INSERT INTO public."SERVICE_ITEM" VALUES ('53000000-0000-0000-0000-000000000002', NULL, 'NORMAL', '2026-05-18 03:20:00+00', 1500000.00, 'Engine oil and filter package', 'PART', 'OEM consumables.', 1, 1500000.00, '52000000-0000-0000-0000-000000000001');
+
+
+--
+-- Data for Name: SERVICE_TIME_SLOT; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000001', true, 'TEST_DRIVE', '2026-05-26 17:10:28.275865+00', '10000000-0000-0000-0000-000000000001', '10:00:00', '09:00:00', '2026-05-26 17:10:28.275865+00');
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000002', true, 'TEST_DRIVE', '2026-05-26 17:10:28.275865+00', '10000000-0000-0000-0000-000000000001', '15:00:00', '14:00:00', '2026-05-26 17:10:28.275865+00');
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000003', true, 'SERVICE', '2026-05-26 17:10:28.275865+00', '10000000-0000-0000-0000-000000000001', '11:00:00', '10:00:00', '2026-05-26 17:10:28.275865+00');
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000004', true, 'SERVICE', '2026-05-26 17:10:28.275865+00', '10000000-0000-0000-0000-000000000001', '16:00:00', '15:00:00', '2026-05-26 17:10:28.275865+00');
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000005', true, 'TEST_DRIVE', '2026-05-26 17:10:28.337543+00', '10000000-0000-0000-0000-000000000002', '09:30:00', '08:30:00', '2026-05-26 17:10:28.337543+00');
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000006', true, 'TEST_DRIVE', '2026-05-26 17:10:28.337543+00', '10000000-0000-0000-0000-000000000002', '11:30:00', '10:30:00', '2026-05-26 17:10:28.337543+00');
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000007', true, 'SERVICE', '2026-05-26 17:10:28.337543+00', '10000000-0000-0000-0000-000000000002', '14:30:00', '13:30:00', '2026-05-26 17:10:28.337543+00');
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000008', true, 'TEST_DRIVE', '2026-05-26 17:10:28.337543+00', '10000000-0000-0000-0000-000000000003', '10:30:00', '09:30:00', '2026-05-26 17:10:28.337543+00');
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000009', true, 'SERVICE', '2026-05-26 17:10:28.337543+00', '10000000-0000-0000-0000-000000000003', '15:30:00', '14:30:00', '2026-05-26 17:10:28.337543+00');
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000010', true, 'TEST_DRIVE', '2026-05-26 17:10:28.337543+00', '10000000-0000-0000-0000-000000000004', '10:00:00', '09:00:00', '2026-05-26 17:10:28.337543+00');
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000011', true, 'SERVICE', '2026-05-26 17:10:28.337543+00', '10000000-0000-0000-0000-000000000005', '11:00:00', '10:00:00', '2026-05-26 17:10:28.337543+00');
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000012', true, 'TEST_DRIVE', '2026-05-26 17:10:28.337543+00', '10000000-0000-0000-0000-000000000006', '16:00:00', '15:00:00', '2026-05-26 17:10:28.337543+00');
+
+
+--
+-- Data for Name: USER; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000001', '2026-05-26 17:10:28.146271+00', 'admin@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ADMIN', 'ACTIVE');
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000002', '2026-05-26 17:10:28.146271+00', 'manager@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MANAGER', 'ACTIVE');
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000003', '2026-05-26 17:10:28.146271+00', 'advisor@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'SERVICE_ADVISOR', 'ACTIVE');
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000004', '2026-05-26 17:10:28.146271+00', 'mechanic@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MECHANIC', 'ACTIVE');
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000005', '2026-05-26 17:10:28.146271+00', 'customer@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'USER', 'ACTIVE');
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000006', '2026-05-26 17:10:28.287349+00', 'assistant@tayota.vn', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ASSISTANT', 'ACTIVE');
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000007', '2026-05-26 17:10:28.287349+00', 'admin@tayota.vn', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ADMIN', 'ACTIVE');
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000008', '2026-05-26 17:10:28.287349+00', 'mechanic@tayota.vn', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MECHANIC', 'ACTIVE');
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000009', '2026-05-26 17:10:28.287349+00', 'user@tayota.vn', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'USER', 'ACTIVE');
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000013', '2026-05-26 17:10:28.287349+00', 'assistant.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ASSISTANT', 'ACTIVE');
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000015', '2026-05-26 17:10:28.287349+00', 'customer.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'USER', 'ACTIVE');
+INSERT INTO public."USER" VALUES ('2914e2b8-d126-40aa-814c-f8b671f4e200', '2026-05-26 17:10:29.4774+00', 'advisor.demo@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'SERVICE_ADVISOR', 'ACTIVE');
+INSERT INTO public."USER" VALUES ('bc258d2a-30ae-400c-ab44-36c7564f7e99', '2026-05-27 08:47:44.144204+00', 'nguyenhuy04112005@gmail.com', 'LOCAL', '$2a$10$1Yd15AMiepR0Ls7tUjLsreb3.UsW1JFMbPeJ.PbLhvmQn6XQkj6hG', NULL, 'USER', 'ACTIVE');
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000012', '2026-05-26 17:10:28.287349+00', 'service.advisor.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'SERVICE_ADVISOR', 'ACTIVE');
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000010', '2026-05-26 17:10:28.287349+00', 'admin.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ADMIN', 'ACTIVE');
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000011', '2026-05-26 17:10:28.287349+00', 'manager.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MANAGER', 'ACTIVE');
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000014', '2026-05-26 17:10:28.287349+00', 'mechanic.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MECHANIC', 'ACTIVE');
+
+
+--
+-- Data for Name: USER_PROFILE; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota Head Office', '/default-avatar.png', '1988-01-01', 'Tayota Admin', true, '0901000001', '00000000-0000-0000-0000-000000000001');
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota Head Office', '/default-avatar.png', '1990-01-01', 'Tayota Manager', true, '0901000002', '00000000-0000-0000-0000-000000000002');
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota District 1', '/default-avatar.png', '1992-01-01', 'Tayota Service Advisor', true, '0901000003', '00000000-0000-0000-0000-000000000003');
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota District 1', '/default-avatar.png', '1993-01-01', 'Tayota Mechanic', true, '0901000004', '00000000-0000-0000-0000-000000000004');
+INSERT INTO public."USER_PROFILE" VALUES ('Ho Chi Minh City', '/default-avatar.png', '1998-01-01', 'Tayota Customer', true, '0901000005', '00000000-0000-0000-0000-000000000005');
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota Phu My Hung', '/default-avatar.png', '1994-02-02', 'Tayota Assistant', true, '0902000006', '00000000-0000-0000-0000-000000000006');
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota Head Office', '/default-avatar.png', '1987-02-02', 'Tayota Admin VN', true, '0902000007', '00000000-0000-0000-0000-000000000007');
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota Thu Duc', '/default-avatar.png', '1991-02-02', 'Tayota Mechanic VN', true, '0902000008', '00000000-0000-0000-0000-000000000008');
+INSERT INTO public."USER_PROFILE" VALUES ('Ho Chi Minh City', '/default-avatar.png', '1999-02-02', 'Tayota User', true, '0902000009', '00000000-0000-0000-0000-000000000009');
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota Head Office', '/default-avatar.png', '1988-01-01', 'Tayota Demo Admin', true, '0903000010', '00000000-0000-0000-0000-000000000010');
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota Head Office', '/default-avatar.png', '1989-02-01', 'Tayota Demo Manager', true, '0903000011', '00000000-0000-0000-0000-000000000011');
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota District 1', '/default-avatar.png', '1991-03-01', 'Tayota Demo Advisor', true, '0903000012', '00000000-0000-0000-0000-000000000012');
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota District 1', '/default-avatar.png', '1993-04-01', 'Tayota Demo Assistant', false, '0903000013', '00000000-0000-0000-0000-000000000013');
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota District 1', '/default-avatar.png', '1992-05-01', 'Tayota Demo Mechanic', true, '0903000014', '00000000-0000-0000-0000-000000000014');
+INSERT INTO public."USER_PROFILE" VALUES ('Ho Chi Minh City', '/default-avatar.png', '1997-06-01', 'Tayota Demo Customer', false, '0903000015', '00000000-0000-0000-0000-000000000015');
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota Head Office', '/default-avatar.png', '1988-01-01', 'Tayota Demo Advisor', true, '0903000012', '2914e2b8-d126-40aa-814c-f8b671f4e200');
+INSERT INTO public."USER_PROFILE" VALUES (NULL, NULL, NULL, 'nguyenhuy04112005', NULL, NULL, 'bc258d2a-30ae-400c-ab44-36c7564f7e99');
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict YvFKhkbBtdJCxdxjawqag6bq610zGe50g7L9h20mNq7M075iGsN8oZ4ygTokFrt
+

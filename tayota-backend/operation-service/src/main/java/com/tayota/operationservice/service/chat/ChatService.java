@@ -22,6 +22,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -29,6 +30,10 @@ import java.util.UUID;
 public class ChatService {
     private static final String CHAT_SESSION_TOPIC_PREFIX = "/topic/chat.sessions.";
     private static final String ASSISTANT_CHAT_SESSIONS_TOPIC = "/topic/assistant.chat.sessions";
+    private static final List<ChatSessionStatus> OPEN_SESSION_STATUSES = List.of(
+            ChatSessionStatus.WAITING,
+            ChatSessionStatus.CHATTING
+    );
 
     private final ChatSessionRepository chatSessionRepository;
     private final ChatMessageRepository chatMessageRepository;
@@ -70,7 +75,7 @@ public class ChatService {
     @Transactional
     public ChatMessageResponseDTO customerSendMessageToSession(UUID chatSessionId, String content) {
         // Tìm phiên chat theo ID nhận từ header chat_session
-        ChatSession chatSession = findChatSession(chatSessionId);
+        ChatSession chatSession = findChatSessionWithoutLock(chatSessionId);
 
         // Mở lại phiên chat nếu phiên đã xử lý hoặc đã đóng
         chatSession = reopenSessionIfFinished(chatSession);
@@ -100,10 +105,10 @@ public class ChatService {
         UUID assistantId = requireCurrentUserId();
 
         // Tìm phiên chat theo ID nhận từ header chat_session
-        ChatSession chatSession = findChatSession(chatSessionId);
+        ChatSession chatSession = findChatSessionWithoutLock(chatSessionId);
 
         // Gán assistant cho phiên chat nếu phiên chưa có người phụ trách
-        chatSession = assignSessionIfNeeded(chatSession, assistantId);
+        validateAssignedAssistant(chatSession, assistantId);
 
         // Tạo tin nhắn assistant và lưu vào database
         ChatMessageResponseDTO chatMessage = createMessageResponse(
@@ -143,8 +148,7 @@ public class ChatService {
         UUID userId = requireCurrentUserId();
 
         // Lấy ID phiên chat hiện tại từ cookie chat_session
-        String chatSessionId = getChatSessionIdFromCookie(request);
-
+        String chatSessionId = getChatSessionIdFromCookieForMerge(request);
         // Kiểm tra cookie chat_session phải tồn tại
         if (!StringUtils.hasText(chatSessionId)) {
             throw new CustomException(404, "Không tìm thấy phiên chat để merge");
@@ -194,7 +198,10 @@ public class ChatService {
         UUID assistantId = requireCurrentUserId();
 
         // Tìm phiên chat theo ID
-        ChatSession chatSession = findChatSession(chatSessionId);
+        ChatSession chatSession = findChatSessionWithLock(chatSessionId);
+        if (chatSession.getStatus() != ChatSessionStatus.WAITING || chatSession.getAssignedAssistantId() != null) {
+            throw new CustomException(409, "Chat session is already assigned");
+        }
 
         // Gán assistant hiện tại làm người phụ trách phiên chat
         chatSession.setAssignedAssistantId(assistantId);
@@ -215,8 +222,10 @@ public class ChatService {
     // Đánh dấu phiên chat đã xử lý
     @Transactional
     public ChatSessionResponseDTO resolveSession(UUID chatSessionId) {
+        UUID assistantId = requireCurrentUserId();
         // Tìm phiên chat theo ID
-        ChatSession chatSession = findChatSession(chatSessionId);
+        ChatSession chatSession = findChatSessionWithoutLock(chatSessionId);
+        validateAssignedAssistant(chatSession, assistantId);
 
         // Chuyển trạng thái phiên chat sang đã xử lý
         chatSession.setStatus(ChatSessionStatus.RESOLVED);
@@ -237,8 +246,10 @@ public class ChatService {
     // Đóng phiên chat
     @Transactional
     public ChatSessionResponseDTO closeSession(UUID chatSessionId) {
+        UUID assistantId = requireCurrentUserId();
         // Tìm phiên chat theo ID
-        ChatSession chatSession = findChatSession(chatSessionId);
+        ChatSession chatSession = findChatSessionWithoutLock(chatSessionId);
+        validateAssignedAssistant(chatSession, assistantId);
 
         // Chuyển trạng thái phiên chat sang đã đóng
         chatSession.setStatus(ChatSessionStatus.CLOSED);
@@ -269,6 +280,23 @@ public class ChatService {
     private ChatSession getOrCreateCurrentSession(HttpServletRequest request, HttpServletResponse response) {
         // Lấy ID phiên chat hiện tại từ cookie chat_session
         String chatSessionId = getChatSessionIdFromCookie(request);
+        UUID currentUserId = getCurrentUserIdOrNull();
+
+        if (currentUserId != null) {
+            List<ChatSession> openSessions = chatSessionRepository.findByUserIdAndStatusInOrderByUpdatedAtDesc(
+                    currentUserId,
+                    OPEN_SESSION_STATUSES
+            );
+
+            if (!openSessions.isEmpty()) {
+                ChatSession currentChatSession = openSessions.getFirst();
+                openSessions.stream()
+                        .skip(1)
+                        .forEach(this::closeDuplicateOpenSession);
+                setChatSessionCookie(response, currentChatSession);
+                return currentChatSession;
+            }
+        }
 
         // Kiểm tra cookie chat_session có tồn tại hay không
         if (StringUtils.hasText(chatSessionId)) {
@@ -277,30 +305,20 @@ public class ChatService {
 
             // Gia hạn cookie nếu phiên chat vẫn tồn tại
             if (existingChatSession != null) {
-                cookieUtil.setCookie(
-                        response,
-                        CookieUtil.CHAT_SESSION_COOKIE,
-                        existingChatSession.getId().toString(),
-                        CookieUtil.CHAT_SESSION_MAX_AGE_SEC
-                );
+                setChatSessionCookie(response, existingChatSession);
                 return existingChatSession;
             }
         }
 
         // Tạo phiên chat mới nếu chưa có cookie hợp lệ
         ChatSession createdChatSession = chatSessionRepository.save(ChatSession.builder()
-                .userId(getCurrentUserIdOrNull())
+                .userId(currentUserId)
                 .guestId(UUID.randomUUID().toString())
                 .status(ChatSessionStatus.WAITING)
                 .build());
 
         // Lưu ID phiên chat mới vào cookie chat_session
-        cookieUtil.setCookie(
-                response,
-                CookieUtil.CHAT_SESSION_COOKIE,
-                createdChatSession.getId().toString(),
-                CookieUtil.CHAT_SESSION_MAX_AGE_SEC
-        );
+        setChatSessionCookie(response, createdChatSession);
 
         // Trả về phiên chat mới tạo
         return createdChatSession;
@@ -328,6 +346,41 @@ public class ChatService {
     }
 
     // Tìm phiên chat theo ID dạng chuỗi
+    private ChatSession findChatSessionWithoutLock(UUID chatSessionId) {
+        return findChatSession(chatSessionId);
+    }
+
+    private ChatSession findChatSessionWithLock(UUID chatSessionId) {
+        return chatSessionRepository.findWithLockById(chatSessionId)
+                .orElseThrow(() -> new CustomException(404, "KhÃ´ng tÃ¬m tháº¥y phiÃªn chat"));
+    }
+
+    private void validateAssignedAssistant(ChatSession chatSession, UUID assistantId) {
+        if (!Objects.equals(chatSession.getAssignedAssistantId(), assistantId)) {
+            throw new CustomException(403, "Chat session is assigned to another staff member");
+        }
+    }
+
+    private void closeDuplicateOpenSession(ChatSession chatSession) {
+        chatSession.setStatus(ChatSessionStatus.CLOSED);
+        chatSession.setClosedAt(Instant.now());
+        chatSessionRepository.save(chatSession);
+        publishChatSessionUpdate(chatSession);
+    }
+
+    private void setChatSessionCookie(HttpServletResponse response, ChatSession chatSession) {
+        cookieUtil.setCookie(
+                response,
+                CookieUtil.CHAT_SESSION_COOKIE,
+                chatSession.getId().toString(),
+                CookieUtil.CHAT_SESSION_MAX_AGE_SEC
+        );
+    }
+
+    private String getChatSessionIdFromCookieForMerge(HttpServletRequest request) {
+        return getChatSessionIdFromCookie(request);
+    }
+
     private ChatSession findChatSessionOrNull(String chatSessionId) {
         try {
             // Tìm phiên chat nếu chatSessionId là UUID hợp lệ

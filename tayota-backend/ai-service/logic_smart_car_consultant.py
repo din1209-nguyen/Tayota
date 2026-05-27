@@ -36,7 +36,7 @@ def build_slot_context(slots: Dict[str, Any]) -> str:
     if not filled:
         return "Chưa có thông tin cụ thể về nhu cầu của khách hàng."
 
-    lines = ["📋 Thông tin đã biết về khách hàng:"]
+    lines = [" Thông tin đã biết về khách hàng:"]
     mapping = {
         "budget":           lambda v: f"  • Ngân sách: {v:,.0f} triệu VND",
         "seats":            lambda v: f"  • Số chỗ ngồi: {v} chỗ",
@@ -67,12 +67,12 @@ def build_advise_prompt(
         parts.append(slot_ctx)
 
     if context:
-        parts.append(f"📚 Ngữ cảnh từ tài liệu:\n{context}")
+        parts.append(f" Ngữ cảnh từ tài liệu:\n{context}")
 
     # KHÔNG thêm history ở đây — rag.py đã inject vào messages rồi
-    parts.append(f"❓ Câu hỏi hiện tại: {query}")
+    parts.append(f" Câu hỏi hiện tại: {query}")
 
-    return "\n\n---\n\n".join(parts)
+    return "\n\n\n\n".join(parts)
 
 
 def build_greeting_prompt(query: str, state: ConversationState) -> str:
@@ -155,7 +155,7 @@ class SmartCarConsultant:
         Ghép LLM response + follow-up question.
         """
         if decision.followup:
-            return f"{llm_response}\n\n---\n💬 {decision.followup}"
+            return f"{llm_response}\n\n\n {decision.followup}"
         return llm_response
 
 # ── Data class cho decision ───────────────────────────────────────────────────

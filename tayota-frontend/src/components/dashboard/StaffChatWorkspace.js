@@ -11,6 +11,7 @@ import {
   resolveAssistantChatSession,
 } from "@/lib/services/chat";
 import { statusLabel, unwrapList } from "@/lib/format";
+import { getCurrentUser, onSessionChange } from "@/lib/session";
 
 function mergeSessions(...groups) {
   const map = new Map();
@@ -24,6 +25,10 @@ function sessionCustomerLabel(session) {
   return session.userId ? "Khách hàng thành viên" : "Khách vãng lai";
 }
 
+function statusClass(status) {
+  return `status-${String(status || "idle").toLowerCase()}`;
+}
+
 export default function StaffChatWorkspace({
   eyebrow = "Live chat",
   heading = "Inbox tư vấn realtime",
@@ -34,6 +39,14 @@ export default function StaffChatWorkspace({
   const [loading, setLoading] = useState(true);
   const [busyAction, setBusyAction] = useState("");
   const [error, setError] = useState("");
+  const [currentUser, setCurrentUser] = useState(null);
+
+  const activeSession = sessions.find((session) => session.id === activeSessionId);
+  const activeSessionReadOnly = Boolean(
+    activeSession?.assignedAssistantId &&
+    currentUser?.id &&
+    activeSession.assignedAssistantId !== currentUser.id
+  );
 
   const load = useCallback(async ({ showLoading = false } = {}) => {
     if (showLoading) setLoading(true);
@@ -54,6 +67,11 @@ export default function StaffChatWorkspace({
   useEffect(() => {
     load({ showLoading: true });
   }, [load]);
+
+  useEffect(() => {
+    setCurrentUser(getCurrentUser());
+    return onSessionChange(() => setCurrentUser(getCurrentUser()));
+  }, []);
 
   useEffect(() => {
     const client = new Client({
@@ -101,6 +119,10 @@ export default function StaffChatWorkspace({
     return busyAction === `${actionName}:${sessionId}`;
   }
 
+  function isAssignedToCurrentUser(session) {
+    return Boolean(session?.assignedAssistantId && currentUser?.id && session.assignedAssistantId === currentUser.id);
+  }
+
   return (
     <div className="ops-grid workspace-tabs-layout staff-chat-workspace">
       <section className="ops-panel">
@@ -124,9 +146,12 @@ export default function StaffChatWorkspace({
             <article className={activeSessionId === session.id ? "active" : ""} key={session.id}>
               <div className="ops-panel-head">
                 <strong>{sessionCustomerLabel(session)}</strong>
-                <span className="status-pill">{statusLabel(session.status)}</span>
+                <span className={`status-pill ${statusClass(session.status)}`}>{statusLabel(session.status)}</span>
               </div>
               <small>Mã phiên: {session.id}</small>
+              {session.status === "CHATTING" && !isAssignedToCurrentUser(session) ? (
+                <small>Đang được xử lý bởi nhân viên khác</small>
+              ) : null}
               <div className="row-actions">
                 {session.status === "WAITING" ? (
                   <button
@@ -141,7 +166,7 @@ export default function StaffChatWorkspace({
                 <button className="btn btn-ghost" type="button" disabled={Boolean(busyAction)} onClick={() => setActiveSessionId(session.id)}>
                   Mở hội thoại
                 </button>
-                {session.status === "CHATTING" ? (
+                {session.status === "CHATTING" && isAssignedToCurrentUser(session) ? (
                   <>
                     <button
                       className="btn btn-ghost"
@@ -168,7 +193,14 @@ export default function StaffChatWorkspace({
         </div>
       </section>
 
-      {activeSessionId ? <LiveChatPanel mode="assistant" sessionId={activeSessionId} /> : (
+      {activeSessionId ? (
+        <LiveChatPanel
+          mode="assistant"
+          sessionId={activeSessionId}
+          readOnly={activeSessionReadOnly}
+          onRestrictedAction={() => load()}
+        />
+      ) : (
         <section className="ops-panel staff-chat-placeholder">
           <p className="eyebrow">Phiên chat</p>
           <h2>Hỗ trợ khách hàng</h2>

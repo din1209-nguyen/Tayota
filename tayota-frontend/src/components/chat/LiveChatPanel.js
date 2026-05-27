@@ -11,6 +11,9 @@ import {
   sendCustomerChatMessage,
 } from "@/lib/services/chat";
 import { statusLabel } from "@/lib/format";
+import { getCurrentUser, onSessionChange } from "@/lib/session";
+
+const CUSTOMER_LIVE_CHAT_ROLES = new Set(["USER", "CUSTOMER"]);
 
 function appendUnique(messages, nextMessage) {
   if (!nextMessage) return messages;
@@ -24,8 +27,31 @@ function senderLabel(type) {
   return "Khách hàng";
 }
 
-export default function LiveChatPanel({ mode = "customer", sessionId: providedSessionId = "", variant = "dashboard" }) {
+function messageTone(senderType, isAssistant) {
+  if (senderType === "SYSTEM") return "system";
+  const sentByStaff = senderType === "ASSISTANT" || senderType === "STAFF";
+  const sentByCustomer = senderType === "CUSTOMER";
+  const isOwn = isAssistant ? sentByStaff : sentByCustomer;
+  return isOwn ? "own" : "other";
+}
+
+function canUseCustomerLiveChat(user) {
+  return !user || CUSTOMER_LIVE_CHAT_ROLES.has(user.role);
+}
+
+function statusClass(status) {
+  return `status-${String(status || "idle").toLowerCase()}`;
+}
+
+export default function LiveChatPanel({
+  mode = "customer",
+  sessionId: providedSessionId = "",
+  variant = "dashboard",
+  readOnly = false,
+  onRestrictedAction,
+}) {
   const isAssistant = mode === "assistant";
+  const [currentUser, setCurrentUser] = useState(null);
   const [sessionId, setSessionId] = useState(providedSessionId);
   const [messages, setMessages] = useState([]);
   const [content, setContent] = useState("");
@@ -33,12 +59,26 @@ export default function LiveChatPanel({ mode = "customer", sessionId: providedSe
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const clientRef = useRef(null);
+  const liveChatAllowed = isAssistant || canUseCustomerLiveChat(currentUser);
+
+  useEffect(() => {
+    setCurrentUser(getCurrentUser());
+    return onSessionChange(() => setCurrentUser(getCurrentUser()));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     let client;
 
     async function connect() {
+      if (!liveChatAllowed) {
+        setMessages([]);
+        setSessionId("");
+        setStatus("idle");
+        setError("");
+        return;
+      }
+
       setError("");
       setStatus("connecting");
       setMessages([]);
@@ -94,12 +134,12 @@ export default function LiveChatPanel({ mode = "customer", sessionId: providedSe
       clientRef.current = null;
       if (client) client.deactivate();
     };
-  }, [isAssistant, providedSessionId]);
+  }, [isAssistant, liveChatAllowed, providedSessionId]);
 
   async function send(event) {
     event.preventDefault();
     const text = content.trim();
-    if (!text || !sessionId || sending) return;
+    if (readOnly || !liveChatAllowed || !text || !sessionId || sending) return;
 
     setSending(true);
     setError("");
@@ -111,6 +151,7 @@ export default function LiveChatPanel({ mode = "customer", sessionId: providedSe
       setMessages((current) => appendUnique(current, savedMessage));
       setContent("");
     } catch (caughtError) {
+      if ([403, 409].includes(caughtError.status)) onRestrictedAction?.();
       setError(caughtError.message || "Không gửi được tin nhắn. Vui lòng thử lại.");
     } finally {
       setSending(false);
@@ -125,18 +166,20 @@ export default function LiveChatPanel({ mode = "customer", sessionId: providedSe
           <h2>{isAssistant ? "Hỗ trợ khách hàng" : "Tư vấn trực tiếp"}</h2>
           {sessionId && variant !== "widget" ? <p className="muted-text">Phiên {sessionId}</p> : null}
         </div>
-        <span className={`status-pill ${status}`}>{statusLabel(status.toUpperCase())}</span>
+        <span className={`status-pill ${statusClass(status)}`}>{statusLabel(status.toUpperCase())}</span>
       </div>
 
       <div className="live-chat-feedback" aria-live="polite">
+        {readOnly ? <div className="status-box">Phiên này đang được xử lý bởi nhân viên khác. Bạn chỉ có thể xem lịch sử.</div> : null}
+        {!liveChatAllowed ? <div className="status-box">Tư vấn trực tiếp chỉ dành cho khách hàng và khách vãng lai.</div> : null}
         {error ? <div className="status-box">{error}</div> : null}
       </div>
 
-      <div className="live-chat-messages">
+      {liveChatAllowed ? <div className="live-chat-messages">
         {messages.length ? (
           messages.map((message) => (
             <div
-              className={`live-chat-message ${message.senderType === "CUSTOMER" ? "customer" : "assistant"}`}
+              className={`live-chat-message ${messageTone(message.senderType, isAssistant)}`}
               key={message.id || `${message.senderType}-${message.createdAt}-${message.content}`}
             >
               <strong>{senderLabel(message.senderType)}</strong>
@@ -146,9 +189,9 @@ export default function LiveChatPanel({ mode = "customer", sessionId: providedSe
         ) : (
           <div className="status-box">Chưa có tin nhắn.</div>
         )}
-      </div>
+      </div> : null}
 
-      <form className="live-chat-form" onSubmit={send}>
+      {liveChatAllowed && !readOnly ? <form className="live-chat-form" onSubmit={send}>
         <input
           className="field"
           value={content}
@@ -159,7 +202,7 @@ export default function LiveChatPanel({ mode = "customer", sessionId: providedSe
         <button className="btn btn-primary" type="submit" disabled={!sessionId || !content.trim() || sending}>
           {sending ? "Đang gửi..." : "Gửi"}
         </button>
-      </form>
+      </form> : null}
     </section>
   );
 }

@@ -1,25 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import StaffChatWorkspace from "@/components/dashboard/StaffChatWorkspace";
 import ManagerContentPanels from "@/components/dashboard/ManagerContentPanels";
 import { getMe } from "@/lib/services/auth";
+import { getValidDashboardTab } from "@/lib/dashboard-nav";
 import { getDashboardPath, setCurrentUser } from "@/lib/session";
-
-const TABS = [
-  ["chat", "Live Chat"],
-  ["vehicles", "Xe"],
-  ["articles", "Bài viết"],
-  ["dealerships", "Đại lý"],
-  ["accessories", "Phụ kiện"],
-  ["users", "Người dùng"],
-];
 
 export default function ManagerDashboard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [ready, setReady] = useState(false);
-  const [tab, setTab] = useState("chat");
+  const tab = getValidDashboardTab("MANAGER", searchParams.get("tab"));
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -56,13 +49,6 @@ export default function ManagerDashboard() {
           <h1>Quản lý nội dung website</h1>
           <p className="admin-workspace-copy">Cập nhật catalog, tin tức, đại lý, phụ kiện và tư vấn khách hàng.</p>
         </div>
-        <nav className="role-tabs admin-role-tabs manager-tabs" aria-label="Các mục dành cho manager">
-          {TABS.map(([value, label]) => (
-            <button className={tab === value ? "active" : ""} key={value} type="button" onClick={() => setTab(value)}>
-              {label}
-            </button>
-          ))}
-        </nav>
       </header>
       {tab === "chat" ? (
         <StaffChatWorkspace

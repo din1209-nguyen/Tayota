@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
 import ChatLauncher from "@/components/chat/ChatLauncher";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
@@ -23,7 +24,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="vi" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        <Header />
+        <Suspense fallback={null}>
+          <Header />
+        </Suspense>
         <main className="site-main">{children}</main>
         <ChatLauncher />
         <Footer />

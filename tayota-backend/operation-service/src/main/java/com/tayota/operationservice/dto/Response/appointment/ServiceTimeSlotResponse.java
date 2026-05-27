@@ -14,4 +14,5 @@ public class ServiceTimeSlotResponse {
     private AppointmentType appointmentType;
     private LocalTime startTime;
     private LocalTime endTime;
+    private Boolean active;
 }

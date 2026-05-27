@@ -123,7 +123,7 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
         if (!alive) return;
         setDealerships(unwrapList(dealerResult));
         setVehicles(vehicleResult);
-        setVehicleStyles(unwrapList(styleResult));
+        setVehicleStyles(unwrapList(styleResult).map((style) => ({ ...style, series: style.series || style.carSeries || [] })));
         setProfile(profileResult);
         setMyVehicles(unwrapList(myVehicleResult));
       } catch (error) {
@@ -274,9 +274,9 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
       setValidatingVin(true);
       try {
         await validateServiceVin(normalizedVin);
-        setVinValidationMessage("VIN hop le. Ban co the tiep tuc dat lich.");
+        setVinValidationMessage("VIN hợp lệ. Bạn có thể tiếp tục đặt lịch.");
       } catch (error) {
-        setMessage(error.message || "Khong the kiem tra VIN.");
+        setMessage(error.message || "Không thể kiểm tra VIN.");
         return;
       } finally {
         setValidatingVin(false);
@@ -414,7 +414,7 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
                 <div className="status-box">Tài khoản của bạn chưa có VIN được gán. Bạn vẫn có thể nhập VIN, hệ thống sẽ kiểm tra quyền sở hữu khi gửi lịch.</div>
               ) : null}
               {!authenticated ? (
-                <div className="status-box">Khach vang lai co the nhap VIN. He thong se kiem tra VIN ngay o buoc nay truoc khi cho phep chon dai ly.</div>
+                <div className="status-box">Khách vãng lai có thể nhập VIN. Hệ thống sẽ kiểm tra VIN ngay ở bước này trước khi cho phép chọn đại lý.</div>
               ) : null}
             </>
           ) : (
@@ -446,8 +446,10 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
                   return (
                     <button className={`choice-card vehicle-choice ${selected ? "selected" : ""}`} key={id} type="button" onClick={() => toggleVehicle(id)}>
                       <span className="vehicle-choice-image" style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : undefined} />
-                      <strong>{getVehicleName(vehicle)}</strong>
-                      <span>{formatVnd(getVehiclePrice(vehicle))}</span>
+                      <span className="vehicle-choice-copy">
+                        <strong className="vehicle-choice-name">{getVehicleName(vehicle)}</strong>
+                        <span className="vehicle-choice-price">{formatVnd(getVehiclePrice(vehicle))}</span>
+                      </span>
                     </button>
                   );
                 })}
@@ -489,51 +491,64 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
         <section className="wizard-panel">
           <span className="eyebrow">Lịch trống</span>
           <h2>Chọn ngày và giờ</h2>
-          <div className="booking-calendar-card">
-            <div className="booking-calendar-head">
-              <button className="calendar-nav" type="button" onClick={() => moveCalendarMonth(-1)} aria-label="Tháng trước">‹</button>
-              <strong>{calendarMonth.toLocaleDateString("vi-VN", { month: "long", year: "numeric" })}</strong>
-              <button className="calendar-nav" type="button" onClick={() => moveCalendarMonth(1)} aria-label="Tháng sau">›</button>
+          <div className="appointment-time-grid">
+            <div className="booking-calendar-card">
+              <div className="booking-calendar-head">
+                <button className="calendar-nav" type="button" onClick={() => moveCalendarMonth(-1)} aria-label="Tháng trước">‹</button>
+                <strong>{calendarMonth.toLocaleDateString("vi-VN", { month: "long", year: "numeric" })}</strong>
+                <button className="calendar-nav" type="button" onClick={() => moveCalendarMonth(1)} aria-label="Tháng sau">›</button>
+              </div>
+              <div className="booking-calendar-weekdays">
+                {WEEKDAY_LABELS.map((label) => <span key={label}>{label}</span>)}
+              </div>
+              <div className="booking-calendar" aria-label="Lịch ngày khả dụng">
+                {loadingCalendar ? <div className="status-box wide">Đang tải lịch đại lý...</div> : null}
+                {!loadingCalendar && calendarCells.map((cell) => {
+                  if (cell.blank) return <span className="calendar-blank" key={cell.key} />;
+                  const day = cell.meta;
+                  const disabled = !day || day.holiday || !day.hasAvailableSlots;
+                  const selected = form.appointmentDate === cell.date;
+                  return (
+                    <button
+                      className={`calendar-day ${selected ? "selected" : ""} ${disabled ? "disabled" : ""}`}
+                      key={cell.key}
+                      type="button"
+                      disabled={disabled}
+                      title={day?.holiday ? day.holidayReason || "Đại lý nghỉ" : disabled ? "Không có khung giờ khả dụng" : "Có thể đặt lịch"}
+                      onClick={() => choose("appointmentDate", cell.date)}
+                    >
+                      <strong>{cell.day}</strong>
+                    </button>
+                  );
+                })}
+                {!loadingCalendar && !calendarDays.length ? <div className="status-box wide">Chưa có dữ liệu lịch khả dụng.</div> : null}
+              </div>
             </div>
-            <div className="booking-calendar-weekdays">
-              {WEEKDAY_LABELS.map((label) => <span key={label}>{label}</span>)}
+            <div className="booking-slot-card">
+              <div className="booking-slot-head">
+                <span className="eyebrow">Khung giờ</span>
+                <strong>{form.appointmentDate || "Chọn ngày trên lịch"}</strong>
+              </div>
+              <div className="slot-grid">
+                {loadingSlots ? <div className="status-box wide">Đang tải khung giờ...</div> : null}
+                {!loadingSlots && slots.map((slot) => (
+                  <button
+                    className={`slot-button ${form.startTime === slot.startTime ? "selected" : ""}`}
+                    key={slot.id || slot.startTime}
+                    type="button"
+                    onClick={() => choose("startTime", slot.startTime)}
+                  >
+                    {toTimeLabel(slot)}
+                  </button>
+                ))}
+                {!loadingSlots && form.appointmentDate && !slots.length ? (
+                  <div className="status-box wide">Ngày này chưa có khung giờ phù hợp. Vui lòng chọn ngày khác.</div>
+                ) : null}
+                {!loadingSlots && !form.appointmentDate ? (
+                  <div className="status-box wide">Chọn một ngày còn trống để xem khung giờ tiếp đón.</div>
+                ) : null}
+              </div>
             </div>
-            <div className="booking-calendar" aria-label="Lịch ngày khả dụng">
-            {loadingCalendar ? <div className="status-box wide">Đang tải lịch đại lý...</div> : null}
-            {!loadingCalendar && calendarCells.map((cell) => {
-              if (cell.blank) return <span className="calendar-blank" key={cell.key} />;
-              const day = cell.meta;
-              const disabled = !day || day.holiday || !day.hasAvailableSlots;
-              const selected = form.appointmentDate === cell.date;
-              return (
-                <button
-                  className={`calendar-day ${selected ? "selected" : ""} ${disabled ? "disabled" : ""}`}
-                  key={cell.key}
-                  type="button"
-                  disabled={disabled}
-                  title={day?.holiday ? day.holidayReason || "Đại lý nghỉ" : disabled ? "Không có khung giờ khả dụng" : "Có thể đặt lịch"}
-                  onClick={() => choose("appointmentDate", cell.date)}
-                >
-                  <strong>{cell.day}</strong>
-                </button>
-              );
-            })}
-            {!loadingCalendar && !calendarDays.length ? <div className="status-box wide">Chưa có dữ liệu lịch khả dụng.</div> : null}
-            </div>
-          </div>
-          <h3 className="calendar-slot-title">Khoảng thời gian khả dụng</h3>
-          <div className="slot-grid">
-            {loadingSlots ? <div className="status-box">Đang tải khung giờ...</div> : null}
-            {!loadingSlots && slots.map((slot) => (
-              <button
-                className={`slot-button ${form.startTime === slot.startTime ? "selected" : ""}`}
-                key={slot.id || slot.startTime}
-                type="button"
-                onClick={() => choose("startTime", slot.startTime)}
-              >
-                {toTimeLabel(slot)}
-              </button>
-            ))}
           </div>
         </section>
       ) : null}
@@ -597,7 +612,7 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
         </button>
         {step < STEPS.length - 1 ? (
           <button className="btn btn-primary" type="button" onClick={next} disabled={validatingVin}>
-            {validatingVin ? "Dang kiem tra VIN..." : "Tiếp tục"}
+            {validatingVin ? "Đang kiểm tra VIN..." : "Tiếp tục"}
           </button>
         ) : (
           <button className="btn btn-primary" type="submit" disabled={submitting}>

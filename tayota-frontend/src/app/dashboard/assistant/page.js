@@ -7,10 +7,6 @@ export const metadata = {
 export default function AssistantDashboardPage() {
   return (
     <section className="section ops-page">
-      <div className="shell-container page-title">
-        <p className="eyebrow">Dashboard</p>
-        <h1>Trung tâm live chat</h1>
-      </div>
       <div className="shell-container">
         <AssistantDashboard />
       </div>

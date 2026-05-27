@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import MechanicDashboard from "@/components/dashboard/MechanicDashboard";
 
 export const metadata = {
@@ -7,12 +8,10 @@ export const metadata = {
 export default function MechanicDashboardPage() {
   return (
     <section className="section ops-page">
-      <div className="shell-container page-title">
-        <p className="eyebrow">Dashboard</p>
-        <h1>Kỹ thuật viên</h1>
-      </div>
       <div className="shell-container">
-        <MechanicDashboard />
+        <Suspense fallback={<div className="status-box">Đang tải dashboard...</div>}>
+          <MechanicDashboard />
+        </Suspense>
       </div>
     </section>
   );

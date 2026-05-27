@@ -164,13 +164,23 @@ public class AppointmentScheduleService {
     public ServiceTimeSlotResponse createTimeSlot(CreateServiceTimeSlotRequest request) {
         UUID dealershipId = getCurrentServiceAdvisorDealershipId();
         validateSlotTime(request.getStartTime(), request.getEndTime());
+        boolean active = request.getActive() == null || request.getActive();
+        if (active) {
+            validateNoOverlappingActiveSlot(
+                    dealershipId,
+                    request.getAppointmentType(),
+                    request.getStartTime(),
+                    request.getEndTime(),
+                    null
+            );
+        }
 
         ServiceTimeSlot slot = ServiceTimeSlot.builder()
                 .dealershipId(dealershipId)
                 .appointmentType(request.getAppointmentType())
                 .startTime(request.getStartTime())
                 .endTime(request.getEndTime())
-                .active(request.getActive() == null || request.getActive())
+                .active(active)
                 .build();
 
         ServiceTimeSlot saved = serviceTimeSlotRepository.saveAndFlush(slot);
@@ -205,6 +215,15 @@ public class AppointmentScheduleService {
         }
 
         validateSlotTime(slot.getStartTime(), slot.getEndTime());
+        if (Boolean.TRUE.equals(slot.getActive())) {
+            validateNoOverlappingActiveSlot(
+                    dealershipId,
+                    slot.getAppointmentType(),
+                    slot.getStartTime(),
+                    slot.getEndTime(),
+                    slot.getId()
+            );
+        }
 
         ServiceTimeSlot saved = serviceTimeSlotRepository.save(slot);
 
@@ -245,12 +264,16 @@ public class AppointmentScheduleService {
     @Transactional
     public AppointmentHolidayResponse createHoliday(CreateAppointmentHolidayRequest request) {
         UUID dealershipId = getCurrentServiceAdvisorDealershipId();
+        boolean active = request.getActive() == null || request.getActive();
+        if (active && appointmentHolidayRepository.findByDealershipIdAndHolidayDateAndActiveTrue(dealershipId, request.getHolidayDate()).isPresent()) {
+            throw new CustomException(409, "Ngày nghỉ này đã tồn tại");
+        }
 
         AppointmentHoliday holiday = AppointmentHoliday.builder()
                 .dealershipId(dealershipId)
                 .holidayDate(request.getHolidayDate())
                 .reason(normalize(request.getReason()))
-                .active(request.getActive() == null || request.getActive())
+                .active(active)
                 .build();
 
         AppointmentHoliday saved = appointmentHolidayRepository.saveAndFlush(holiday);
@@ -278,6 +301,14 @@ public class AppointmentScheduleService {
 
         if (request.getActive() != null) {
             holiday.setActive(request.getActive());
+        }
+
+        if (Boolean.TRUE.equals(holiday.getActive())) {
+            appointmentHolidayRepository.findByDealershipIdAndHolidayDateAndActiveTrue(dealershipId, holiday.getHolidayDate())
+                    .filter(existing -> !existing.getId().equals(holiday.getId()))
+                    .ifPresent(existing -> {
+                        throw new CustomException(409, "Ngày nghỉ này đã tồn tại");
+                    });
         }
 
         AppointmentHoliday saved = appointmentHolidayRepository.save(holiday);
@@ -385,6 +416,24 @@ public class AppointmentScheduleService {
         }
     }
 
+    // Chặn tạo hoặc bật khung giờ đang hoạt động bị trùng/chồng lấn trong cùng đại lý và cùng loại lịch.
+    private void validateNoOverlappingActiveSlot(
+            UUID dealershipId,
+            AppointmentType appointmentType,
+            LocalTime startTime,
+            LocalTime endTime,
+            UUID excludedSlotId
+    ) {
+        serviceTimeSlotRepository.findByDealershipIdAndAppointmentTypeAndActiveTrueOrderByStartTimeAsc(dealershipId, appointmentType)
+                .stream()
+                .filter(slot -> excludedSlotId == null || !excludedSlotId.equals(slot.getId()))
+                .filter(slot -> startTime.isBefore(slot.getEndTime()) && endTime.isAfter(slot.getStartTime()))
+                .findFirst()
+                .ifPresent(slot -> {
+                    throw new CustomException(409, "Khung giờ này bị trùng với khung giờ đang hoạt động");
+                });
+    }
+
     // Lấy dealershipId của cố vấn dịch vụ đang đăng nhập từ SecurityContext.
     // Hàm này giúp các API quản lý chỉ thao tác trên dữ liệu của đúng đại lý.
     private UUID getCurrentServiceAdvisorDealershipId() {
@@ -410,7 +459,8 @@ public class AppointmentScheduleService {
                 slot.getId(),
                 slot.getAppointmentType(),
                 slot.getStartTime(),
-                slot.getEndTime()
+                slot.getEndTime(),
+                slot.getActive()
         );
     }
 
@@ -419,7 +469,8 @@ public class AppointmentScheduleService {
         return new AppointmentHolidayResponse(
                 holiday.getId(),
                 holiday.getHolidayDate(),
-                holiday.getReason()
+                holiday.getReason(),
+                holiday.getActive()
         );
     }
 

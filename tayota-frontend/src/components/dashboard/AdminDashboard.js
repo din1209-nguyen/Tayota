@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   createAdminUser,
   deleteAiDocument,
@@ -12,6 +12,7 @@ import {
 } from "@/lib/services/admin";
 import { getDealerships } from "@/lib/services/car";
 import { getMe } from "@/lib/services/auth";
+import { getValidDashboardTab } from "@/lib/dashboard-nav";
 import { providerLabel, roleLabel, statusLabel, unwrapList } from "@/lib/format";
 import { getDashboardPath, setCurrentUser } from "@/lib/session";
 
@@ -36,9 +37,10 @@ function needsDealership(role) {
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const documentFileInputRef = useRef(null);
   const [admin, setAdmin] = useState(null);
-  const [tab, setTab] = useState("accounts");
+  const tab = getValidDashboardTab("ADMIN", searchParams.get("tab"));
   const [message, setMessage] = useState("");
   const [dealerships, setDealerships] = useState([]);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
@@ -263,14 +265,6 @@ export default function AdminDashboard() {
           <h1>Quản trị hệ thống</h1>
           <p className="admin-workspace-copy">Theo dõi tài khoản nội bộ và dữ liệu tư vấn AI.</p>
         </div>
-        <nav className="role-tabs admin-role-tabs" aria-label="Các mục quản trị">
-          <button className={tab === "accounts" ? "active" : ""} type="button" onClick={() => setTab("accounts")}>
-            Tài khoản
-          </button>
-          <button className={tab === "documents" ? "active" : ""} type="button" onClick={() => setTab("documents")}>
-            Dữ liệu AI
-          </button>
-        </nav>
       </header>
       {message ? <div className="dashboard-feedback" aria-live="polite"><div className="status-box">{message}</div></div> : null}
 

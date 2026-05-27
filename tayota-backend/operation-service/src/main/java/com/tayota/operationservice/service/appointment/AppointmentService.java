@@ -3,10 +3,12 @@ package com.tayota.operationservice.service.appointment;
 import com.tayota.operationservice.exception.CustomException;
 import com.tayota.operationservice.util.SecurityContextUtil;
 import com.tayota.operationservice.config.AppointmentBookingProperties;
+import com.tayota.operationservice.dto.request.appointment.CreateAdvisorAppointmentRequest;
 import com.tayota.operationservice.dto.request.appointment.CreateServiceAppointmentRequest;
 import com.tayota.operationservice.dto.request.appointment.CreateTestDriveAppointmentRequest;
 import com.tayota.operationservice.dto.request.appointment.UpdateAppointmentRequest;
 import com.tayota.operationservice.dto.request.workorder.CheckInServiceAppointmentRequest;
+import com.tayota.operationservice.dto.response.appointment.AdvisorDealershipResponse;
 import com.tayota.operationservice.dto.response.appointment.AppointmentCreatedResponse;
 import com.tayota.operationservice.dto.response.appointment.AppointmentManagementDetailResponse;
 import com.tayota.operationservice.dto.response.appointment.MyAppointmentDetailResponse;
@@ -26,6 +28,7 @@ import com.tayota.operationservice.mapper.workorder.WorkOrderMapper;
 import com.tayota.operationservice.repository.appointment.AppointmentRepository;
 import com.tayota.operationservice.repository.appointment.GuestInformationRepository;
 import com.tayota.operationservice.repository.car.CarRepository;
+import com.tayota.operationservice.repository.car.CarVersionRepository;
 import com.tayota.operationservice.repository.user.ServiceAdvisorRepository;
 import com.tayota.operationservice.repository.user.UserProfileRepository;
 import com.tayota.operationservice.repository.workorder.MechanicRepository;
@@ -56,6 +59,7 @@ public class AppointmentService {
     private final MechanicRepository mechanicRepository;
     private final ServiceTicketRepository serviceTicketRepository;
     private final CarRepository carRepository;
+    private final CarVersionRepository carVersionRepository;
     private final RedisTemplate<String, Object> redisTemplate;
     private final AppointmentBookingProperties bookingProperties;
     private final AppointmentScheduleService appointmentScheduleService;
@@ -212,10 +216,82 @@ public class AppointmentService {
 
     // ========================= SERVICE CHO SERVICE ADVISOR =============================
 
+    @Transactional(readOnly = true)
+    public AdvisorDealershipResponse getAdvisorDealership() {
+        return new AdvisorDealershipResponse(getCurrentServiceAdvisorDealershipId());
+    }
+
+    // Tạo lịch hẹn đã xác nhận cho khách gọi qua tổng đài, chỉ trong đại lý của cố vấn hiện tại.
+    @Transactional
+    public AppointmentManagementDetailResponse createAppointmentForAdvisor(CreateAdvisorAppointmentRequest request) {
+        UUID dealershipId = getCurrentServiceAdvisorDealershipId();
+        AppointmentType appointmentType = request.getAppointmentType();
+
+        if (appointmentType == null) {
+            throw new CustomException(400, "Loại lịch không được để trống");
+        }
+
+        AppointmentScheduleService.AppointmentTimeRange timeRange = appointmentScheduleService.validateAppointmentTimeRange(
+                dealershipId,
+                appointmentType,
+                request.getAppointmentDate(),
+                request.getStartTime()
+        );
+
+        UUID userId = request.getUserId();
+        if (userId != null && userProfileRepository.findById(userId).isEmpty()) {
+            throw new CustomException(404, "Không tìm thấy khách hàng");
+        }
+        GuestInformation guestInformation = createGuestInformationIfNeeded(
+                userId,
+                request.getGuestFullName(),
+                request.getGuestEmail(),
+                request.getGuestPhone()
+        );
+
+        UUID carVersionId = null;
+        String vinId = null;
+
+        if (appointmentType == AppointmentType.TEST_DRIVE) {
+            carVersionId = parseUuid(request.getCarVersionId(), "Phiên bản xe không hợp lệ");
+            if (!carVersionRepository.existsById(carVersionId)) {
+                throw new CustomException(404, "Phiên bản xe không tồn tại");
+            }
+        } else if (appointmentType == AppointmentType.SERVICE) {
+            vinId = normalizeVin(request.getVinId());
+            Car car = carRepository.findById(vinId)
+                    .orElseThrow(() -> new CustomException(404, "Số VIN không tồn tại trong hệ thống"));
+            if (car.getDealership() == null || !dealershipId.equals(car.getDealership().getId())) {
+                throw new CustomException(400, "Số VIN không thuộc đại lý của cố vấn");
+            }
+        }
+
+        Instant now = Instant.now();
+        Appointment appointment = Appointment.builder()
+                .userId(userId)
+                .guestInformation(guestInformation)
+                .carVersionId(carVersionId)
+                .vinId(vinId)
+                .dealershipId(dealershipId)
+                .type(appointmentType)
+                .status(AppointmentStatus.CONFIRMED)
+                .scheduledStartAt(timeRange.startAt())
+                .scheduledEndAt(timeRange.endAt())
+                .notes(normalize(request.getNotes()))
+                .confirmedAt(now)
+                .createdAt(now)
+                .build();
+
+        Appointment saved = appointmentRepository.save(appointment);
+        appointmentNotificationService.notifyAppointmentConfirmed(saved);
+
+        return toManagementDetailResponse(saved);
+    }
+
     // Lấy danh sách lịch hẹn của đại lý mà cố vấn dịch vụ đang thuộc về.
     // Nếu status là ALL thì lấy tất cả trạng thái.
     @Transactional(readOnly = true)
-    public List<AppointmentCreatedResponse> getAppointmentsForServiceAdvisor(String status) {
+    public List<AppointmentManagementDetailResponse> getAppointmentsForServiceAdvisor(String status) {
         UUID serviceAdvisorId = getCurrentUserId();
 
         ServiceAdvisor serviceAdvisor = serviceAdvisorRepository.findById(serviceAdvisorId)
@@ -227,7 +303,7 @@ public class AppointmentService {
         if ("ALL".equalsIgnoreCase(normalize(status))) {
             return appointmentRepository.findByDealershipIdOrderByScheduledStartAtDesc(dealershipId)
                     .stream()
-                    .map(appointmentCreatedMapper::toResponse)
+                    .map(this::toManagementDetailResponse)
                     .toList();
         }
 
@@ -237,7 +313,7 @@ public class AppointmentService {
         // Lấy danh sách lịch hẹn theo trạng thái và đại lý của cố vấn dịch vụ
         return appointmentRepository.findByStatusAndDealershipIdOrderByScheduledStartAtDesc(searchStatus, dealershipId)
                 .stream()
-                .map(appointmentCreatedMapper::toResponse)
+                .map(this::toManagementDetailResponse)
                 .toList();
     }
 
@@ -528,7 +604,8 @@ public class AppointmentService {
     private void validateStatusTransition(AppointmentStatus currentStatus, AppointmentStatus newStatus) {
         boolean valid = switch (currentStatus) {
             case PENDING -> newStatus == AppointmentStatus.CONFIRMED
-                    || newStatus == AppointmentStatus.REJECTED;
+                    || newStatus == AppointmentStatus.REJECTED
+                    || newStatus == AppointmentStatus.CANCELED;
             case CONFIRMED -> newStatus == AppointmentStatus.CHECKED_IN
                     || newStatus == AppointmentStatus.CANCELED
                     || newStatus == AppointmentStatus.EXPIRED;

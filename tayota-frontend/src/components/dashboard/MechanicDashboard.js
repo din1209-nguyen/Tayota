@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   addServiceItem,
   completeServiceTicket,
@@ -15,6 +16,7 @@ import {
   updateServiceItem,
 } from "@/lib/services/workorders";
 import { getMyMechanicReviews } from "@/lib/services/reviews";
+import { getValidDashboardTab } from "@/lib/dashboard-nav";
 import { formatVnd, statusLabel, unwrapList } from "@/lib/format";
 
 const TABS = [
@@ -56,7 +58,8 @@ function TicketList({ tickets, activeId, onOpen }) {
 }
 
 export default function MechanicDashboard() {
-  const [tab, setTab] = useState("queue");
+  const searchParams = useSearchParams();
+  const tab = getValidDashboardTab("MECHANIC", searchParams.get("tab"));
   const [tickets, setTickets] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -210,12 +213,6 @@ export default function MechanicDashboard() {
 
   return (
     <div className="ops-grid workspace-tabs-layout mechanic-workspace">
-      <nav className="role-tabs wide" aria-label="Các mục kỹ thuật viên">
-        {TABS.map(([id, label]) => (
-          <button className={tab === id ? "active" : ""} key={id} type="button" onClick={() => setTab(id)}>{label}</button>
-        ))}
-      </nav>
-
       {message ? <div className="status-box wide">{message}</div> : null}
       {loading ? <div className="status-box wide">Đang tải phiếu dịch vụ...</div> : null}
 

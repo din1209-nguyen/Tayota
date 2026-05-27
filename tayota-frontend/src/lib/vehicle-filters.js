@@ -37,7 +37,8 @@ function vehicleSpecValue(vehicle, keys = []) {
 
 export function getSeriesOptions(styles = [], styleId = "") {
   const selectedStyle = styles.find((style) => String(style.id) === String(styleId));
-  return selectedStyle ? selectedStyle.series || [] : styles.flatMap((style) => style.series || []);
+  const getStyleSeries = (style) => style?.series || style?.carSeries || [];
+  return selectedStyle ? getStyleSeries(selectedStyle) : styles.flatMap(getStyleSeries);
 }
 
 export function filterVehicleItems(vehicles = [], filters = {}) {

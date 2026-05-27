@@ -3,6 +3,7 @@ package com.tayota.operationservice.controller.appointment;
 
 import com.tayota.operationservice.dto.common.ApiResponse;
 import com.tayota.operationservice.dto.request.appointment.CreateAppointmentHolidayRequest;
+import com.tayota.operationservice.dto.request.appointment.CreateAdvisorAppointmentRequest;
 import com.tayota.operationservice.dto.request.appointment.CreateServiceAppointmentRequest;
 import com.tayota.operationservice.dto.request.appointment.CreateServiceTimeSlotRequest;
 import com.tayota.operationservice.dto.request.appointment.CreateTestDriveAppointmentRequest;
@@ -10,6 +11,7 @@ import com.tayota.operationservice.dto.request.appointment.UpdateAppointmentHoli
 import com.tayota.operationservice.dto.request.appointment.UpdateAppointmentRequest;
 import com.tayota.operationservice.dto.request.appointment.UpdateServiceTimeSlotRequest;
 import com.tayota.operationservice.dto.request.workorder.CheckInServiceAppointmentRequest;
+import com.tayota.operationservice.dto.response.appointment.AdvisorDealershipResponse;
 import com.tayota.operationservice.dto.response.appointment.AppointmentAvailableSlotsResponse;
 import com.tayota.operationservice.dto.response.appointment.AppointmentCalendarDayResponse;
 import com.tayota.operationservice.dto.response.appointment.AppointmentCreatedResponse;
@@ -148,13 +150,31 @@ public class AppointmentController {
     // DÃ¹ng cho cá»‘ váº¥n dá»‹ch vá»¥ xem appointment cá»§a Ä‘áº¡i lÃ½ mÃ¬nh.
     @GetMapping("/advisor")
     @PreAuthorize("hasRole('SERVICE_ADVISOR')")
-    public ApiResponse<List<AppointmentCreatedResponse>> getAppointmentsForServiceAdvisor(
+    public ApiResponse<List<AppointmentManagementDetailResponse>> getAppointmentsForServiceAdvisor(
             @RequestParam(defaultValue = "PENDING") String status
     ) {
-        List<AppointmentCreatedResponse> response =
+        List<AppointmentManagementDetailResponse> response =
                 appointmentService.getAppointmentsForServiceAdvisor(status);
 
         return ApiResponse.success(200, "Láº¥y danh sÃ¡ch lá»‹ch háº¹n cá»§a Ä‘áº¡i lÃ½ thÃ nh cÃ´ng!", response);
+    }
+
+    @GetMapping("/advisor/dealership")
+    @PreAuthorize("hasRole('SERVICE_ADVISOR')")
+    public ApiResponse<AdvisorDealershipResponse> getAdvisorDealership() {
+        AdvisorDealershipResponse response = appointmentService.getAdvisorDealership();
+
+        return ApiResponse.success(200, "Lấy đại lý của cố vấn thành công!", response);
+    }
+
+    @PostMapping("/advisor")
+    @PreAuthorize("hasRole('SERVICE_ADVISOR')")
+    public ApiResponse<AppointmentManagementDetailResponse> createAppointmentForAdvisor(
+            @Valid @RequestBody CreateAdvisorAppointmentRequest request
+    ) {
+        AppointmentManagementDetailResponse response = appointmentService.createAppointmentForAdvisor(request);
+
+        return ApiResponse.success(201, "Tạo lịch hẹn thay khách thành công!", response);
     }
 
     // DÃ¹ng cho cá»‘ váº¥n dá»‹ch vá»¥ xem chi tiáº¿t lá»‹ch háº¹n cá»§a Ä‘áº¡i lÃ½ mÃ¬nh.

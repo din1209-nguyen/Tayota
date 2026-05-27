@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getMe, logout } from "@/lib/services/auth";
+import { getDashboardNavByPath, getDashboardTabHref, getValidDashboardTab } from "@/lib/dashboard-nav";
 import { clearSession, getCurrentUser, getDashboardPath, onSessionChange, setCurrentUser } from "@/lib/session";
 
 const navItems = [
@@ -16,6 +17,8 @@ const navItems = [
 
 export default function Header() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [user, setUser] = useState(null);
@@ -66,6 +69,14 @@ export default function Header() {
 
   const dashboardPath = getDashboardPath(user?.role);
   const initials = (user?.fullname || user?.email || "T").trim().slice(0, 1).toUpperCase();
+  const dashboardNavEntry = getDashboardNavByPath(pathname);
+  const dashboardRole = dashboardNavEntry?.[0];
+  const dashboardConfig = dashboardNavEntry?.[1];
+  const showDashboardNav = Boolean(user?.role && dashboardRole === user.role && dashboardConfig);
+  const activeDashboardTab = showDashboardNav ? getValidDashboardTab(dashboardRole, searchParams.get("tab")) : "";
+  const activeNavItems = showDashboardNav
+    ? dashboardConfig.items.map(([id, label]) => [label, getDashboardTabHref(dashboardRole, id), id])
+    : navItems.map(([label, href]) => [label, href, ""]);
 
   return (
     <header className="site-header">
@@ -75,8 +86,8 @@ export default function Header() {
         </Link>
 
         <nav className="desktop-nav" aria-label="Điều hướng chính">
-          {navItems.map(([label, href]) => (
-            <Link key={href} href={href}>
+          {activeNavItems.map(([label, href, tabId]) => (
+            <Link className={tabId && activeDashboardTab === tabId ? "active" : ""} key={href} href={href}>
               {label}
             </Link>
           ))}
@@ -126,8 +137,8 @@ export default function Header() {
 
       {open ? (
         <div className="mobile-nav">
-          {navItems.map(([label, href]) => (
-            <Link key={href} href={href} onClick={() => setOpen(false)}>
+          {activeNavItems.map(([label, href, tabId]) => (
+            <Link className={tabId && activeDashboardTab === tabId ? "active" : ""} key={href} href={href} onClick={() => setOpen(false)}>
               {label}
             </Link>
           ))}

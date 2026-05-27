@@ -12,4 +12,5 @@ public class AppointmentHolidayResponse {
     private UUID id;
     private LocalDate holidayDate;
     private String reason;
+    private Boolean active;
 }

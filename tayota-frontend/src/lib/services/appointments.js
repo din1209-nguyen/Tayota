@@ -42,6 +42,17 @@ export function getAdvisorAppointments(status = "PENDING") {
   });
 }
 
+export function getAdvisorDealership() {
+  return apiFetch("/operation/appointments/advisor/dealership", { cache: "no-store" });
+}
+
+export function createAdvisorAppointment(payload) {
+  return apiFetch("/operation/appointments/advisor", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getAdvisorTimeSlots() {
   return apiFetch("/operation/appointments/advisor/time-slots", { cache: "no-store" });
 }

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import ManagerDashboard from "@/components/dashboard/ManagerDashboard";
 
 export const metadata = {
@@ -8,7 +9,9 @@ export default function ManagerDashboardPage() {
   return (
     <section className="section ops-page manager-dashboard-page">
       <div className="manager-dashboard-shell">
-        <ManagerDashboard />
+        <Suspense fallback={<div className="status-box">Đang tải dashboard...</div>}>
+          <ManagerDashboard />
+        </Suspense>
       </div>
     </section>
   );

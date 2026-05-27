@@ -7,6 +7,7 @@ import com.tayota.operationservice.enums.chat.ChatSessionStatus;
 import com.tayota.operationservice.exception.CustomException;
 import com.tayota.operationservice.repository.chat.ChatMessageRepository;
 import com.tayota.operationservice.repository.chat.ChatSessionRepository;
+import com.tayota.operationservice.repository.user.UserProfileRepository;
 import com.tayota.operationservice.util.CookieUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,6 +40,8 @@ class ChatServiceTest {
     private ChatSessionRepository chatSessionRepository;
     @Mock
     private ChatMessageRepository chatMessageRepository;
+    @Mock
+    private UserProfileRepository userProfileRepository;
     @Mock
     private CookieUtil cookieUtil;
     @Mock
@@ -91,6 +94,19 @@ class ChatServiceTest {
     }
 
     @Test
+    void assignSessionCanClaimWaitingSessionWithStaleAssistant() {
+        UUID sessionId = UUID.randomUUID();
+        ChatSession waiting = session(sessionId, UUID.randomUUID(), ChatSessionStatus.WAITING, UUID.randomUUID());
+        when(chatSessionRepository.findWithLockById(sessionId)).thenReturn(Optional.of(waiting));
+        when(chatSessionRepository.save(waiting)).thenReturn(waiting);
+
+        var result = service().assignSession(sessionId);
+
+        assertThat(result.getStatus()).isEqualTo(ChatSessionStatus.CHATTING);
+        assertThat(waiting.getAssignedAssistantId()).isEqualTo(currentUserId);
+    }
+
+    @Test
     void assistantCannotSendMessageToSessionAssignedToSomeoneElse() {
         UUID sessionId = UUID.randomUUID();
         ChatSession assigned = session(sessionId, UUID.randomUUID(), ChatSessionStatus.CHATTING, UUID.randomUUID());
@@ -123,8 +139,94 @@ class ChatServiceTest {
         assertThat(messages.getFirst().getContent()).isEqualTo("Hi");
     }
 
+    @Test
+    void customerMessageReopensResolvedSessionAndClearsAssignedAssistant() {
+        UUID sessionId = UUID.randomUUID();
+        UUID assignedAssistantId = UUID.randomUUID();
+        ChatSession resolved = session(sessionId, currentUserId, ChatSessionStatus.RESOLVED, assignedAssistantId);
+        resolved.setResolvedAt(Instant.now());
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        when(cookieUtil.getCookieValue(request, CookieUtil.CHAT_SESSION_COOKIE)).thenReturn(sessionId.toString());
+        when(chatSessionRepository.findByUserIdAndStatusInOrderByUpdatedAtDesc(currentUserId, List.of(ChatSessionStatus.WAITING, ChatSessionStatus.CHATTING)))
+                .thenReturn(List.of());
+        when(chatSessionRepository.findById(sessionId)).thenReturn(Optional.of(resolved));
+        when(chatSessionRepository.save(resolved)).thenReturn(resolved);
+        ChatMessage savedMessage = ChatMessage.builder()
+                .id(UUID.randomUUID())
+                .session(resolved)
+                .senderId(currentUserId)
+                .senderType(ChatSenderType.CUSTOMER)
+                .content("Tôi cần hỗ trợ tiếp")
+                .createdAt(Instant.now())
+                .build();
+        when(chatMessageRepository.save(any(ChatMessage.class))).thenReturn(savedMessage);
+        when(chatMessageRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId)).thenReturn(Optional.of(savedMessage));
+
+        service().customerSendMessage("Tôi cần hỗ trợ tiếp", request, response);
+
+        assertThat(resolved.getStatus()).isEqualTo(ChatSessionStatus.WAITING);
+        assertThat(resolved.getAssignedAssistantId()).isNull();
+        assertThat(resolved.getResolvedAt()).isNull();
+        assertThat(resolved.getClosedAt()).isNull();
+    }
+
+    @Test
+    void mergeCurrentSessionKeepsGuestSessionAsPrimaryAndClosesDuplicateUserSession() {
+        UUID guestSessionId = UUID.randomUUID();
+        UUID duplicateSessionId = UUID.randomUUID();
+        ChatSession guestSession = session(guestSessionId, null, ChatSessionStatus.WAITING, null);
+        ChatSession duplicateSession = session(duplicateSessionId, currentUserId, ChatSessionStatus.CHATTING, UUID.randomUUID());
+        ChatMessage duplicateMessage = ChatMessage.builder()
+                .id(UUID.randomUUID())
+                .session(duplicateSession)
+                .senderType(ChatSenderType.CUSTOMER)
+                .content("Tin nhắn cũ")
+                .createdAt(Instant.now())
+                .build();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        when(cookieUtil.getCookieValue(request, CookieUtil.CHAT_SESSION_COOKIE)).thenReturn(guestSessionId.toString());
+        when(chatSessionRepository.findById(guestSessionId)).thenReturn(Optional.of(guestSession));
+        when(chatSessionRepository.findByUserIdAndStatusInOrderByUpdatedAtDesc(currentUserId, List.of(ChatSessionStatus.WAITING, ChatSessionStatus.CHATTING, ChatSessionStatus.RESOLVED)))
+                .thenReturn(List.of(duplicateSession));
+        when(chatSessionRepository.save(guestSession)).thenReturn(guestSession);
+        when(chatSessionRepository.save(duplicateSession)).thenReturn(duplicateSession);
+        when(chatMessageRepository.findBySessionIdOrderByCreatedAtAsc(duplicateSessionId)).thenReturn(List.of(duplicateMessage));
+
+        var result = service().mergeCurrentSession(request);
+
+        assertThat(result.getId()).isEqualTo(guestSessionId);
+        assertThat(guestSession.getUserId()).isEqualTo(currentUserId);
+        assertThat(duplicateMessage.getSession()).isEqualTo(guestSession);
+        assertThat(duplicateSession.getStatus()).isEqualTo(ChatSessionStatus.CLOSED);
+        assertThat(duplicateSession.getAssignedAssistantId()).isNull();
+    }
+
+    @Test
+    void sessionResponseContainsCustomerDisplayNameAndLastMessage() {
+        UUID sessionId = UUID.randomUUID();
+        ChatSession chatSession = session(sessionId, currentUserId, ChatSessionStatus.WAITING, null);
+        ChatMessage lastMessage = ChatMessage.builder()
+                .id(UUID.randomUUID())
+                .session(chatSession)
+                .senderType(ChatSenderType.CUSTOMER)
+                .content("Tin mới nhất")
+                .createdAt(Instant.now())
+                .build();
+        when(chatSessionRepository.findByStatusOrderByUpdatedAtDesc(ChatSessionStatus.WAITING)).thenReturn(List.of(chatSession));
+        when(chatMessageRepository.findFirstBySessionIdOrderByCreatedAtDesc(sessionId)).thenReturn(Optional.of(lastMessage));
+        when(userProfileRepository.findContactByUserId(currentUserId)).thenReturn(Optional.of(contact("Nguyễn Văn A")));
+
+        var result = service().getAssistantSessions(ChatSessionStatus.WAITING);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getCustomerDisplayName()).isEqualTo("Nguyễn Văn A");
+        assertThat(result.getFirst().getLastMessageContent()).isEqualTo("Tin mới nhất");
+        assertThat(result.getFirst().getLastMessageSenderType()).isEqualTo(ChatSenderType.CUSTOMER);
+    }
+
     private ChatService service() {
-        return new ChatService(chatSessionRepository, chatMessageRepository, cookieUtil, messagingTemplate);
+        return new ChatService(chatSessionRepository, chatMessageRepository, userProfileRepository, cookieUtil, messagingTemplate);
     }
 
     private ChatSession session(UUID id, UUID userId, ChatSessionStatus status, UUID assignedAssistantId) {
@@ -137,5 +239,24 @@ class ChatServiceTest {
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
+    }
+
+    private UserProfileRepository.UserContactView contact(String fullname) {
+        return new UserProfileRepository.UserContactView() {
+            @Override
+            public String getFullname() {
+                return fullname;
+            }
+
+            @Override
+            public String getEmail() {
+                return "customer@example.com";
+            }
+
+            @Override
+            public String getPhone() {
+                return "0900000000";
+            }
+        };
     }
 }

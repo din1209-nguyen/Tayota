@@ -11,6 +11,7 @@ import com.tayota.operationservice.enums.chat.ChatSessionStatus;
 import com.tayota.operationservice.mapper.chat.ChatMapper;
 import com.tayota.operationservice.repository.chat.ChatMessageRepository;
 import com.tayota.operationservice.repository.chat.ChatSessionRepository;
+import com.tayota.operationservice.repository.user.UserProfileRepository;
 import com.tayota.operationservice.util.CookieUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -34,9 +35,16 @@ public class ChatService {
             ChatSessionStatus.WAITING,
             ChatSessionStatus.CHATTING
     );
+    private static final List<ChatSessionStatus> MERGE_SESSION_STATUSES = List.of(
+            ChatSessionStatus.WAITING,
+            ChatSessionStatus.CHATTING,
+            ChatSessionStatus.RESOLVED
+    );
+    private static final String GUEST_DISPLAY_NAME = "Khách vãng lai";
 
     private final ChatSessionRepository chatSessionRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final UserProfileRepository userProfileRepository;
     private final CookieUtil cookieUtil;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -65,7 +73,7 @@ public class ChatService {
         publishChatMessage(chatSession.getId(), chatMessage);
 
         // Gửi trạng thái phiên chat mới nhất đến danh sách assistant
-        publishAssistantChatSession(chatSession);
+        publishChatSessionUpdate(chatSession);
 
         // Trả về tin nhắn vừa tạo cho client gọi API
         return chatMessage;
@@ -92,7 +100,7 @@ public class ChatService {
         publishChatMessage(chatSession.getId(), chatMessage);
 
         // Gửi trạng thái phiên chat mới nhất đến danh sách assistant
-        publishAssistantChatSession(chatSession);
+        publishChatSessionUpdate(chatSession);
 
         // Trả về tin nhắn vừa tạo cho client WebSocket
         return chatMessage;
@@ -109,6 +117,7 @@ public class ChatService {
 
         // Gán assistant cho phiên chat nếu phiên chưa có người phụ trách
         validateAssignedAssistant(chatSession, assistantId);
+        validateChattingSession(chatSession);
 
         // Tạo tin nhắn assistant và lưu vào database
         ChatMessageResponseDTO chatMessage = createMessageResponse(
@@ -122,7 +131,7 @@ public class ChatService {
         publishChatMessage(chatSession.getId(), chatMessage);
 
         // Gửi trạng thái phiên chat mới nhất đến danh sách assistant
-        publishAssistantChatSession(chatSession);
+        publishChatSessionUpdate(chatSession);
 
         // Trả về tin nhắn vừa tạo cho client WebSocket
         return chatMessage;
@@ -138,7 +147,7 @@ public class ChatService {
         ChatSession chatSession = getOrCreateCurrentSession(request, response);
 
         // Chuyển phiên chat sang DTO phản hồi
-        return ChatMapper.toSessionResponse(chatSession);
+        return toSessionResponse(chatSession);
     }
 
     // Gộp phiên chat hiện tại vào tài khoản đã đăng nhập
@@ -154,8 +163,13 @@ public class ChatService {
             throw new CustomException(404, "Không tìm thấy phiên chat để merge");
         }
 
-        // Tìm phiên chat theo ID trong cookie
+        // Tìm phiên chat theo ID trong cookie, giữ phiên guest này làm phiên chính sau khi đăng nhập
         ChatSession chatSession = findChatSession(parseChatSessionId(chatSessionId));
+
+        List<ChatSession> existingSessions = chatSessionRepository.findByUserIdAndStatusInOrderByUpdatedAtDesc(
+                userId,
+                MERGE_SESSION_STATUSES
+        );
 
         // Gán userId hiện tại vào phiên chat
         chatSession.setUserId(userId);
@@ -163,8 +177,14 @@ public class ChatService {
         // Lưu phiên chat đã được gộp vào tài khoản
         ChatSession savedChatSession = chatSessionRepository.save(chatSession);
 
+        existingSessions.stream()
+                .filter(existingSession -> !existingSession.getId().equals(savedChatSession.getId()))
+                .forEach(existingSession -> mergeDuplicateSessionIntoPrimary(existingSession, savedChatSession));
+
+        publishChatSessionUpdate(savedChatSession);
+
         // Chuyển phiên chat sang DTO phản hồi
-        return ChatMapper.toSessionResponse(savedChatSession);
+        return toSessionResponse(savedChatSession);
     }
 
     // Lấy lịch sử tin nhắn của phiên chat hiện tại
@@ -181,7 +201,7 @@ public class ChatService {
         // Tìm danh sách phiên chat theo trạng thái và sắp xếp mới nhất trước
         return chatSessionRepository.findByStatusOrderByUpdatedAtDesc(chatSessionStatus)
                 .stream()
-                .map(ChatMapper::toSessionResponse)
+                .map(this::toSessionResponse)
                 .toList();
     }
 
@@ -199,8 +219,8 @@ public class ChatService {
 
         // Tìm phiên chat theo ID
         ChatSession chatSession = findChatSessionWithLock(chatSessionId);
-        if (chatSession.getStatus() != ChatSessionStatus.WAITING || chatSession.getAssignedAssistantId() != null) {
-            throw new CustomException(409, "Chat session is already assigned");
+        if (chatSession.getStatus() != ChatSessionStatus.WAITING) {
+            throw new CustomException(409, "Chat session is not waiting");
         }
 
         // Gán assistant hiện tại làm người phụ trách phiên chat
@@ -216,7 +236,7 @@ public class ChatService {
         publishChatSessionUpdate(savedChatSession);
 
         // Chuyển phiên chat sang DTO phản hồi
-        return ChatMapper.toSessionResponse(savedChatSession);
+        return toSessionResponse(savedChatSession);
     }
 
     // Đánh dấu phiên chat đã xử lý
@@ -240,7 +260,7 @@ public class ChatService {
         publishChatSessionUpdate(savedChatSession);
 
         // Chuyển phiên chat sang DTO phản hồi
-        return ChatMapper.toSessionResponse(savedChatSession);
+        return toSessionResponse(savedChatSession);
     }
 
     // Đóng phiên chat
@@ -264,7 +284,7 @@ public class ChatService {
         publishChatSessionUpdate(savedChatSession);
 
         // Chuyển phiên chat sang DTO phản hồi
-        return ChatMapper.toSessionResponse(savedChatSession);
+        return toSessionResponse(savedChatSession);
     }
 
     // Lấy danh sách tin nhắn của một phiên chat
@@ -361,6 +381,25 @@ public class ChatService {
         }
     }
 
+    private void validateChattingSession(ChatSession chatSession) {
+        if (chatSession.getStatus() != ChatSessionStatus.CHATTING) {
+            throw new CustomException(409, "Chat session is not active");
+        }
+    }
+
+    private void mergeDuplicateSessionIntoPrimary(ChatSession duplicateSession, ChatSession primarySession) {
+        List<ChatMessage> duplicateMessages = chatMessageRepository.findBySessionIdOrderByCreatedAtAsc(duplicateSession.getId());
+        duplicateMessages.forEach(message -> message.setSession(primarySession));
+        chatMessageRepository.saveAll(duplicateMessages);
+
+        duplicateSession.setStatus(ChatSessionStatus.CLOSED);
+        duplicateSession.setAssignedAssistantId(null);
+        duplicateSession.setClosedAt(Instant.now());
+        duplicateSession.setResolvedAt(null);
+        chatSessionRepository.save(duplicateSession);
+        publishChatSessionUpdate(duplicateSession);
+    }
+
     private void closeDuplicateOpenSession(ChatSession chatSession) {
         chatSession.setStatus(ChatSessionStatus.CLOSED);
         chatSession.setClosedAt(Instant.now());
@@ -418,6 +457,9 @@ public class ChatService {
 
         // Chuyển trạng thái phiên chat về đang chờ hỗ trợ
         chatSession.setStatus(ChatSessionStatus.WAITING);
+
+        // Bỏ nhân viên phụ trách cũ để bất kỳ nhân viên nào cũng có thể nhận lại phiên
+        chatSession.setAssignedAssistantId(null);
 
         // Xóa thời điểm đóng phiên chat cũ
         chatSession.setClosedAt(null);
@@ -479,25 +521,53 @@ public class ChatService {
         messagingTemplate.convertAndSend(CHAT_SESSION_TOPIC_PREFIX + chatSessionId, chatMessage);
     }
 
-    // Gửi trạng thái phiên chat mới nhất đến topic của assistant
-    private void publishAssistantChatSession(ChatSession chatSession) {
-        // Chuyển phiên chat sang DTO phản hồi
-        ChatSessionResponseDTO chatSessionResponse = ChatMapper.toSessionResponse(chatSession);
-
-        // Gửi dữ liệu phiên chat đến danh sách assistant
-        messagingTemplate.convertAndSend(ASSISTANT_CHAT_SESSIONS_TOPIC, chatSessionResponse);
-    }
-
     // Gửi trạng thái phiên chat mới nhất đến các topic liên quan
     private void publishChatSessionUpdate(ChatSession chatSession) {
         // Chuyển phiên chat sang DTO phản hồi
-        ChatSessionResponseDTO chatSessionResponse = ChatMapper.toSessionResponse(chatSession);
+        ChatSessionResponseDTO chatSessionResponse = toSessionResponse(chatSession);
 
         // Gửi dữ liệu phiên chat đến client đang theo dõi phiên chat
         messagingTemplate.convertAndSend(CHAT_SESSION_TOPIC_PREFIX + chatSession.getId(), chatSessionResponse);
 
         // Gửi dữ liệu phiên chat đến danh sách assistant
         messagingTemplate.convertAndSend(ASSISTANT_CHAT_SESSIONS_TOPIC, chatSessionResponse);
+    }
+
+    private ChatSessionResponseDTO toSessionResponse(ChatSession chatSession) {
+        var lastMessageResult = chatMessageRepository.findFirstBySessionIdOrderByCreatedAtDesc(chatSession.getId());
+        ChatMessage lastMessage = lastMessageResult == null ? null : lastMessageResult.orElse(null);
+
+        return ChatSessionResponseDTO.builder()
+                .id(chatSession.getId())
+                .userId(chatSession.getUserId())
+                .guestId(chatSession.getGuestId())
+                .assignedAssistantId(chatSession.getAssignedAssistantId())
+                .status(chatSession.getStatus())
+                .customerDisplayName(resolveCustomerDisplayName(chatSession))
+                .lastMessageContent(lastMessage == null ? null : lastMessage.getContent())
+                .lastMessageSenderType(lastMessage == null ? null : lastMessage.getSenderType())
+                .lastMessageAt(lastMessage == null ? null : lastMessage.getCreatedAt())
+                .createdAt(chatSession.getCreatedAt())
+                .updatedAt(chatSession.getUpdatedAt())
+                .closedAt(chatSession.getClosedAt())
+                .resolvedAt(chatSession.getResolvedAt())
+                .build();
+    }
+
+    private String resolveCustomerDisplayName(ChatSession chatSession) {
+        if (chatSession.getUserId() == null) {
+            return GUEST_DISPLAY_NAME;
+        }
+
+        var contactResult = userProfileRepository.findContactByUserId(chatSession.getUserId());
+        if (contactResult == null) {
+            return GUEST_DISPLAY_NAME;
+        }
+
+        return contactResult
+                .map(UserProfileRepository.UserContactView::getFullname)
+                .filter(StringUtils::hasText)
+                .orElse(GUEST_DISPLAY_NAME);
     }
 
     // Lấy userId hiện tại nếu người dùng đã đăng nhập

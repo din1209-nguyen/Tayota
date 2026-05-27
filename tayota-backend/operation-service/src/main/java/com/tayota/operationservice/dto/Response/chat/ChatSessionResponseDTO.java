@@ -1,6 +1,7 @@
 package com.tayota.operationservice.dto.response.chat;
 
 import com.tayota.operationservice.enums.chat.ChatSessionStatus;
+import com.tayota.operationservice.enums.chat.ChatSenderType;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -24,6 +25,18 @@ public class ChatSessionResponseDTO {
 
     // Trả về trạng thái phiên chat
     private ChatSessionStatus status;
+
+    // Tên hiển thị của khách hàng trong danh sách phiên chat
+    private String customerDisplayName;
+
+    // Nội dung tin nhắn mới nhất của phiên chat
+    private String lastMessageContent;
+
+    // Loại người gửi tin nhắn mới nhất
+    private ChatSenderType lastMessageSenderType;
+
+    // Thời điểm tin nhắn mới nhất
+    private Instant lastMessageAt;
 
     // Trả về thời điểm tạo phiên chat
     private Instant createdAt;

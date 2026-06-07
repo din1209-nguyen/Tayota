@@ -1,30 +1,31 @@
 export const DASHBOARD_NAV = {
   ADMIN: {
     basePath: "/dashboard/admin",
-    defaultTab: "accounts",
+    defaultTab: "profile",
     items: [
-      ["accounts", "Tài khoản"],
+      ["profile", "Tài khoản"],
+      ["accounts", "Quản lý tài khoản"],
       ["documents", "Dữ liệu AI"],
-      ["profile", "Hồ sơ"],
     ],
   },
   MANAGER: {
     basePath: "/dashboard/manager",
-    defaultTab: "chat",
+    defaultTab: "profile",
     items: [
+      ["profile", "Tài khoản"],
       ["chat", "Live Chat"],
       ["vehicles", "Xe"],
       ["articles", "Bài viết"],
       ["dealerships", "Đại lý"],
       ["accessories", "Phụ kiện"],
       ["users", "Người dùng"],
-      ["profile", "Hồ sơ"],
     ],
   },
   SERVICE_ADVISOR: {
     basePath: "/dashboard/advisor",
-    defaultTab: "overview",
+    defaultTab: "profile",
     items: [
+      ["profile", "Tài khoản"],
       ["overview", "Tổng quan"],
       ["appointments", "Lịch hẹn"],
       ["walkin", "Walk-in"],
@@ -33,23 +34,34 @@ export const DASHBOARD_NAV = {
       ["holidays", "Ngày nghỉ"],
       ["tickets", "Phiếu"],
       ["reports", "Báo cáo"],
-      ["profile", "Hồ sơ"],
     ],
   },
   ASSISTANT: {
     basePath: "/dashboard/assistant",
-    defaultTab: "chat",
-    items: [["chat", "Live Chat"], ["profile", "Hồ sơ"]],
+    defaultTab: "profile",
+    items: [["profile", "Tài khoản"], ["chat", "Live Chat"]],
   },
   MECHANIC: {
     basePath: "/dashboard/mechanic",
-    defaultTab: "queue",
+    defaultTab: "profile",
     items: [
+      ["profile", "Tài khoản"],
       ["queue", "Cần tiếp nhận"],
       ["active", "Đang sửa"],
       ["history", "Lịch sử"],
       ["reviews", "Đánh giá"],
-      ["profile", "Hồ sơ"],
+    ],
+  },
+  USER: {
+    basePath: "/dashboard/user",
+    defaultTab: "profile",
+    items: [
+      ["profile", "Tài khoản"],
+      ["vehicles", "Xe cá nhân"],
+      ["appointments", "Lịch của tôi"],
+      ["services", "Dịch vụ của tôi"],
+      ["reviews", "Đánh giá"],
+      ["chat", "Live chat"],
     ],
   },
 };

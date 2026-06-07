@@ -15,6 +15,9 @@ public class CustomerReviewResponse {
     // ID của đánh giá
     private UUID id;
 
+    // Token dùng để mở form đánh giá công khai /reviews/[token]
+    private String reviewToken;
+
     // Loại đánh giá.
     private ReviewType reviewType;
 

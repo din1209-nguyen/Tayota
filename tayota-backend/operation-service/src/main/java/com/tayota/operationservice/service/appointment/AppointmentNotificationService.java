@@ -76,7 +76,8 @@ public class AppointmentNotificationService {
         }
 
         if (StringUtils.hasText(customer.email())) {
-            emailService.sendEmailAsync(customer.email(), title, content);
+            String htmlContent = buildCompletionHtmlContent(appointment, customer.fullName(), reviewLink);
+            emailService.sendHtmlEmail(customer.email(), title, htmlContent, null);
         }
     }
 
@@ -134,10 +135,7 @@ public class AppointmentNotificationService {
     // Hàm xây dựng nội dung email/notification sau khi lịch hẹn hoàn thành, bao gồm lời cảm ơn và lời mời đánh giá trải nghiệm.
     private String buildCompletionContent(Appointment appointment, String customerName, String reviewLink) {
         String greetingName = StringUtils.hasText(customerName) ? customerName : "quý khách";
-        String appointmentType = switch (appointment.getType()) {
-            case SERVICE -> "lịch hẹn bảo dưỡng/sửa chữa";
-            case TEST_DRIVE -> "lịch hẹn lái thử";
-        };
+        String appointmentType = getCompletedAppointmentTypeLabel(appointment);
 
         return """
                 Xin chào %s,
@@ -151,6 +149,44 @@ public class AppointmentNotificationService {
                 Trân trọng,
                 Tayota
                 """.formatted(greetingName, appointmentType, reviewLink);
+    }
+
+    private String buildCompletionHtmlContent(Appointment appointment, String customerName, String reviewLink) {
+        String greetingName = escapeHtml(StringUtils.hasText(customerName) ? customerName : "quý khách");
+        String appointmentType = escapeHtml(getCompletedAppointmentTypeLabel(appointment));
+        String safeReviewLink = escapeHtml(reviewLink);
+
+        return """
+                <div style="font-family:Arial,sans-serif;color:#111827;line-height:1.6">
+                  <p>Xin chào %s,</p>
+                  <p>Cảm ơn quý khách đã tin tưởng Tayota. %s của quý khách đã được hoàn tất.</p>
+                  <p>Rất mong quý khách dành ít phút để đánh giá trải nghiệm, giúp Tayota tiếp tục cải thiện chất lượng phục vụ.</p>
+                  <p>
+                    <a href="%s" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;border-radius:8px;padding:12px 18px;font-weight:700">
+                      Gửi đánh giá
+                    </a>
+                  </p>
+                  <p>Hoặc mở link đánh giá: <a href="%s">%s</a></p>
+                  <p>Trân trọng,<br/>Tayota</p>
+                </div>
+                """.formatted(greetingName, appointmentType, safeReviewLink, safeReviewLink, safeReviewLink);
+    }
+
+    private String getCompletedAppointmentTypeLabel(Appointment appointment) {
+        return switch (appointment.getType()) {
+            case SERVICE -> "lịch hẹn bảo dưỡng/sửa chữa";
+            case TEST_DRIVE -> "lịch hẹn lái thử";
+        };
+    }
+
+    private String escapeHtml(String value) {
+        if (value == null) return "";
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 
     // Hàm xây dựng link đánh giá theo route frontend /reviews/[token].

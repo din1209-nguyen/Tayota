@@ -84,6 +84,24 @@ public class WorkOrderService {
     }
 
     @Transactional(readOnly = true)
+    public List<ServiceTicketSummaryResponse> getUserServiceTickets() {
+        UUID userId = getCurrentUserId();
+
+        return serviceTicketRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(ticket -> {
+                    CustomerInformation customer = buildCustomerInformation(ticket);
+                    return toSummaryResponse(ticket, customer);
+                })
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ServiceTicketDetailResponse getUserServiceTicketDetail(UUID serviceTicketId) {
+        return toDetailResponse(getUserServiceTicket(serviceTicketId));
+    }
+
+    @Transactional(readOnly = true)
     public List<ServiceTicketSummaryResponse> getAdvisorServiceTickets(String status) {
         UUID dealershipId = getCurrentAdvisorDealershipId();
         List<ServiceTicket> tickets;
@@ -423,6 +441,18 @@ public class WorkOrderService {
 
         if (!mechanicId.equals(serviceTicket.getMechanicId())) {
             throw new CustomException(403, "Bạn không có quyền xử lý phiếu dịch vụ này");
+        }
+
+        return serviceTicket;
+    }
+
+    private ServiceTicket getUserServiceTicket(UUID serviceTicketId) {
+        UUID userId = getCurrentUserId();
+        ServiceTicket serviceTicket = serviceTicketRepository.findById(serviceTicketId)
+                .orElseThrow(() -> new CustomException(404, "Không tìm thấy phiếu dịch vụ"));
+
+        if (!userId.equals(serviceTicket.getUserId())) {
+            throw new CustomException(403, "Bạn không có quyền xem phiếu dịch vụ này");
         }
 
         return serviceTicket;

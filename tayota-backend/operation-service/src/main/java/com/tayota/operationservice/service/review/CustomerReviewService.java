@@ -340,6 +340,7 @@ public class CustomerReviewService {
     private CustomerReviewResponse toResponse(CustomerReview review) {
         return new CustomerReviewResponse(
                 review.getId(),
+                review.getReviewToken(),
                 review.getReviewType(),
                 review.getStatus(),
                 review.getAppointment() == null ? null : review.getAppointment().getId(),

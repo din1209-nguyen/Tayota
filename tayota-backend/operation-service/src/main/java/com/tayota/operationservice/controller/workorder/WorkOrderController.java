@@ -24,6 +24,24 @@ import java.util.UUID;
 public class WorkOrderController {
     private final WorkOrderService workOrderService;
 
+    @GetMapping("/user/my")
+    @PreAuthorize("hasRole('USER')")
+    public ApiResponse<List<ServiceTicketSummaryResponse>> getUserServiceTickets() {
+        List<ServiceTicketSummaryResponse> response = workOrderService.getUserServiceTickets();
+
+        return ApiResponse.success(200, "Lấy danh sách dịch vụ của khách hàng thành công!", response);
+    }
+
+    @GetMapping("/user/{serviceTicketId}")
+    @PreAuthorize("hasRole('USER')")
+    public ApiResponse<ServiceTicketDetailResponse> getUserServiceTicketDetail(
+            @PathVariable UUID serviceTicketId
+    ) {
+        ServiceTicketDetailResponse response = workOrderService.getUserServiceTicketDetail(serviceTicketId);
+
+        return ApiResponse.success(200, "Lấy chi tiết dịch vụ của khách hàng thành công!", response);
+    }
+
     @GetMapping("/mechanic/my")
     @PreAuthorize("hasRole('MECHANIC')")
     public ApiResponse<List<ServiceTicketSummaryResponse>> getMyServiceTickets() {

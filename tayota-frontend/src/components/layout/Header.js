@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getMe, logout } from "@/lib/services/auth";
+import LinkifiedText from "@/components/notifications/LinkifiedText";
+import UserAvatar from "@/components/UserAvatar";
+import { getMe } from "@/lib/services/auth";
 import {
   getNotifications,
   getUnreadNotificationCount,
-  markAllNotificationsAsRead,
   markNotificationAsRead,
 } from "@/lib/services/notifications";
 import { getDashboardNavByPath, getDashboardTabHref, getValidDashboardTab } from "@/lib/dashboard-nav";
@@ -22,6 +23,8 @@ const navItems = [
   ["Dịch vụ", "/appointments/service"],
 ];
 
+const NOTIFICATION_PREVIEW_LIMIT = 5;
+
 function NotificationIcon() {
   return (
     <svg className="notification-bell-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -33,11 +36,9 @@ function NotificationIcon() {
 }
 
 export default function Header() {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [notifications, setNotifications] = useState([]);
@@ -78,7 +79,6 @@ export default function Header() {
 
   useEffect(() => {
     setOpen(false);
-    setAccountOpen(false);
     setNotificationOpen(false);
   }, [pathname]);
 
@@ -89,6 +89,15 @@ export default function Header() {
       return;
     }
     loadUnreadCount();
+  }, [user]);
+
+  useEffect(() => {
+    function refreshNotifications() {
+      if (user) loadUnreadCount();
+    }
+
+    window.addEventListener("tayota:notifications-updated", refreshNotifications);
+    return () => window.removeEventListener("tayota:notifications-updated", refreshNotifications);
   }, [user]);
 
   async function loadUnreadCount() {
@@ -117,7 +126,6 @@ export default function Header() {
   async function toggleNotifications() {
     const nextOpen = !notificationOpen;
     setNotificationOpen(nextOpen);
-    setAccountOpen(false);
     if (nextOpen) await loadNotifications();
   }
 
@@ -138,36 +146,10 @@ export default function Header() {
     }
   }
 
-  async function readAllNotifications() {
-    setNotificationMessage("");
-    try {
-      const result = await markAllNotificationsAsRead();
-      setNotifications((items) => items.map((item) => ({ ...item, read: true })));
-      setUnreadCount(Number(result?.unreadCount || 0));
-    } catch (error) {
-      setNotificationMessage(error.message || "Không thể đánh dấu tất cả thông báo.");
-    }
-  }
-
-  async function signOut() {
-    try {
-      await logout();
-    } catch {
-      // Local session cleanup still keeps the UI consistent if the server session is already gone.
-    } finally {
-      clearSession();
-      setUser(null);
-      setNotifications([]);
-      setUnreadCount(0);
-      setNotificationOpen(false);
-      setAccountOpen(false);
-      router.push("/");
-      router.refresh();
-    }
-  }
-
   const dashboardPath = getDashboardPath(user?.role);
-  const initials = (user?.fullname || user?.email || "T").trim().slice(0, 1).toUpperCase();
+  const inDashboard = pathname.startsWith("/dashboard");
+  const accountHref = inDashboard ? "/" : dashboardPath;
+  const accountLabel = inDashboard ? "Về trang chính" : "Đi tới dashboard";
   const dashboardNavEntry = getDashboardNavByPath(pathname);
   const dashboardRole = dashboardNavEntry?.[0];
   const dashboardConfig = dashboardNavEntry?.[1];
@@ -176,6 +158,7 @@ export default function Header() {
   const activeNavItems = showDashboardNav
     ? dashboardConfig.items.map(([id, label]) => [label, getDashboardTabHref(dashboardRole, id), id])
     : navItems.map(([label, href]) => [label, href, ""]);
+  const previewNotifications = notifications.slice(0, NOTIFICATION_PREVIEW_LIMIT);
 
   function formatNotificationTime(value) {
     if (!value) return statusLabel("PENDING");
@@ -199,83 +182,71 @@ export default function Header() {
           ))}
         </nav>
 
-        {user ? (
-          <div className="header-actions">
-            <div className="notification-menu">
-              <button
-                className="notification-button"
-                type="button"
-                aria-label="Mở thông báo"
-                aria-expanded={notificationOpen}
-                onClick={toggleNotifications}
-              >
-                <NotificationIcon />
-                {unreadCount > 0 ? <span className="notification-badge">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}
-              </button>
-              {notificationOpen ? (
-                <div className="notification-dropdown">
-                  <div className="notification-head">
-                    <strong>Thông báo</strong>
-                    <button type="button" disabled={!notifications.length} onClick={readAllNotifications}>Đã đọc tất cả</button>
+        <div className="header-right">
+          {user ? (
+            <div className="header-actions">
+              <div className="notification-menu">
+                <button
+                  className="notification-button"
+                  type="button"
+                  aria-label="Mở thông báo"
+                  aria-expanded={notificationOpen}
+                  onClick={toggleNotifications}
+                >
+                  <NotificationIcon />
+                  {unreadCount > 0 ? <span className="notification-badge">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}
+                </button>
+                {notificationOpen ? (
+                  <div className="notification-dropdown">
+                    <div className="notification-head">
+                      <strong>Thông báo</strong>
+                    </div>
+                    {notificationMessage ? <div className="status-box compact-status">{notificationMessage}</div> : null}
+                    {notificationsLoading ? <div className="status-box compact-status">Đang tải thông báo...</div> : null}
+                    <div className="notification-list">
+                      {previewNotifications.map((item) => (
+                        <button className={`notification-item ${item.read ? "" : "unread"}`} key={item.id} type="button" onClick={() => readNotification(item)}>
+                          <span>
+                            <strong>{item.title || "Thông báo"}</strong>
+                            <small>{formatNotificationTime(item.createdAt)}</small>
+                          </span>
+                          <em>{item.content || statusLabel(item.type)}</em>
+                        </button>
+                      ))}
+                      {!notificationsLoading && !notifications.length ? <div className="notification-empty">Không có thông báo.</div> : null}
+                    </div>
+                    <Link className="notification-view-all" href="/notifications" onClick={() => setNotificationOpen(false)}>
+                      Xem tất cả thông báo
+                    </Link>
                   </div>
-                  {notificationMessage ? <div className="status-box compact-status">{notificationMessage}</div> : null}
-                  {notificationsLoading ? <div className="status-box compact-status">Đang tải thông báo...</div> : null}
-                  <div className="notification-list">
-                    {notifications.map((item) => (
-                      <button className={`notification-item ${item.read ? "" : "unread"}`} key={item.id} type="button" onClick={() => readNotification(item)}>
-                        <span>
-                          <strong>{item.title || "Thông báo"}</strong>
-                          <small>{formatNotificationTime(item.createdAt)}</small>
-                        </span>
-                        <em>{item.content || statusLabel(item.type)}</em>
-                      </button>
-                    ))}
-                    {!notificationsLoading && !notifications.length ? <div className="notification-empty">Không có thông báo.</div> : null}
-                  </div>
-                </div>
-              ) : null}
-            </div>
+                ) : null}
+              </div>
 
-            <div className="account-menu">
-              <button className="account-button" type="button" onClick={() => { setAccountOpen((value) => !value); setNotificationOpen(false); }}>
-                <span className="avatar" style={user.avatarUrl ? { backgroundImage: `url(${user.avatarUrl})` } : undefined}>
-                  {user.avatarUrl ? "" : initials}
-                </span>
-                <span className="account-name">{user.fullname || user.email}</span>
-              </button>
-              {accountOpen ? (
-                <div className="account-dropdown">
-                  <span className="account-role">{user.role || "USER"}</span>
-                  <Link href={dashboardPath} onClick={() => setAccountOpen(false)}>
-                    Dashboard
-                  </Link>
-                  <Link href={`${dashboardPath}?tab=profile`} onClick={() => setAccountOpen(false)}>
-                    Hồ sơ
-                  </Link>
-                  <button type="button" onClick={signOut}>
-                    Đăng xuất
-                  </button>
-                </div>
-              ) : null}
+              <div className="account-menu">
+                <Link className="account-button" href={accountHref} onClick={() => setNotificationOpen(false)} aria-label={accountLabel} title={accountLabel}>
+                  <UserAvatar className="avatar" src={user.avatarUrl} label="Ảnh đại diện" />
+                  <span className="account-name">{user.fullname || user.email}</span>
+                </Link>
+              </div>
             </div>
-          </div>
-        ) : sessionReady ? (
-          <Link className="btn btn-primary header-cta" href="/auth/login">
-            Đăng nhập
-          </Link>
-        ) : null}
+          ) : sessionReady ? (
+            <Link className="btn btn-primary header-cta" href="/auth/login">
+              Đăng nhập
+            </Link>
+          ) : null}
 
-        <button
-          className="menu-button"
-          type="button"
-          aria-label="Mở menu"
-          aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
-        >
-          <span />
-          <span />
-          <span />
-        </button>
+          <button
+            className="menu-button"
+            type="button"
+            aria-label="Mở menu"
+            aria-expanded={open}
+            onClick={() => setOpen((value) => !value)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+        </div>
       </div>
 
       {open ? (
@@ -305,7 +276,7 @@ export default function Header() {
               </button>
             </header>
             <div className="detail-modal-body">
-              <p>{selectedNotification.content || "Không có nội dung chi tiết."}</p>
+              <p><LinkifiedText text={selectedNotification.content || "Không có nội dung chi tiết."} /></p>
             </div>
           </section>
         </div>

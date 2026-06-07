@@ -131,6 +131,8 @@ function toTimeLabel(slot) {
 export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
   const isService = type === "service";
   const [step, setStep] = useState(0);
+  const [authReady, setAuthReady] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
   const [vehicles, setVehicles] = useState([]);
   const [vehicleStyles, setVehicleStyles] = useState([]);
   const [myVehicles, setMyVehicles] = useState([]);
@@ -182,11 +184,17 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
     }
     return [selectedVehicle, ...matches];
   }, [form.carVersionId, selectedVehicle, vehicleFilters, vehicles]);
-  const authenticated = Boolean(getAccessToken());
   const daysByDate = useMemo(() => new Map(calendarDays.map((day) => [day.date, day])), [calendarDays]);
   const calendarCells = useMemo(() => getCalendarCells(calendarMonth, daysByDate), [calendarMonth, daysByDate]);
 
   useEffect(() => {
+    setAuthenticated(Boolean(getAccessToken()));
+    setAuthReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!authReady) return;
+
     let alive = true;
 
     async function loadInitialData() {
@@ -217,7 +225,7 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
     return () => {
       alive = false;
     };
-  }, [authenticated, isService]);
+  }, [authReady, authenticated, isService]);
 
   useEffect(() => {
     let alive = true;
@@ -501,10 +509,13 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
               {vinValidationMessage ? (
                 <div className="status-box">{vinValidationMessage}</div>
               ) : null}
-              {authenticated && !myVehicles.length ? (
+              {!authReady ? (
+                <div className="status-box">Đang kiểm tra trạng thái tài khoản...</div>
+              ) : null}
+              {authReady && authenticated && !myVehicles.length ? (
                 <div className="status-box">Tài khoản của bạn chưa có VIN được gán. Bạn vẫn có thể nhập VIN, hệ thống sẽ kiểm tra quyền sở hữu khi gửi lịch.</div>
               ) : null}
-              {!authenticated ? (
+              {authReady && !authenticated ? (
                 <div className="status-box">Khách vãng lai có thể nhập VIN. Hệ thống sẽ kiểm tra VIN ngay ở bước này trước khi cho phép chọn đại lý.</div>
               ) : null}
             </>
@@ -702,11 +713,11 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
           Quay lại
         </button>
         {step < STEPS.length - 1 ? (
-          <button className="btn btn-primary" type="button" onClick={next} disabled={validatingVin}>
+          <button className="btn btn-primary" type="button" onClick={next} disabled={validatingVin || loadingInitial || !authReady}>
             {validatingVin ? "Đang kiểm tra VIN..." : "Tiếp tục"}
           </button>
         ) : (
-          <button className="btn btn-primary" type="submit" disabled={submitting}>
+          <button className="btn btn-primary" type="submit" disabled={submitting || loadingInitial || !authReady}>
             {submitting ? "Đang gửi..." : "Xác nhận lịch hẹn"}
           </button>
         )}

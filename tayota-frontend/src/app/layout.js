@@ -1,7 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
 import ChatLauncher from "@/components/chat/ChatLauncher";
-import Footer from "@/components/layout/Footer";
+import FooterVisibility from "@/components/layout/FooterVisibility";
 import Header from "@/components/layout/Header";
 import "./globals.css";
 
@@ -29,7 +29,7 @@ export default function RootLayout({ children }) {
         </Suspense>
         <main className="site-main">{children}</main>
         <ChatLauncher />
-        <Footer />
+        <FooterVisibility />
       </body>
     </html>
   );

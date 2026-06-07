@@ -127,6 +127,7 @@ export function statusLabel(status) {
     CONFIRMED: "Đã xác nhận",
     CHECKED_IN: "Đã check-in",
     COMPLETED: "Hoàn tất",
+    SUBMITTED: "Đã gửi",
     CANCELED: "Đã hủy",
     CANCELLED: "Đã hủy",
     REJECTED: "Đã từ chối",

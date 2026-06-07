@@ -55,6 +55,14 @@ export function getServiceInvoice(id) {
   return apiFetch(`/operation/workorders/${id}/invoice`, { cache: "no-store" });
 }
 
+export function getUserServiceTickets() {
+  return apiFetch("/operation/workorders/user/my", { cache: "no-store" });
+}
+
+export function getUserServiceTicketDetail(id) {
+  return apiFetch(`/operation/workorders/user/${id}`, { cache: "no-store" });
+}
+
 export function getAdvisorServiceTickets(params = {}) {
   return apiFetch(`/operation/workorders/advisor${buildQuery(params)}`, { cache: "no-store" });
 }

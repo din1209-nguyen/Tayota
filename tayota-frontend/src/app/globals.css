@@ -2719,6 +2719,186 @@ footer.footer a:not(.brand):hover {
   gap: 6px;
 }
 
+.mechanic-ticket-row {
+  min-height: 72px;
+  grid-template-columns: minmax(260px, 1.2fr) minmax(190px, 0.8fr) minmax(150px, auto) minmax(96px, auto);
+  gap: 16px;
+  padding: 10px 12px;
+}
+
+.mechanic-ticket-customer {
+  gap: 5px;
+}
+
+.mechanic-ticket-customer strong {
+  color: #000000;
+  font-size: 1.03rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.mechanic-ticket-customer > span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.mechanic-ticket-vin .advisor-row-time {
+  color: #000000;
+  font-size: 0.98rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.mechanic-ticket-status .status-pill {
+  width: fit-content;
+  max-width: max-content;
+  min-height: 24px;
+  justify-self: start;
+  gap: 5px;
+  padding: 4px 9px;
+  font-size: 0.78rem;
+  line-height: 1;
+  box-shadow: none;
+}
+
+.mechanic-ticket-status .status-pill::before {
+  width: 6px;
+  height: 6px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 14%, transparent);
+}
+
+.mechanic-ticket-open {
+  min-height: 30px;
+  padding: 0 6px;
+  color: #000000;
+  font-size: 0.92rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.mechanic-review-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.mechanic-review-summary-card {
+  position: relative;
+  min-height: 136px;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 17px 18px 15px;
+  box-shadow: 0 12px 28px rgba(20, 28, 38, 0.06);
+}
+
+.mechanic-review-summary-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--overview-accent, var(--ink));
+}
+
+.mechanic-review-summary-card header {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.mechanic-review-summary-card strong {
+  position: relative;
+  color: var(--ink);
+  font-size: 2.25rem;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.mechanic-review-summary-card p {
+  position: relative;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.mechanic-review-summary-card.tone-info {
+  --overview-accent: #2563eb;
+  background: #f8fbff;
+}
+
+.mechanic-review-summary-card.tone-warning {
+  --overview-accent: #b7791f;
+  background: #fffaf0;
+}
+
+.mechanic-review-summary-card.tone-success {
+  --overview-accent: #0f766e;
+  background: #f1fbf8;
+}
+
+.mechanic-review-summary-card.tone-progress {
+  --overview-accent: #7c3aed;
+  background: #faf7ff;
+}
+
+.mechanic-review-filter-bar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.mechanic-review-filter-bar .advisor-filter-group {
+  width: min(260px, 100%);
+}
+
+.rating-stars-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #d97706;
+  font-size: 1.05rem;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.rating-stars-display.muted {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.rating-stars-filled {
+  color: #f59e0b;
+  letter-spacing: 0;
+}
+
+.rating-stars-empty {
+  color: #d7dde6;
+  letter-spacing: 0;
+}
+
+.rating-stars-score {
+  margin-left: 5px;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.mechanic-review-rating {
+  display: flex;
+  justify-content: flex-start;
+  overflow: visible;
+  text-overflow: clip;
+}
+
 .advisor-detail-actions {
   display: flex;
   align-items: center;
@@ -3026,6 +3206,11 @@ footer.footer a:not(.brand):hover {
   gap: 12px;
 }
 
+.mechanic-item-form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  align-items: end;
+}
+
 .compact-textarea {
   min-height: 82px;
 }
@@ -3073,7 +3258,7 @@ footer.footer a:not(.brand):hover {
 
 .mechanic-detail-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.72fr);
+  grid-template-columns: minmax(360px, 0.95fr) minmax(320px, 1.05fr);
   gap: 12px;
   align-items: start;
 }
@@ -3090,11 +3275,136 @@ footer.footer a:not(.brand):hover {
 .mechanic-section .advisor-row-list {
   max-height: min(45vh, 460px);
   overflow-y: auto;
+  gap: 10px;
   padding-right: 2px;
 }
 
+.mechanic-item-list {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.mechanic-item-list.scrollable {
+  max-height: clamp(380px, 58vh, 620px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  align-content: start;
+  padding-right: 4px;
+  padding-bottom: 6px;
+  scroll-padding-block: 10px;
+}
+
+.mechanic-history-items-section,
+.mechanic-invoice-items {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
 .mechanic-item-row {
-  grid-template-columns: minmax(220px, 1fr) minmax(130px, auto) minmax(130px, auto);
+  height: auto;
+  min-height: 132px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "main actions"
+    "meta meta";
+  grid-template-rows: auto auto;
+  grid-auto-rows: auto;
+  align-items: start;
+  align-content: start;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+  padding: 14px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.mechanic-item-main {
+  grid-area: main;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.mechanic-item-main strong,
+.mechanic-item-main span {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.mechanic-item-main strong {
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.mechanic-item-main span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.mechanic-item-actions {
+  grid-area: actions;
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+  justify-self: end;
+}
+
+.mechanic-item-meta {
+  grid-area: meta;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  align-items: stretch;
+  gap: 10px 14px;
+  margin: 0;
+}
+
+.mechanic-item-meta div {
+  min-width: 0;
+  padding: 0;
+}
+
+.mechanic-item-meta dt {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.mechanic-item-meta dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.mechanic-item-total-field {
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  background: #f0fdf4;
+  padding: 8px 9px !important;
+}
+
+.service-item-form .mechanic-readonly-field,
+.service-item-form .field:disabled {
+  border-color: var(--border);
+  background: #eef1f4;
+  color: #7a828c;
+  cursor: not-allowed;
+  opacity: 1;
 }
 
 .mechanic-accessory-grid {
@@ -5156,7 +5466,37 @@ button.customer-data-row:active .customer-row-action > .customer-detail-text {
   padding: 16px;
 }
 
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
 @media print {
+  html,
+  body {
+    width: auto;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  body:has(.invoice-preview) .ops-page,
+  body:has(.invoice-preview) .workspace-tabs-layout,
+  body:has(.invoice-preview) .mechanic-workspace,
+  body:has(.invoice-preview) .mechanic-detail-panel {
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    background: #ffffff !important;
+  }
+
+  body:has(.invoice-preview) .mechanic-workspace > :not(.mechanic-detail-panel),
+  body:has(.invoice-preview) .mechanic-detail-panel > :not(.invoice-preview) {
+    display: none !important;
+  }
+
   body * {
     visibility: hidden;
   }
@@ -5167,10 +5507,36 @@ button.customer-data-row:active .customer-row-action > .customer-detail-text {
   }
 
   .invoice-preview {
-    position: absolute;
-    inset: 0;
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
     border: 0;
+    border-radius: 0;
+    background: #ffffff;
     box-shadow: none;
+    padding: 0;
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .invoice-preview .mechanic-item-list {
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .invoice-preview .mechanic-item-row {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .invoice-preview .ops-panel-head,
+  .invoice-preview .summary-list,
+  .invoice-preview .mechanic-invoice-items {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .no-print {
@@ -5964,6 +6330,24 @@ button.customer-data-row:active .customer-row-action > .customer-detail-text {
     justify-content: flex-start;
   }
 
+  .mechanic-ticket-row {
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .mechanic-ticket-row .advisor-row-actions {
+    width: 100%;
+  }
+
+  .mechanic-ticket-open {
+    padding-inline: 0;
+  }
+
+  .mechanic-item-meta {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .advisor-pagination {
     align-items: start;
     flex-direction: column;
@@ -5975,6 +6359,14 @@ button.customer-data-row:active .customer-row-action > .customer-detail-text {
     flex-wrap: wrap;
   }
 
+  .mechanic-review-filter-bar {
+    justify-content: stretch;
+  }
+
+  .mechanic-review-filter-bar .advisor-filter-group {
+    width: 100%;
+  }
+
   .advisor-slot-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -5983,8 +6375,23 @@ button.customer-data-row:active .customer-row-action > .customer-detail-text {
     grid-template-columns: 1fr;
   }
 
+  .mechanic-item-list.scrollable {
+    max-height: min(56vh, 520px);
+  }
+
   .mechanic-item-row {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "main"
+      "meta"
+      "actions";
+  }
+
+  .mechanic-item-actions {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
+    width: auto;
   }
 
   .service-item-card {
@@ -6016,6 +6423,10 @@ button.customer-data-row:active .customer-row-action > .customer-detail-text {
   }
 
   .advisor-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mechanic-review-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -6780,6 +7191,27 @@ button.customer-data-row:active .customer-row-action > .customer-detail-text {
 
   .customer-row-action .status-pill {
     max-width: 100%;
+  }
+
+  .mechanic-item-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .mechanic-review-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mechanic-review-summary-card {
+    min-height: 120px;
+    padding: 15px 16px 14px;
+  }
+
+  .mechanic-review-summary-card strong {
+    font-size: 2rem;
+  }
+
+  .rating-stars-display {
+    font-size: 0.96rem;
   }
 
   .advisor-appointment-list .customer-row-action .status-pill {

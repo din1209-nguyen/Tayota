@@ -84,3 +84,10 @@ export function assignTicketMechanic(id, payload) {
     body: JSON.stringify(payload),
   });
 }
+
+export function cancelAdvisorServiceTicket(id, payload) {
+  return apiFetch(`/operation/workorders/advisor/${id}/cancel`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}

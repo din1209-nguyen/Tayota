@@ -2,6 +2,7 @@ package com.tayota.operationservice.controller.workorder;
 
 import com.tayota.operationservice.dto.common.ApiResponse;
 import com.tayota.operationservice.dto.request.workorder.AssignMechanicRequest;
+import com.tayota.operationservice.dto.request.workorder.CancelServiceTicketRequest;
 import com.tayota.operationservice.dto.request.workorder.CreateServiceItemRequest;
 import com.tayota.operationservice.dto.request.workorder.CreateWalkInServiceTicketRequest;
 import com.tayota.operationservice.dto.request.workorder.RejectServiceTicketRequest;
@@ -89,6 +90,17 @@ public class WorkOrderController {
         ServiceTicketSummaryResponse response = workOrderService.assignMechanic(serviceTicketId, request);
 
         return ApiResponse.success(200, "Phân công lại kỹ thuật viên thành công!", response);
+    }
+
+    @PatchMapping("/advisor/{serviceTicketId}/cancel")
+    @PreAuthorize("hasRole('SERVICE_ADVISOR')")
+    public ApiResponse<ServiceTicketSummaryResponse> cancelAdvisorServiceTicket(
+            @PathVariable UUID serviceTicketId,
+            @Valid @RequestBody CancelServiceTicketRequest request
+    ) {
+        ServiceTicketSummaryResponse response = workOrderService.cancelAdvisorServiceTicket(serviceTicketId, request);
+
+        return ApiResponse.success(200, "Đã hủy phiếu dịch vụ!", response);
     }
 
     @GetMapping("/{serviceTicketId}/invoice")

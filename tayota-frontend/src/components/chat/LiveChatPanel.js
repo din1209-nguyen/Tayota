@@ -175,7 +175,6 @@ export default function LiveChatPanel({
       {showHeader ? (
         <div className="ops-panel-head">
           <div>
-            <p className="eyebrow">Tư vấn trực tuyến</p>
             <h2>{isAssistant ? "Hỗ trợ khách hàng" : "Tư vấn trực tiếp"}</h2>
             {sessionId && variant !== "widget" ? <p className="muted-text">Phiên {sessionId}</p> : null}
           </div>

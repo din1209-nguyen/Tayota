@@ -25,6 +25,10 @@ export default function AuthForm({ mode }) {
   const [message, setMessage] = useState("");
   const [registeredEmail, setRegisteredEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const forgotInfoMessages = new Set([
+    "Mã OTP đã được gửi đến email của bạn.",
+    "OTP hợp lệ. Bạn có thể đặt mật khẩu mới.",
+  ]);
 
   function updateField(event) {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
@@ -206,7 +210,9 @@ export default function AuthForm({ mode }) {
           </div>
         ) : null}
 
-        {message ? <div className="status-box">{message}</div> : null}
+        {message ? (
+          <div className={forgotInfoMessages.has(message) ? "status-box" : "form-alert error"}>{message}</div>
+        ) : null}
 
         {forgotStep !== "success" ? (
           <button className="btn btn-primary" type="submit" disabled={loading}>
@@ -258,7 +264,7 @@ export default function AuthForm({ mode }) {
 
       {isRegister ? <p className="form-hint">Mật khẩu cần 8-20 ký tự, gồm chữ hoa, số và ký tự đặc biệt.</p> : null}
 
-      {message ? <div className="status-box">{message}</div> : null}
+      {message ? <div className="form-alert error">{message}</div> : null}
 
       <button className="btn btn-primary" type="submit" disabled={loading}>
         {loading ? "Đang xử lý..." : isRegister ? "Tạo tài khoản" : "Đăng nhập"}

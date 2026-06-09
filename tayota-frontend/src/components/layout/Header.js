@@ -19,8 +19,8 @@ const navItems = [
   ["Sản phẩm", "/vehicles"],
   ["So sánh", "/compare"],
   ["Đại lý", "/dealerships"],
-  ["Lái thử", "/appointments/test-drive"],
-  ["Dịch vụ", "/appointments/service"],
+  ["Đặt lịch lái thử", "/appointments/test-drive"],
+  ["Đặt lịch chăm sóc xe", "/appointments/service"],
 ];
 
 const NOTIFICATION_PREVIEW_LIMIT = 5;

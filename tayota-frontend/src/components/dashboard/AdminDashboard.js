@@ -270,7 +270,7 @@ export default function AdminDashboard() {
       {message ? <div className="dashboard-feedback" aria-live="polite"><div className="status-box">{message}</div></div> : null}
 
       {tab === "profile" ? (
-        <ProfilePanel eyebrow="Quản trị viên" heading="Hồ sơ cá nhân" />
+        <ProfilePanel heading="Hồ sơ cá nhân" />
       ) : tab === "accounts" ? (
         <div className={`admin-account-layout ${showCreateForm ? "" : "list-only"}`}>
           {showCreateForm ? <section className="ops-panel admin-create-panel">

@@ -134,7 +134,7 @@ export function statusLabel(status) {
     EXPIRED: "Quá hạn",
     RECEIVING: "Đã tiếp nhận",
     IN_PROGRESS: "Đang sửa",
-    NEEDS_REASSIGNMENT: "Chờ phân công lại",
+    NEEDS_REASSIGNMENT: "Chờ phân công",
     WARRANTY: "Bảo hành",
     GIFT: "Quà tặng",
     NORMAL: "Tính phí",
@@ -151,4 +151,31 @@ export function statusLabel(status) {
     ERROR: "Có lỗi",
   };
   return labels[status] || status || "Đang cập nhật";
+}
+
+export function statusToneClass(status) {
+  const normalized = String(status || "").toUpperCase();
+  if (["COMPLETED", "SUBMITTED", "RESOLVED", "ACTIVE", "SOLD"].includes(normalized)) return "status-success";
+  if (["CONFIRMED", "CHECKED_IN", "RECEIVING", "IN_PROGRESS", "CHATTING"].includes(normalized)) return "status-info";
+  if (["PENDING", "WAITING", "NEEDS_REASSIGNMENT", "CONNECTING", "MAINTENANCE"].includes(normalized)) return "status-warning";
+  if (["CANCELED", "CANCELLED", "REJECTED", "EXPIRED", "ERROR", "FAILED"].includes(normalized)) return "status-danger";
+  return "status-neutral";
+}
+
+export function statusPillClass(status) {
+  return `status-pill ${statusToneClass(status)}`;
+}
+
+export function formatServiceTicketNote(value) {
+  const note = String(value || "").trim();
+  if (!note) return "";
+
+  const rejectLabel = "Kỹ thuật viên từ chối:";
+  const rejectIndex = note.lastIndexOf(rejectLabel);
+  if (rejectIndex !== -1) {
+    const reason = note.slice(rejectIndex + rejectLabel.length).replace(/\s+/g, " ").trim();
+    return reason ? `${rejectLabel} ${reason}` : rejectLabel;
+  }
+
+  return note;
 }

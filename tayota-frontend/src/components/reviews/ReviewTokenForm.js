@@ -42,10 +42,12 @@ export default function ReviewTokenForm({ token }) {
   const expired = review?.status === "EXPIRED";
   const disabled = submitting || submitted || expired;
   const contextTitle = useMemo(() => {
-    if (!review) return "Đánh giá dịch vụ";
-    if (review.reviewType === "TEST_DRIVE") return "Đánh giá trải nghiệm lái thử";
-    return "Đánh giá dịch vụ bảo dưỡng/sửa chữa";
+    if (!review) return "Đánh giá dịch vụ chăm sóc xe";
+    if (review.reviewType === "TEST_DRIVE") return "Đánh giá buổi hẹn lái thử";
+    return "Đánh giá dịch vụ chăm sóc xe";
   }, [review]);
+  const serviceRatingLabel = isServiceReview ? "Điểm dịch vụ chăm sóc xe" : "Điểm buổi hẹn lái thử";
+  const serviceCommentLabel = isServiceReview ? "Nhận xét dịch vụ chăm sóc xe" : "Nhận xét buổi hẹn lái thử";
 
   useEffect(() => {
     let alive = true;
@@ -115,10 +117,10 @@ export default function ReviewTokenForm({ token }) {
 
   return (
     <form className="form-panel review-panel" onSubmit={submit}>
-      <div className="ops-panel-head">
+      <div className="ops-panel-head review-panel-head">
         <div>
-          <p className="eyebrow">Tayota review</p>
           <h2>{contextTitle}</h2>
+          <p>Chia sẻ cảm nhận của bạn để Tayota phục vụ tốt hơn trong những lần hẹn tiếp theo.</p>
         </div>
         <span className="status-pill">{statusLabel(review.status)}</span>
       </div>
@@ -130,9 +132,9 @@ export default function ReviewTokenForm({ token }) {
         <div><dt>Loại đánh giá</dt><dd>{review.reviewType === "SERVICE" ? "Dịch vụ" : "Lái thử"}</dd></div>
       </dl>
 
-      <RatingInput label="Điểm dịch vụ" name="serviceRating" value={form.serviceRating} onChange={setField} disabled={disabled} />
+      <RatingInput label={serviceRatingLabel} name="serviceRating" value={form.serviceRating} onChange={setField} disabled={disabled} />
       <label className="label">
-        Nhận xét dịch vụ
+        {serviceCommentLabel}
         <textarea className="field" name="serviceComment" rows={4} value={form.serviceComment} onChange={updateField} disabled={disabled} />
       </label>
 

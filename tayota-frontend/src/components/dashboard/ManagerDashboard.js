@@ -52,7 +52,7 @@ export default function ManagerDashboard() {
         </div>
       </header>
       {tab === "profile" ? (
-        <ProfilePanel eyebrow="Manager" heading="Hồ sơ cá nhân" />
+        <ProfilePanel heading="Hồ sơ cá nhân" />
       ) : tab === "chat" ? (
         <StaffChatWorkspace
           eyebrow="Manager"

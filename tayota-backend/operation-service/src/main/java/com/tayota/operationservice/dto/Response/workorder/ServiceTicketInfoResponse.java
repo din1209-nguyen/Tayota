@@ -58,6 +58,12 @@ public class ServiceTicketInfoResponse {
     // Thời điểm phiếu dịch vụ được hoàn thành, có thể null nếu chưa được cập nhật
     private Instant completedAt;
 
+    // Thời điểm phiếu dịch vụ bị hủy, có thể null nếu chưa hủy
+    private Instant canceledAt;
+
+    // Lý do hủy phiếu dịch vụ, có thể null nếu chưa hủy
+    private String cancelReason;
+
     // Tổng số tiền của phiếu dịch vụ, có thể null nếu chưa được cập nhật hoặc nếu phiếu dịch vụ chưa có hạng mục nào
     private BigDecimal totalAmount;
 

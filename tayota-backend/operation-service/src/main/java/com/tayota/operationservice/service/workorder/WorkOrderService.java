@@ -3,6 +3,7 @@ package com.tayota.operationservice.service.workorder;
 import com.tayota.operationservice.exception.CustomException;
 import com.tayota.operationservice.util.SecurityContextUtil;
 import com.tayota.operationservice.dto.request.workorder.AssignMechanicRequest;
+import com.tayota.operationservice.dto.request.workorder.CancelServiceTicketRequest;
 import com.tayota.operationservice.dto.request.workorder.CreateServiceItemRequest;
 import com.tayota.operationservice.dto.request.workorder.CreateWalkInServiceTicketRequest;
 import com.tayota.operationservice.dto.request.workorder.RejectServiceTicketRequest;
@@ -294,7 +295,7 @@ public class WorkOrderService {
         serviceTicket.setStatus(ServiceTicketStatus.NEEDS_REASSIGNMENT);
         serviceTicket.setMechanicId(null);
         serviceTicket.setCancelReason(reason);
-        serviceTicket.setNotes(appendNote(serviceTicket.getNotes(), "Kỹ thuật viên từ chối: " + reason));
+        serviceTicket.setNotes("Kỹ thuật viên từ chối: " + reason);
 
         CustomerInformation customer = buildCustomerInformation(serviceTicket);
         return toSummaryResponse(serviceTicketRepository.save(serviceTicket), customer);
@@ -318,6 +319,36 @@ public class WorkOrderService {
         serviceTicket.setMechanicId(mechanic.getId());
         serviceTicket.setStatus(ServiceTicketStatus.CONFIRMED);
         serviceTicket.setCancelReason(null);
+
+        CustomerInformation customer = buildCustomerInformation(serviceTicket);
+        return toSummaryResponse(serviceTicketRepository.save(serviceTicket), customer);
+    }
+
+    @Transactional
+    public ServiceTicketSummaryResponse cancelAdvisorServiceTicket(UUID serviceTicketId, CancelServiceTicketRequest request) {
+        ServiceTicket serviceTicket = getAdvisorTicket(serviceTicketId);
+
+        if (serviceTicket.getStatus() != ServiceTicketStatus.CONFIRMED
+                && serviceTicket.getStatus() != ServiceTicketStatus.NEEDS_REASSIGNMENT) {
+            throw new CustomException(400, "Chỉ có thể hủy phiếu dịch vụ chưa được kỹ thuật viên tiếp nhận");
+        }
+
+        String reason = normalizeRequired(request.getReason(), "Vui lòng nhập lý do hủy phiếu dịch vụ");
+        Instant now = Instant.now();
+
+        serviceTicket.setStatus(ServiceTicketStatus.CANCELED);
+        serviceTicket.setCanceledAt(now);
+        serviceTicket.setCancelReason(reason);
+        serviceTicket.setMechanicId(null);
+
+        Appointment appointment = serviceTicket.getAppointment();
+        if (appointment != null && appointment.getStatus() != AppointmentStatus.CANCELED) {
+            appointment.setStatus(AppointmentStatus.CANCELED);
+            appointment.setCanceledAt(now);
+            appointment.setCancelReason(reason);
+            appointment.setMechanicId(null);
+            appointmentRepository.save(appointment);
+        }
 
         CustomerInformation customer = buildCustomerInformation(serviceTicket);
         return toSummaryResponse(serviceTicketRepository.save(serviceTicket), customer);
@@ -582,10 +613,6 @@ public class WorkOrderService {
     private Car findCar(String vinId) {
         return carRepository.findById(vinId)
                 .orElseThrow(() -> new CustomException(404, "Không tìm thấy xe theo VIN"));
-    }
-
-    private String appendNote(String oldNote, String newNote) {
-        return StringUtils.hasText(oldNote) ? oldNote + "\n" + newNote : newNote;
     }
 
     // Phương thức tiện ích để tính lại tổng tiền của phiếu dịch vụ sau khi thêm/sửa/xóa hạng mục dịch vụ.

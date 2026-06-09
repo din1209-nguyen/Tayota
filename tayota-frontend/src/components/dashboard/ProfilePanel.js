@@ -37,7 +37,7 @@ function toProfileForm(user, profile) {
   };
 }
 
-export default function ProfilePanel({ eyebrow = "Hồ sơ", heading = "Thông tin cá nhân" }) {
+export default function ProfilePanel({ heading = "Thông tin cá nhân" }) {
   const router = useRouter();
   const avatarInputRef = useRef(null);
   const [user, setUser] = useState(null);
@@ -177,12 +177,8 @@ export default function ProfilePanel({ eyebrow = "Hồ sơ", heading = "Thông t
     <section className="ops-panel wide profile-panel">
       <div className="ops-panel-head">
         <div>
-          <p className="eyebrow">{eyebrow}</p>
           <h2>{heading}</h2>
         </div>
-        <button className="btn btn-ghost" type="button" onClick={loadProfile} disabled={loading || saving}>
-          Tải lại
-        </button>
       </div>
 
       {loading ? <div className="status-box">Đang tải hồ sơ...</div> : null}
@@ -214,7 +210,6 @@ export default function ProfilePanel({ eyebrow = "Hồ sơ", heading = "Thông t
           <form className="ops-form profile-form" onSubmit={submitProfile}>
             <div className="profile-form-head">
               <div>
-                <p className="eyebrow">Thông tin</p>
                 <h3>Thông tin liên hệ</h3>
               </div>
             </div>
@@ -236,12 +231,11 @@ export default function ProfilePanel({ eyebrow = "Hồ sơ", heading = "Thông t
           </form>
 
           <section className={`security-panel ${securityOpen ? "open" : ""}`}>
-            <button className="security-toggle" type="button" onClick={() => setSecurityOpen((current) => !current)} aria-expanded={securityOpen}>
+            <button className="security-toggle" type="button" onClick={() => setSecurityOpen((current) => !current)} aria-expanded={securityOpen} aria-label={securityOpen ? "Thu gọn đổi mật khẩu" : "Mở đổi mật khẩu"}>
               <span>
-                <small className="eyebrow">Bảo mật</small>
                 <strong>Đổi mật khẩu</strong>
               </span>
-              <span aria-hidden="true">{securityOpen ? "Ẩn" : "Mở"}</span>
+              <span className="security-toggle-icon" aria-hidden="true">{securityOpen ? "⌃" : "⌄"}</span>
             </button>
             {passwordMessage ? <div className="status-box compact-status" aria-live="polite">{passwordMessage}</div> : null}
             {securityOpen ? (

@@ -120,4 +120,22 @@ public interface CustomerReviewRepository extends JpaRepository<CustomerReview, 
             @Param("expiredStatus") ReviewStatus expiredStatus,
             @Param("now") Instant now
     );
+
+    @Query("""
+            select review
+            from CustomerReview review
+            where review.dealershipId = :dealershipId
+              and review.status = :status
+              and review.submittedAt >= :fromInclusive
+              and review.submittedAt < :toExclusive
+              and (:reviewType is null or review.reviewType = :reviewType)
+            order by review.submittedAt desc
+            """)
+    List<CustomerReview> findAdvisorReportSubmittedReviews(
+            @Param("dealershipId") UUID dealershipId,
+            @Param("status") ReviewStatus status,
+            @Param("fromInclusive") Instant fromInclusive,
+            @Param("toExclusive") Instant toExclusive,
+            @Param("reviewType") ReviewType reviewType
+    );
 }

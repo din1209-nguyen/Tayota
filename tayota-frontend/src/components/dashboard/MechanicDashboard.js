@@ -18,7 +18,7 @@ import {
 import { getMyMechanicReviews, getMyMechanicReviewSummary } from "@/lib/services/reviews";
 import ProfilePanel from "@/components/dashboard/ProfilePanel";
 import { getValidDashboardTab } from "@/lib/dashboard-nav";
-import { formatVnd, statusLabel, unwrapList } from "@/lib/format";
+import { formatServiceTicketNote, formatVnd, statusLabel, unwrapList } from "@/lib/format";
 
 const TAB_LABELS = {
   queue: "Cần tiếp nhận",
@@ -384,7 +384,7 @@ export default function MechanicDashboard() {
         <div><dt>Số km</dt><dd>{ticket.mileageAtService ?? "Chưa ghi nhận"}</dd></div>
         <div><dt>Tổng tiền</dt><dd>{ticket.status === "COMPLETED" ? formatVndZero(ticket.totalAmount) : "Chưa chốt"}</dd></div>
         <div><dt>Tình trạng xe</dt><dd>{ticket.vehicleCondition || "Chưa ghi nhận"}</dd></div>
-        <div><dt>Ghi chú</dt><dd>{ticket.notes || "Không có"}</dd></div>
+        <div><dt>Ghi chú</dt><dd>{formatServiceTicketNote(ticket.notes) || "Không có"}</dd></div>
       </dl>
 
       <div className="row-actions wrap">
@@ -502,7 +502,7 @@ export default function MechanicDashboard() {
     <div className="ops-grid workspace-tabs-layout mechanic-workspace">
       {message ? <div className="status-box wide">{message}</div> : null}
       {loading ? <div className="status-box wide">Đang tải phiếu dịch vụ...</div> : null}
-      {tab === "profile" ? <ProfilePanel eyebrow="Kỹ thuật viên" heading="Hồ sơ cá nhân" /> : tab === "reviews" ? reviewPanel : ticket ? detailPanel : listPanel}
+      {tab === "profile" ? <ProfilePanel heading="Hồ sơ cá nhân" /> : tab === "reviews" ? reviewPanel : ticket ? detailPanel : listPanel}
     </div>
   );
 }

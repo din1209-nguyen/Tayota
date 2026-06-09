@@ -507,7 +507,7 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
                 />
               </label>
               {vinValidationMessage ? (
-                <div className="status-box">{vinValidationMessage}</div>
+                <div className="form-alert error">{vinValidationMessage}</div>
               ) : null}
               {!authReady ? (
                 <div className="status-box">Đang kiểm tra trạng thái tài khoản...</div>
@@ -623,7 +623,7 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
                     </button>
                   );
                 })}
-                {!loadingCalendar && !calendarDays.length ? <div className="status-box wide">Chưa có dữ liệu lịch khả dụng.</div> : null}
+                {!loadingCalendar && !calendarDays.length ? <div className="form-alert error wide">Chưa có dữ liệu lịch khả dụng.</div> : null}
               </div>
             </div>
             <div className="booking-slot-card">
@@ -644,7 +644,7 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
                   </button>
                 ))}
                 {!loadingSlots && form.appointmentDate && !slots.length ? (
-                  <div className="status-box wide">Ngày này chưa có khung giờ phù hợp. Vui lòng chọn ngày khác.</div>
+                  <div className="form-alert error wide">Ngày này chưa có khung giờ phù hợp. Vui lòng chọn ngày khác.</div>
                 ) : null}
                 {!loadingSlots && !form.appointmentDate ? (
                   <div className="status-box wide">Chọn một ngày còn trống để xem khung giờ tiếp đón.</div>
@@ -703,9 +703,8 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
       ) : null}
 
       <div className="wizard-feedback" aria-live="polite">
-        {loadingInitial || message ? (
-          <div className="status-box">{loadingInitial ? "Đang tải dữ liệu đặt lịch..." : message}</div>
-        ) : null}
+        {loadingInitial ? <div className="status-box">Đang tải dữ liệu đặt lịch...</div> : null}
+        {message ? <div className="form-alert error">{message}</div> : null}
       </div>
 
       <div className="wizard-actions">

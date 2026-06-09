@@ -12,7 +12,7 @@ export default function AssistantDashboard() {
   if (tab === "profile") {
     return (
       <div className="ops-grid workspace-tabs-layout">
-        <ProfilePanel eyebrow="Assistant" heading="Hồ sơ cá nhân" />
+        <ProfilePanel heading="Hồ sơ cá nhân" />
       </div>
     );
   }

@@ -68,6 +68,8 @@ public class WorkOrderMapper {
                 serviceTicket.getReceivingAt(),
                 serviceTicket.getProcessingAt(),
                 serviceTicket.getCompletedAt(),
+                serviceTicket.getCanceledAt(),
+                serviceTicket.getCancelReason(),
                 serviceTicket.getTotalAmount()
         );
     }

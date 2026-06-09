@@ -5,18 +5,19 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import LiveChatPanel from "@/components/chat/LiveChatPanel";
 import ProfilePanel from "@/components/dashboard/ProfilePanel";
+import ServiceBreakdown from "@/components/dashboard/ServiceBreakdown";
 import { getMyAppointmentDetail, getMyAppointments } from "@/lib/services/appointments";
 import { getCarVersion, getDealerships, getMyVehicles } from "@/lib/services/car";
 import { getMyReviews } from "@/lib/services/reviews";
 import { getServiceInvoice, getUserServiceTicketDetail, getUserServiceTickets } from "@/lib/services/workorders";
-import { formatVnd, getVehicleHighlights, getVehicleImage, getVehicleName, getVehicleSeriesName, statusLabel, unwrapList } from "@/lib/format";
+import { formatServiceTicketNote, formatVnd, getVehicleHighlights, getVehicleImage, getVehicleName, getVehicleSeriesName, statusLabel, statusPillClass, unwrapList } from "@/lib/format";
 import { getValidDashboardTab } from "@/lib/dashboard-nav";
 
 const DASHBOARD_LOAD_TIMEOUT_MS = 15000;
 const TYPE_FILTERS = [
   ["ALL", "Tất cả"],
-  ["TEST_DRIVE", "Lái thử"],
-  ["SERVICE", "Dịch vụ"],
+  ["TEST_DRIVE", "Buổi hẹn lái thử"],
+  ["SERVICE", "Dịch vụ chăm sóc xe"],
 ];
 
 function withTimeout(promise, message) {
@@ -34,37 +35,48 @@ function formatDateTime(value) {
   return new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short" }).format(date);
 }
 
+function hasReachedServiceStatus(ticket, statuses) {
+  return statuses.includes(String(ticket?.status || "").toUpperCase());
+}
+
+function serviceReceivedAtLabel(ticket) {
+  if (!hasReachedServiceStatus(ticket, ["RECEIVING", "IN_PROGRESS", "COMPLETED"])) return "Chưa tiếp nhận";
+  return formatDateTime(ticket?.receivingAt);
+}
+
+function serviceProcessingAtLabel(ticket) {
+  if (!hasReachedServiceStatus(ticket, ["IN_PROGRESS", "COMPLETED"])) return "Chưa bắt đầu";
+  return formatDateTime(ticket?.processingAt);
+}
+
+function serviceCompletedAtLabel(ticket) {
+  if (!hasReachedServiceStatus(ticket, ["COMPLETED"])) return "Chưa hoàn tất";
+  return formatDateTime(ticket?.completedAt);
+}
+
 function reviewTypeLabel(type) {
-  if (type === "SERVICE") return "Dịch vụ sửa chữa";
-  if (type === "TEST_DRIVE") return "Lái thử";
+  if (type === "SERVICE") return "Dịch vụ chăm sóc xe";
+  if (type === "TEST_DRIVE") return "Buổi hẹn lái thử";
   return "Đánh giá";
 }
 
+function reviewTypeClass(type) {
+  return type === "SERVICE" ? "customer-type-badge service" : "customer-type-badge test-drive";
+}
+
 function appointmentTypeLabel(type) {
-  return type === "SERVICE" ? "Dịch vụ" : "Lái thử";
+  return type === "SERVICE" ? "Dịch vụ chăm sóc xe" : "Buổi hẹn lái thử";
+}
+
+function appointmentTypeClass(type) {
+  return type === "SERVICE" ? "customer-type-badge service" : "customer-type-badge test-drive";
 }
 
 function serviceTimeLabel(ticket) {
-  return ticket?.completedAt || ticket?.processingAt || ticket?.receivingAt || ticket?.createdAt || "";
-}
-
-function serviceItemTypeLabel(type) {
-  if (type === "PART") return "Phụ tùng";
-  if (type === "LABOR") return "Công thợ";
-  return statusLabel(type);
-}
-
-function statusToneClass(status) {
-  const normalized = String(status || "").toUpperCase();
-  if (["COMPLETED", "SUBMITTED", "RESOLVED", "ACTIVE", "SOLD"].includes(normalized)) return "status-success";
-  if (["CONFIRMED", "CHECKED_IN", "RECEIVING", "IN_PROGRESS", "CHATTING"].includes(normalized)) return "status-info";
-  if (["PENDING", "WAITING", "NEEDS_REASSIGNMENT", "CONNECTING", "MAINTENANCE"].includes(normalized)) return "status-warning";
-  if (["CANCELED", "CANCELLED", "REJECTED", "EXPIRED", "ERROR", "FAILED"].includes(normalized)) return "status-danger";
-  return "status-neutral";
-}
-
-function statusPillClass(status) {
-  return `status-pill ${statusToneClass(status)}`;
+  if (hasReachedServiceStatus(ticket, ["COMPLETED"]) && ticket?.completedAt) return ticket.completedAt;
+  if (hasReachedServiceStatus(ticket, ["IN_PROGRESS", "COMPLETED"]) && ticket?.processingAt) return ticket.processingAt;
+  if (hasReachedServiceStatus(ticket, ["RECEIVING", "IN_PROGRESS", "COMPLETED"]) && ticket?.receivingAt) return ticket.receivingAt;
+  return ticket?.createdAt || "";
 }
 
 function RatingDisplay({ value }) {
@@ -311,12 +323,11 @@ export default function CustomerDashboard() {
 
   return (
     <div className="ops-grid workspace-tabs-layout">
-      {tab === "profile" ? <ProfilePanel eyebrow="Customer" heading="Hồ sơ cá nhân" /> : null}
+      {tab === "profile" ? <ProfilePanel heading="Hồ sơ cá nhân" /> : null}
 
       {tab === "vehicles" ? <section className="ops-panel wide customer-vehicles-panel" id="user-vehicles">
         <div className="ops-panel-head">
           <div>
-            <p className="eyebrow">Vehicles</p>
             <h2>Xe cá nhân</h2>
           </div>
         </div>
@@ -374,23 +385,24 @@ export default function CustomerDashboard() {
       {tab === "appointments" ? <section className="ops-panel wide" id="user-appointments">
         <div className="ops-panel-head">
           <div>
-            <p className="eyebrow">Appointments</p>
             <h2>Lịch hẹn của tôi</h2>
           </div>
         </div>
         {error ? <div className="status-box">{error}</div> : null}
-        <div className="segmented-tabs customer-panel-filters" role="group" aria-label="Lọc lịch hẹn">
-          {TYPE_FILTERS.map(([value, label]) => (
-            <button className={appointmentTypeFilter === value ? "active" : ""} key={value} type="button" onClick={() => setAppointmentTypeFilter(value)} aria-pressed={appointmentTypeFilter === value}>
-              {label}
-            </button>
-          ))}
+        <div className="customer-panel-filters">
+          <label className="customer-filter-field compact" htmlFor="customer-appointment-type-filter">
+            <select id="customer-appointment-type-filter" className="customer-filter-select" value={appointmentTypeFilter} onChange={(event) => setAppointmentTypeFilter(event.target.value)}>
+              {TYPE_FILTERS.map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </label>
         </div>
         <div className="customer-row-list">
           {filteredAppointments.map((item) => (
             <button className="customer-data-row" key={item.id} type="button" onClick={() => openAppointment(item.id)}>
               <div className="customer-row-main">
-                <span>{appointmentTypeLabel(item.type)}</span>
+                <span className={appointmentTypeClass(item.type)}>{appointmentTypeLabel(item.type)}</span>
                 <strong>{item.appointmentDate || "Chưa có ngày"}</strong>
                 <small>Mã lịch: {item.id}</small>
               </div>
@@ -413,8 +425,7 @@ export default function CustomerDashboard() {
       {tab === "services" ? <section className="ops-panel wide customer-services-panel" id="user-services">
         <div className="ops-panel-head">
           <div>
-            <p className="eyebrow">Services</p>
-            <h2>Dịch vụ của tôi</h2>
+            <h2>Dịch vụ xe của tôi</h2>
           </div>
         </div>
         {error ? <div className="status-box">{error}</div> : null}
@@ -422,7 +433,7 @@ export default function CustomerDashboard() {
           {data.serviceTickets.map((ticket) => (
             <button className="customer-data-row customer-service-row" key={ticket.id} type="button" onClick={() => openServiceTicket(ticket)}>
               <div className="customer-row-main">
-                <span>Phiếu dịch vụ</span>
+                <span className="customer-type-badge service-ticket">Phiếu dịch vụ</span>
                 <strong>{getServiceVehicleName(ticket)}</strong>
                 <small>Mã phiếu: {ticket.id}</small>
               </div>
@@ -445,24 +456,24 @@ export default function CustomerDashboard() {
       {tab === "reviews" ? <section className="ops-panel wide" id="user-reviews">
         <div className="ops-panel-head">
           <div>
-            <p className="eyebrow">Reviews</p>
             <h2>Đánh giá của tôi</h2>
           </div>
         </div>
         {error ? <div className="status-box">{error}</div> : null}
-        <div className="segmented-tabs customer-panel-filters" role="group" aria-label="Lọc đánh giá">
-          {TYPE_FILTERS.map(([value, label]) => (
-            <button className={reviewTypeFilter === value ? "active" : ""} key={value} type="button" onClick={() => setReviewTypeFilter(value)} aria-pressed={reviewTypeFilter === value}>
-              {label}
-            </button>
-          ))}
+        <div className="customer-panel-filters">
+          <label className="customer-filter-field compact" htmlFor="customer-review-type-filter">
+            <select id="customer-review-type-filter" className="customer-filter-select" value={reviewTypeFilter} onChange={(event) => setReviewTypeFilter(event.target.value)}>
+              {TYPE_FILTERS.map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </label>
         </div>
         <div className="customer-row-list">
           {filteredReviews.map((item) => (
             <article className="customer-data-row customer-review-row" key={item.id}>
               <div className="customer-row-main">
-                <span>Đánh giá</span>
-                <strong>{reviewTypeLabel(item.reviewType)}</strong>
+                <span className={reviewTypeClass(item.reviewType)}>{reviewTypeLabel(item.reviewType)}</span>
                 <small className="review-code">Mã đánh giá: <ReviewCodeDisplay value={item.id} /></small>
               </div>
               <dl className="customer-row-meta">
@@ -499,6 +510,7 @@ export default function CustomerDashboard() {
             <div className="detail-modal-body">
               <span className={statusPillClass(selectedAppointment.status)}>{statusLabel(selectedAppointment.status)}</span>
               <dl className="summary-list compact">
+                <div><dt>Mã lịch</dt><dd>{selectedAppointment.id || "Đang cập nhật"}</dd></div>
                 <div><dt>Ngày hẹn</dt><dd>{selectedAppointment.appointmentDate}</dd></div>
                 <div><dt>Thời gian</dt><dd>{selectedAppointment.startTime} - {selectedAppointment.endTime}</dd></div>
                 <div><dt>Đại lý</dt><dd>{getDealershipName(selectedAppointment)}</dd></div>
@@ -518,7 +530,6 @@ export default function CustomerDashboard() {
           <section className="detail-modal review-detail-modal" role="dialog" aria-modal="true" aria-labelledby="review-detail-title" onClick={(event) => event.stopPropagation()}>
             <header className="manager-modal-head detail-modal-head">
               <div>
-                <p className="eyebrow">{reviewTypeLabel(selectedReview.reviewType)}</p>
                 <h2 id="review-detail-title">Chi tiết đánh giá</h2>
               </div>
               <button className="icon-button" type="button" onClick={() => setSelectedReview(null)} aria-label="Đóng chi tiết đánh giá">×</button>
@@ -527,7 +538,7 @@ export default function CustomerDashboard() {
               <span className={statusPillClass(selectedReview.status)}>{statusLabel(selectedReview.status)}</span>
               <dl className="summary-list compact">
                 <div className="review-id-row"><dt>Mã đánh giá</dt><dd className="review-code">{selectedReview.id || "Không có"}</dd></div>
-                <div><dt>Loại</dt><dd>{reviewTypeLabel(selectedReview.reviewType)}</dd></div>
+                <div><dt>Loại</dt><dd><span className={reviewTypeClass(selectedReview.reviewType)}>{reviewTypeLabel(selectedReview.reviewType)}</span></dd></div>
                 <div><dt>Đánh giá dịch vụ</dt><dd><RatingDisplay value={selectedReview.serviceRating} /></dd></div>
                 <div><dt>Nhận xét dịch vụ</dt><dd>{selectedReview.serviceComment || "Không có"}</dd></div>
                 {selectedReview.reviewType !== "TEST_DRIVE" ? (
@@ -549,9 +560,8 @@ export default function CustomerDashboard() {
         const ticket = selectedService.serviceTicket || selectedService;
         const invoice = selectedService.invoice || {};
         const items = invoice.items || selectedService.items || [];
-        const partItems = items.filter((item) => item.itemType === "PART");
-        const laborItems = items.filter((item) => item.itemType === "LABOR");
         const totalAmount = invoice.totalAmount ?? ticket.totalAmount ?? 0;
+        const canceledTicket = String(ticket.status || "").toUpperCase() === "CANCELED";
 
         return (
           <div className="manager-modal-backdrop detail-modal-backdrop" role="presentation" onClick={() => setSelectedService(null)}>
@@ -575,67 +585,15 @@ export default function CustomerDashboard() {
                   <div><dt>Đại lý</dt><dd>{getServiceDealershipName({ ...ticket, invoice })}</dd></div>
                   <div><dt>Kỹ thuật viên</dt><dd>{invoice.mechanicName || ticket.mechanicId || "Đang cập nhật"}</dd></div>
                   <div><dt>Số km</dt><dd>{ticket.mileageAtService ? `${ticket.mileageAtService} km` : "Chưa cập nhật"}</dd></div>
-                  <div><dt>Tiếp nhận</dt><dd>{formatDateTime(ticket.receivingAt)}</dd></div>
-                  <div><dt>Bắt đầu sửa</dt><dd>{formatDateTime(ticket.processingAt)}</dd></div>
-                  <div><dt>Hoàn tất</dt><dd>{formatDateTime(ticket.completedAt)}</dd></div>
+                  <div><dt>Tiếp nhận</dt><dd>{serviceReceivedAtLabel(ticket)}</dd></div>
+                  <div><dt>Bắt đầu sửa</dt><dd>{serviceProcessingAtLabel(ticket)}</dd></div>
+                  <div><dt>Hoàn tất</dt><dd>{serviceCompletedAtLabel(ticket)}</dd></div>
+                  {ticket.canceledAt ? <div><dt>Đã hủy</dt><dd>{formatDateTime(ticket.canceledAt)}</dd></div> : null}
                   <div><dt>Tình trạng xe</dt><dd>{ticket.vehicleCondition || invoice.vehicleCondition || "Chưa cập nhật"}</dd></div>
-                  <div><dt>Ghi chú</dt><dd>{ticket.notes || "Không có"}</dd></div>
+                  <div><dt>Ghi chú</dt><dd>{formatServiceTicketNote(ticket.notes) || "Không có"}</dd></div>
+                  {canceledTicket && ticket.cancelReason ? <div><dt>Lý do hủy</dt><dd>{ticket.cancelReason}</dd></div> : null}
                 </dl>
-                <div className="service-breakdown">
-                  <section className="service-breakdown-group" aria-labelledby="service-parts-title">
-                    <header className="service-breakdown-head">
-                      <div>
-                        <p className="eyebrow">Phụ tùng</p>
-                        <h3 id="service-parts-title">Phụ tùng đã thay</h3>
-                      </div>
-                      <span>{partItems.length} hạng mục</span>
-                    </header>
-                    <div className="service-item-list">
-                      {partItems.map((item) => (
-                        <article className="service-item-card service-part-card" key={item.id || item.itemName}>
-                          <div className="service-item-copy">
-                            <span>{serviceItemTypeLabel(item.itemType)}</span>
-                            <strong>{item.itemName || "Phụ tùng"}</strong>
-                            {item.note ? <small>{item.note}</small> : null}
-                          </div>
-                          <dl>
-                            <div className="quantity-field"><dt>Số lượng</dt><dd>{item.quantity || 1}</dd></div>
-                            <div className="money-field unit-price-field"><dt>Đơn giá</dt><dd>{formatVnd(item.unitPrice || 0)}</dd></div>
-                            <div className="category-field"><dt>Hạng mục</dt><dd>{statusLabel(item.billingType)}</dd></div>
-                            <div className="money-field money-field-total final-price-field"><dt>Thành tiền</dt><dd>{formatVnd(item.finalPrice || 0)}</dd></div>
-                          </dl>
-                        </article>
-                      ))}
-                      {!partItems.length ? <div className="status-box">Chưa có phụ tùng được cập nhật.</div> : null}
-                    </div>
-                  </section>
-
-                  <section className="service-breakdown-group" aria-labelledby="service-labor-title">
-                    <header className="service-breakdown-head">
-                      <div>
-                        <p className="eyebrow">Công thợ</p>
-                        <h3 id="service-labor-title">Công thực hiện</h3>
-                      </div>
-                      <span>{laborItems.length} hạng mục</span>
-                    </header>
-                    <div className="service-item-list">
-                      {laborItems.map((item) => (
-                        <article className="service-item-card service-labor-card" key={item.id || item.itemName}>
-                          <div className="service-item-copy">
-                            <span>{serviceItemTypeLabel(item.itemType)}</span>
-                            <strong>{item.itemName || "Công thợ"}</strong>
-                            {item.note ? <small>{item.note}</small> : null}
-                          </div>
-                          <dl>
-                            <div className="category-field"><dt>Loại phí</dt><dd>{statusLabel(item.billingType)}</dd></div>
-                            <div className="money-field money-field-total final-price-field"><dt>Thành tiền</dt><dd>{formatVnd(item.finalPrice || 0)}</dd></div>
-                          </dl>
-                        </article>
-                      ))}
-                      {!laborItems.length ? <div className="status-box">Chưa có công thợ được cập nhật.</div> : null}
-                    </div>
-                  </section>
-                </div>
+                <ServiceBreakdown items={items} formatCurrency={formatVnd} idPrefix="service" />
               </div>
             </section>
           </div>

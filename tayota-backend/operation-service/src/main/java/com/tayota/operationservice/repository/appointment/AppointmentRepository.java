@@ -2,6 +2,7 @@ package com.tayota.operationservice.repository.appointment;
 
 import com.tayota.operationservice.entity.appointment.Appointment;
 import com.tayota.operationservice.enums.appointment.AppointmentStatus;
+import com.tayota.operationservice.enums.appointment.AppointmentType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -69,6 +70,22 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
             @Param("expiredStatus") AppointmentStatus expiredStatus,
             @Param("expiredAt") Instant expiredAt,
             @Param("now") Instant now
+    );
+
+    @Query("""
+            select appointment
+            from Appointment appointment
+            where appointment.dealershipId = :dealershipId
+              and appointment.scheduledStartAt >= :fromInclusive
+              and appointment.scheduledStartAt < :toExclusive
+              and (:appointmentType is null or appointment.type = :appointmentType)
+            order by appointment.scheduledStartAt desc
+            """)
+    List<Appointment> findAdvisorReportAppointments(
+            @Param("dealershipId") UUID dealershipId,
+            @Param("fromInclusive") Instant fromInclusive,
+            @Param("toExclusive") Instant toExclusive,
+            @Param("appointmentType") AppointmentType appointmentType
     );
 
 }

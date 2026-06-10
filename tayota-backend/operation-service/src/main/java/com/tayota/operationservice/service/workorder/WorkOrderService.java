@@ -636,13 +636,12 @@ public class WorkOrderService {
         return resolveUnitPrice(request).multiply(BigDecimal.valueOf(request.getQuantity()));
     }
 
-    // Phương thức tiện ích để xác định đơn giá của hạng mục dịch vụ, chỉ áp dụng khi hình thức tính phí là NORMAL. Nếu là WARRANTY hoặc GIFT thì đơn giá luôn bằng 0.
+    // Phương thức tiện ích để xác định đơn giá của hạng mục dịch vụ. WARRANTY/GIFT vẫn giữ đơn giá gốc để đối chiếu, chỉ finalPrice bằng 0.
     private BigDecimal resolveUnitPrice(CreateServiceItemRequest request) {
-        if (request.getBillingType() == BillingType.WARRANTY || request.getBillingType() == BillingType.GIFT) {
-            return BigDecimal.ZERO;
-        }
-
         if (request.getUnitPrice() == null) {
+            if (request.getBillingType() == BillingType.WARRANTY || request.getBillingType() == BillingType.GIFT) {
+                return BigDecimal.ZERO;
+            }
             throw new CustomException(400, "Đơn giá không được để trống khi tính phí bình thường");
         }
 

@@ -155,6 +155,33 @@ function toDateInputValue(date) {
   return `${year}-${month}-${day}`;
 }
 
+function toReportDateDisplayValue(value) {
+  const dateKey = toDateKey(value);
+  const match = dateKey.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return "";
+  return `${match[3]}/${match[2]}/${match[1]}`;
+}
+
+function parseReportDateDisplayValue(value) {
+  const match = String(value || "").trim().match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+  if (!match) return "";
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return "";
+  }
+
+  return toDateInputValue(date);
+}
+
 function getMonthBounds(monthDate) {
   const first = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
   const last = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
@@ -373,6 +400,46 @@ function nonZeroReportItems(items = []) {
   return items.filter((item) => Number(item?.count || 0) > 0);
 }
 
+function ReportDateInput({ value, onChange, label }) {
+  const [displayValue, setDisplayValue] = useState(() => toReportDateDisplayValue(value));
+
+  useEffect(() => {
+    setDisplayValue(toReportDateDisplayValue(value));
+  }, [value]);
+
+  const handleChange = (event) => {
+    const nextValue = event.target.value;
+    setDisplayValue(nextValue);
+
+    if (!nextValue.trim()) {
+      onChange("");
+      return;
+    }
+
+    const parsedValue = parseReportDateDisplayValue(nextValue);
+    if (parsedValue) onChange(parsedValue);
+  };
+
+  const handleBlur = () => {
+    const parsedValue = parseReportDateDisplayValue(displayValue);
+    setDisplayValue(parsedValue ? toReportDateDisplayValue(parsedValue) : toReportDateDisplayValue(value));
+  };
+
+  return (
+    <input
+      aria-label={label}
+      className="field advisor-report-date-field"
+      inputMode="numeric"
+      onBlur={handleBlur}
+      onChange={handleChange}
+      pattern="\d{1,2}/\d{1,2}/\d{4}"
+      placeholder="dd/mm/yyyy"
+      type="text"
+      value={displayValue}
+    />
+  );
+}
+
 function ReportDonutChart({ title, items }) {
   const visibleItems = nonZeroReportItems(items);
   const total = visibleItems.reduce((sum, item) => sum + Number(item.count || 0), 0);
@@ -480,6 +547,7 @@ export default function AdvisorDashboard() {
   const [appointments, setAppointments] = useState([]);
   const [allAppointments, setAllAppointments] = useState([]);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [recentlyConfirmedAppointmentId, setRecentlyConfirmedAppointmentId] = useState(null);
   const [activePanel, setActivePanel] = useState("list");
   const [appointmentPage, setAppointmentPage] = useState(1);
   const [ticketPage, setTicketPage] = useState(1);
@@ -924,6 +992,7 @@ export default function AdvisorDashboard() {
   function backToList() {
     setActivePanel("list");
     setSelectedAppointment(null);
+    setRecentlyConfirmedAppointmentId(null);
     setSelectedTicket(null);
     setEditSchedule(false);
     setScheduleMessage("");
@@ -938,6 +1007,7 @@ export default function AdvisorDashboard() {
   async function openAppointment(id, { edit = false, panel = "appointment-detail" } = {}) {
     setActionLoading(true);
     setMessage("");
+    setRecentlyConfirmedAppointmentId(null);
     try {
       const detail = await getAdvisorAppointmentDetail(id);
       setSelectedAppointment(detail);
@@ -976,6 +1046,11 @@ export default function AdvisorDashboard() {
       successMessage,
       afterSuccess: (result) => {
         setSelectedAppointment(result);
+        if (payload.status === "CONFIRMED") {
+          setRecentlyConfirmedAppointmentId(result?.id || selectedAppointment.id);
+        } else if (["CANCELED", "COMPLETED", "CHECKED_IN"].includes(payload.status)) {
+          setRecentlyConfirmedAppointmentId(null);
+        }
       },
     });
   }
@@ -1464,6 +1539,9 @@ export default function AdvisorDashboard() {
     }
   }
 
+  const shouldShowAppointmentCheckIn = selectedAppointment?.status === "CONFIRMED"
+    && String(selectedAppointment?.id || "") !== String(recentlyConfirmedAppointmentId || "");
+
   const appointmentDetail = selectedAppointment ? (
     <section className="ops-panel advisor-detail-panel advisor-detail-view wide">
       <div className="ops-panel-head">
@@ -1550,7 +1628,7 @@ export default function AdvisorDashboard() {
         </div>
       ) : null}
 
-      {selectedAppointment.status === "CONFIRMED" ? (
+      {shouldShowAppointmentCheckIn ? (
         <section className="advisor-schedule-editor">
           <div className="ops-panel-head compact">
             <div>
@@ -2208,11 +2286,11 @@ export default function AdvisorDashboard() {
               <>
                 <label className="advisor-filter-group">
                   <span>Từ ngày</span>
-                  <input className="field" type="date" value={reportCustomFrom} onChange={(event) => setReportCustomFrom(event.target.value)} />
+                  <ReportDateInput label="Từ ngày" value={reportCustomFrom} onChange={setReportCustomFrom} />
                 </label>
                 <label className="advisor-filter-group">
                   <span>Đến ngày</span>
-                  <input className="field" type="date" value={reportCustomTo} onChange={(event) => setReportCustomTo(event.target.value)} />
+                  <ReportDateInput label="Đến ngày" value={reportCustomTo} onChange={setReportCustomTo} />
                 </label>
               </>
             ) : null}

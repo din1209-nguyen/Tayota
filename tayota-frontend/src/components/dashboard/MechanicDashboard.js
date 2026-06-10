@@ -290,7 +290,9 @@ export default function MechanicDashboard() {
   const canReceive = ticket?.status === "CONFIRMED";
   const canStart = ticket?.status === "RECEIVING";
   const canEdit = ticket?.status === "IN_PROGRESS";
-  const shouldShowServiceItems = Boolean(ticket && !canReceive);
+  const canViewServiceItems = ticket?.status === "COMPLETED";
+  const shouldShowServiceItems = Boolean(ticket && (canEdit || canViewServiceItems));
+  const serviceItemsLayoutClass = canEdit ? "editing" : "readonly";
   const isLaborItem = itemForm.itemType === "LABOR";
   const isPartItem = itemForm.itemType === "PART";
   const isRecommendedPart = isPartItem && partEntryMode === "recommended";
@@ -450,7 +452,7 @@ export default function MechanicDashboard() {
       itemName,
       accessoryId: itemForm.itemType === "PART" && itemForm.accessoryId ? itemForm.accessoryId : null,
       quantity,
-      unitPrice: billingType === "NORMAL" ? unitPrice : null,
+      unitPrice: Number.isFinite(unitPrice) ? unitPrice : null,
       billingType,
       note,
     };
@@ -881,7 +883,7 @@ export default function MechanicDashboard() {
         </section>
       ) : null}
 
-      {shouldShowServiceItems ? <section className="mechanic-detail-grid">
+      {shouldShowServiceItems ? <section className={`mechanic-detail-grid ${serviceItemsLayoutClass}`}>
         {canEdit ? (
           <form className="mechanic-section service-item-form" onSubmit={submitItem}>
             <div className="ops-panel-head compact">
@@ -920,15 +922,15 @@ export default function MechanicDashboard() {
                   <>
                     <label className="label">Hạng mục<input className="field" value={itemForm.itemName} onChange={(event) => { setItemFormError(""); setItemForm({ ...itemForm, itemName: event.target.value }); }} /></label>
                     <label className="label wide">Ghi chú<input className="field" value={itemForm.note} onChange={(event) => { setItemFormError(""); setItemForm({ ...itemForm, note: event.target.value }); }} /></label>
-                    <label className="label">Hình thức<select className="field" value={itemForm.billingType} onChange={(event) => { setItemFormError(""); setItemForm({ ...itemForm, billingType: event.target.value, unitPrice: event.target.value === "NORMAL" ? itemForm.unitPrice : "" }); }}><option value="NORMAL">Tính phí</option><option value="GIFT">Gift</option><option value="WARRANTY">Bảo trì</option></select></label>
+                    <label className="label">Hình thức<select className="field" value={itemForm.billingType} onChange={(event) => { setItemFormError(""); setItemForm({ ...itemForm, billingType: event.target.value }); }}><option value="NORMAL">Tính phí</option><option value="GIFT">Gift</option><option value="WARRANTY">Bảo trì</option></select></label>
                     <label className="label">Thành tiền<input className={`field ${isFreeBilling ? "mechanic-readonly-field" : ""}`} type="number" min="0" value={isFreeBilling ? 0 : itemForm.unitPrice} onChange={(event) => { setItemFormError(""); setItemForm({ ...itemForm, unitPrice: event.target.value }); }} disabled={isFreeBilling} readOnly={isFreeBilling} /></label>
                   </>
                 ) : (
                   <>
                     <label className="label">Tên hạng mục<input className={`field ${isRecommendedPart && itemForm.accessoryId ? "mechanic-readonly-field" : ""}`} value={itemForm.itemName} onChange={(event) => { setItemFormError(""); setItemForm({ ...itemForm, itemName: event.target.value }); }} disabled={isRecommendedPart && Boolean(itemForm.accessoryId)} readOnly={isRecommendedPart && Boolean(itemForm.accessoryId)} /></label>
                     <label className="label">Số lượng<input className="field" type="number" min="1" value={itemForm.quantity} onChange={(event) => { setItemFormError(""); setItemForm({ ...itemForm, quantity: event.target.value }); }} /></label>
-                    <label className="label">Đơn giá<input className={`field ${isFreeBilling || (isRecommendedPart && itemForm.accessoryId) ? "mechanic-readonly-field" : ""}`} type="number" min="0" value={isFreeBilling ? 0 : itemForm.unitPrice} onChange={(event) => { setItemFormError(""); setItemForm({ ...itemForm, unitPrice: event.target.value }); }} disabled={isFreeBilling || (isRecommendedPart && Boolean(itemForm.accessoryId))} readOnly={isFreeBilling || (isRecommendedPart && Boolean(itemForm.accessoryId))} /></label>
-                    <label className="label">Hình thức<select className="field" value={itemForm.billingType} onChange={(event) => { setItemFormError(""); setItemForm({ ...itemForm, billingType: event.target.value, unitPrice: event.target.value === "NORMAL" ? itemForm.unitPrice : "" }); }}><option value="NORMAL">Tính phí</option><option value="GIFT">Gift</option><option value="WARRANTY">Bảo trì</option></select></label>
+                    <label className="label">Đơn giá<input className={`field ${isRecommendedPart && itemForm.accessoryId ? "mechanic-readonly-field" : ""}`} type="number" min="0" value={itemForm.unitPrice} onChange={(event) => { setItemFormError(""); setItemForm({ ...itemForm, unitPrice: event.target.value }); }} disabled={isRecommendedPart && Boolean(itemForm.accessoryId)} readOnly={isRecommendedPart && Boolean(itemForm.accessoryId)} /></label>
+                    <label className="label">Hình thức<select className="field" value={itemForm.billingType} onChange={(event) => { setItemFormError(""); setItemForm({ ...itemForm, billingType: event.target.value }); }}><option value="NORMAL">Tính phí</option><option value="GIFT">Gift</option><option value="WARRANTY">Bảo trì</option></select></label>
                     <label className="label">Thành tiền<input className="field mechanic-readonly-field" value={formatVndZero(itemFormTotal)} disabled readOnly /></label>
                   </>
                 )}

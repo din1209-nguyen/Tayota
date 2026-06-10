@@ -20,6 +20,7 @@ import com.tayota.operationservice.enums.workorder.ServiceTicketStatus;
 import com.tayota.operationservice.repository.appointment.AppointmentRepository;
 import com.tayota.operationservice.repository.review.CustomerReviewRepository;
 import com.tayota.operationservice.repository.user.ServiceAdvisorRepository;
+import com.tayota.operationservice.repository.user.UserProfileRepository;
 import com.tayota.operationservice.repository.workorder.MechanicRepository;
 import com.tayota.operationservice.repository.workorder.ServiceTicketRepository;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,7 @@ public class CustomerReviewService {
     private final CustomerReviewRepository customerReviewRepository;
     private final MechanicRepository mechanicRepository;
     private final ServiceAdvisorRepository serviceAdvisorRepository;
+    private final UserProfileRepository userProfileRepository;
 
     // Đánh giá lịch hẹn sau khi hoàn thành.
     // Chỉ dành cho khách hàng đã đăng nhập.
@@ -338,6 +340,8 @@ public class CustomerReviewService {
     // Hàm để chuyển đổi từ entity CustomerReview sang DTO CustomerReviewResponse
     // giúp tách biệt giữa tầng dữ liệu và tầng trình bày, đồng thời chỉ trả về những thông tin cần thiết cho client.
     private CustomerReviewResponse toResponse(CustomerReview review) {
+        CustomerContact customerContact = resolveCustomerContact(review);
+
         return new CustomerReviewResponse(
                 review.getId(),
                 review.getReviewToken(),
@@ -348,8 +352,8 @@ public class CustomerReviewService {
                 review.getDealershipId(),
                 review.getServiceRating(),
                 resolveVinId(review),
-                review.getGuestFullName(),
-                review.getGuestEmail(),
+                customerContact.fullName(),
+                customerContact.email(),
                 review.getServiceComment(),
                 review.getMechanicId(),
                 review.getMechanicRating(),
@@ -358,6 +362,20 @@ public class CustomerReviewService {
                 review.getSubmittedAt(),
                 review.getCreatedAt()
         );
+    }
+
+    private CustomerContact resolveCustomerContact(CustomerReview review) {
+        if (StringUtils.hasText(review.getGuestFullName()) || StringUtils.hasText(review.getGuestEmail())) {
+            return new CustomerContact(review.getGuestFullName(), review.getGuestEmail());
+        }
+
+        if (review.getUserId() == null) {
+            return new CustomerContact(null, null);
+        }
+
+        return userProfileRepository.findContactByUserId(review.getUserId())
+                .map(contact -> new CustomerContact(contact.getFullname(), contact.getEmail()))
+                .orElse(new CustomerContact(review.getUserId().toString(), null));
     }
 
     private String resolveVinId(CustomerReview review) {
@@ -391,6 +409,9 @@ public class CustomerReviewService {
 
     private BigDecimal toRating(Double value) {
         return value == null ? null : BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private record CustomerContact(String fullName, String email) {
     }
 
     private Double findAverageAdvisorServiceRating(

@@ -13,6 +13,7 @@ import {
 } from "@/lib/services/auth";
 import { mergeCurrentChatSession } from "@/lib/services/chat";
 import { setAccessToken, setCurrentUser } from "@/lib/session";
+import PasswordInput from "./PasswordInput";
 
 const PASSWORD_PATTERN = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,20}$/;
 
@@ -195,11 +196,11 @@ export default function AuthForm({ mode }) {
             <p className="form-hint">Mật khẩu cần 8-20 ký tự, gồm chữ hoa, số và ký tự đặc biệt.</p>
             <label className="label">
               Mật khẩu mới
-              <input className="field" type="password" name="newPassword" value={forgotForm.newPassword} onChange={updateForgotField} minLength={8} required />
+              <PasswordInput name="newPassword" value={forgotForm.newPassword} onChange={updateForgotField} minLength={8} required />
             </label>
             <label className="label">
               Xác nhận mật khẩu
-              <input className="field" type="password" name="confirmPassword" value={forgotForm.confirmPassword} onChange={updateForgotField} minLength={8} required />
+              <PasswordInput name="confirmPassword" value={forgotForm.confirmPassword} onChange={updateForgotField} minLength={8} required />
             </label>
           </>
         ) : null}
@@ -236,9 +237,7 @@ export default function AuthForm({ mode }) {
 
       <label className="label">
         Mật khẩu
-        <input
-          className="field"
-          type="password"
+        <PasswordInput
           name="password"
           value={form.password}
           onChange={updateField}
@@ -250,9 +249,7 @@ export default function AuthForm({ mode }) {
       {isRegister ? (
         <label className="label">
           Xác nhận mật khẩu
-          <input
-            className="field"
-            type="password"
+          <PasswordInput
             name="confirmPassword"
             value={form.confirmPassword}
             onChange={updateField}

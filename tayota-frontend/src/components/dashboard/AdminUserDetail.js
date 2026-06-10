@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import MediaUploadField from "@/components/dashboard/MediaUploadField";
+import PasswordInput from "@/components/PasswordInput";
 import {
   getAdminUser,
   getAdminUserDevices,
@@ -311,14 +312,12 @@ export default function AdminUserDetail({ userId }) {
           <form className="ops-form admin-password-form" onSubmit={submitPassword}>
             <p className="muted-text">Thao tác này sẽ thu hồi toàn bộ phiên đăng nhập đang hoạt động.</p>
             <label htmlFor="admin-new-password">Mật khẩu mới</label>
-            <input
-              className="field"
+            <PasswordInput
               id="admin-new-password"
-              type="password"
-              required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Mật khẩu mới"
+              required
             />
             <button className="btn btn-primary" disabled={busyAction === "password"} type="submit">Đặt lại mật khẩu</button>
           </form>

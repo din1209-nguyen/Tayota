@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getReviewByToken, submitReviewByToken } from "@/lib/services/reviews";
-import { statusLabel } from "@/lib/format";
+import { statusLabel, statusPillClass } from "@/lib/format";
 
 function RatingInput({ label, name, value, onChange, disabled }) {
   return (
@@ -122,7 +122,7 @@ export default function ReviewTokenForm({ token }) {
           <h2>{contextTitle}</h2>
           <p>Chia sẻ cảm nhận của bạn để Tayota phục vụ tốt hơn trong những lần hẹn tiếp theo.</p>
         </div>
-        <span className="status-pill">{statusLabel(review.status)}</span>
+        <span className={statusPillClass(review.status)}>{statusLabel(review.status)}</span>
       </div>
 
       <dl className="summary-list">

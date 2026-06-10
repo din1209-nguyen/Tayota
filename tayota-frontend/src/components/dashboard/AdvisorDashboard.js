@@ -555,9 +555,9 @@ export default function AdvisorDashboard() {
       ? appointments.filter((item) => item.status === "PENDING")
       : appointmentListFilter === "UPCOMING"
         ? appointments.filter((item) => {
-            const appointmentDateKey = toDateKey(item?.appointmentDate);
-            return item.status === "CONFIRMED" && appointmentDateKey && appointmentDateKey > todayKey;
-          })
+          const appointmentDateKey = toDateKey(item?.appointmentDate);
+          return item.status === "CONFIRMED" && appointmentDateKey && appointmentDateKey > todayKey;
+        })
         : appointmentListFilter === "TODAY"
           ? appointments.filter((item) => toDateKey(item?.appointmentDate) === todayKey)
           : appointments;
@@ -1758,56 +1758,56 @@ export default function AdvisorDashboard() {
     const canceledTicket = String(ticket.status || "").toUpperCase() === "CANCELED";
 
     return (
-    <section className="ops-panel advisor-detail-panel advisor-detail-view wide advisor-service-detail-panel">
-      <div className="ops-panel-head">
-        <div>
-          <p className="eyebrow">Chi tiết phiếu</p>
-          <h2>{getAdvisorTicketTitle({ ...ticket, invoice })}</h2>
-        </div>
-        <div className="advisor-detail-actions">
-          <span className={statusPillClass(ticket.status)}>{statusLabel(ticket.status)}</span>
-          <button className="advisor-detail-close" type="button" onClick={backToList} aria-label="Đóng chi tiết phiếu dịch vụ">×</button>
-        </div>
-      </div>
-      <div className="service-total-card">
-        <span>Tổng tiền dịch vụ</span>
-        <strong>{formatVndZero(totalAmount)}</strong>
-      </div>
-      <dl className="summary-list compact">
-        <div><dt>Mã phiếu</dt><dd>{ticket.id || "Đang cập nhật"}</dd></div>
-        <div><dt>Khách hàng</dt><dd>{ticket.customerFullName || "Đang cập nhật"}</dd></div>
-        <div><dt>VIN</dt><dd>{ticket.vinId || "Không có"}</dd></div>
-        <div><dt>Đại lý</dt><dd>{getAdvisorDealershipLabel({ ...ticket, invoice })}</dd></div>
-        <div><dt>Kỹ thuật viên</dt><dd>{invoice.mechanicName || mechanicNameById.get(String(ticket.mechanicId)) || ticket.mechanicId || "Đang cập nhật"}</dd></div>
-        <div><dt>Số km</dt><dd>{ticket.mileageAtService ? `${ticket.mileageAtService} km` : "Chưa cập nhật"}</dd></div>
-        <div><dt>Tiếp nhận</dt><dd>{serviceReceivedAtLabel(ticket)}</dd></div>
-        <div><dt>Bắt đầu sửa</dt><dd>{serviceProcessingAtLabel(ticket)}</dd></div>
-        <div><dt>Hoàn tất</dt><dd>{serviceCompletedAtLabel(ticket)}</dd></div>
-        {ticket.canceledAt ? <div><dt>Đã hủy</dt><dd>{formatAdvisorDateTime(ticket.canceledAt)}</dd></div> : null}
-        <div><dt>Tình trạng xe</dt><dd>{ticket.vehicleCondition || invoice.vehicleCondition || "Chưa cập nhật"}</dd></div>
-        <div><dt>Ghi chú</dt><dd>{formatServiceTicketNote(ticket.notes) || "Không có"}</dd></div>
-        {canceledTicket && ticket.cancelReason ? <div><dt>Lý do hủy</dt><dd>{ticket.cancelReason}</dd></div> : null}
-      </dl>
-      {cancelableTicket ? (
-        <section className="advisor-schedule-editor advisor-ticket-cancel-panel">
-          <div className="ops-panel-head compact">
-            <div><p className="eyebrow">Hủy phiếu dịch vụ</p><h3>Áp dụng khi kỹ thuật viên chưa tiếp nhận</h3></div>
+      <section className="ops-panel advisor-detail-panel advisor-detail-view wide advisor-service-detail-panel">
+        <div className="ops-panel-head">
+          <div>
+            <p className="eyebrow">Chi tiết phiếu</p>
+            <h2>{getAdvisorTicketTitle({ ...ticket, invoice })}</h2>
           </div>
-          <label className="label">Lý do hủy<textarea className="field compact-textarea" rows={3} value={ticketCancelReason} onChange={(event) => { setTicketCancelReason(event.target.value); setTicketCancelMessage(""); }} /></label>
-          <div className="advisor-ticket-cancel-actions">
-            <button className="btn btn-danger advisor-detail-button" type="button" disabled={actionLoading || !ticketCancelReason.trim()} onClick={cancelServiceTicket}>Hủy phiếu dịch vụ</button>
-            {ticketCancelMessage ? <div className="form-alert error advisor-ticket-cancel-alert">{ticketCancelMessage}</div> : null}
+          <div className="advisor-detail-actions">
+            <span className={statusPillClass(ticket.status)}>{statusLabel(ticket.status)}</span>
+            <button className="advisor-detail-close" type="button" onClick={backToList} aria-label="Đóng chi tiết phiếu dịch vụ">×</button>
           </div>
-        </section>
-      ) : null}
-      {ticket.status === "NEEDS_REASSIGNMENT" ? (
-        <div className="form-grid compact-form-grid">
-          <label className="label">Kỹ thuật viên mới<select className="field" value={reassignMechanicId} onChange={(event) => { setReassignMechanicId(event.target.value); setReassignMessage(""); }}><option value="">Chọn thợ</option>{mechanics.map((item) => <option key={item.id} value={item.id}>{item.fullName || item.id}</option>)}</select></label>
-          <div className="label advisor-reassign-action"><span>&nbsp;</span><button className="btn btn-primary" type="button" disabled={actionLoading} onClick={reassignTicket}>Phân công lại</button>{reassignMessage ? <div className="form-alert error advisor-reassign-alert">{reassignMessage}</div> : null}</div>
         </div>
-      ) : null}
-      <ServiceBreakdown items={items} formatCurrency={formatVndZero} idPrefix="advisor-service" />
-    </section>
+        <div className="service-total-card">
+          <span>Tổng tiền dịch vụ</span>
+          <strong>{formatVndZero(totalAmount)}</strong>
+        </div>
+        <dl className="summary-list compact">
+          <div><dt>Mã phiếu</dt><dd>{ticket.id || "Đang cập nhật"}</dd></div>
+          <div><dt>Khách hàng</dt><dd>{ticket.customerFullName || "Đang cập nhật"}</dd></div>
+          <div><dt>VIN</dt><dd>{ticket.vinId || "Không có"}</dd></div>
+          <div><dt>Đại lý</dt><dd>{getAdvisorDealershipLabel({ ...ticket, invoice })}</dd></div>
+          <div><dt>Kỹ thuật viên</dt><dd>{invoice.mechanicName || mechanicNameById.get(String(ticket.mechanicId)) || ticket.mechanicId || "Đang cập nhật"}</dd></div>
+          <div><dt>Số km</dt><dd>{ticket.mileageAtService ? `${ticket.mileageAtService} km` : "Chưa cập nhật"}</dd></div>
+          <div><dt>Tiếp nhận</dt><dd>{serviceReceivedAtLabel(ticket)}</dd></div>
+          <div><dt>Bắt đầu sửa</dt><dd>{serviceProcessingAtLabel(ticket)}</dd></div>
+          <div><dt>Hoàn tất</dt><dd>{serviceCompletedAtLabel(ticket)}</dd></div>
+          {ticket.canceledAt ? <div><dt>Đã hủy</dt><dd>{formatAdvisorDateTime(ticket.canceledAt)}</dd></div> : null}
+          <div><dt>Tình trạng xe</dt><dd>{ticket.vehicleCondition || invoice.vehicleCondition || "Chưa cập nhật"}</dd></div>
+          <div><dt>Ghi chú</dt><dd>{formatServiceTicketNote(ticket.notes) || "Không có"}</dd></div>
+          {canceledTicket && ticket.cancelReason ? <div><dt>Lý do hủy</dt><dd>{ticket.cancelReason}</dd></div> : null}
+        </dl>
+        {cancelableTicket ? (
+          <section className="advisor-schedule-editor advisor-ticket-cancel-panel">
+            <div className="ops-panel-head compact">
+              <div><p className="eyebrow">Hủy phiếu dịch vụ</p><h3>Áp dụng khi kỹ thuật viên chưa tiếp nhận</h3></div>
+            </div>
+            <label className="label">Lý do hủy<textarea className="field compact-textarea" rows={3} value={ticketCancelReason} onChange={(event) => { setTicketCancelReason(event.target.value); setTicketCancelMessage(""); }} /></label>
+            <div className="advisor-ticket-cancel-actions">
+              <button className="btn btn-danger advisor-detail-button" type="button" disabled={actionLoading || !ticketCancelReason.trim()} onClick={cancelServiceTicket}>Hủy phiếu dịch vụ</button>
+              {ticketCancelMessage ? <div className="form-alert error advisor-ticket-cancel-alert">{ticketCancelMessage}</div> : null}
+            </div>
+          </section>
+        ) : null}
+        {ticket.status === "NEEDS_REASSIGNMENT" ? (
+          <div className="form-grid compact-form-grid">
+            <label className="label">Kỹ thuật viên mới<select className="field" value={reassignMechanicId} onChange={(event) => { setReassignMechanicId(event.target.value); setReassignMessage(""); }}><option value="">Chọn thợ</option>{mechanics.map((item) => <option key={item.id} value={item.id}>{item.fullName || item.id}</option>)}</select></label>
+            <div className="label advisor-reassign-action"><span>&nbsp;</span><button className="btn btn-primary" type="button" disabled={actionLoading} onClick={reassignTicket}>Phân công lại</button>{reassignMessage ? <div className="form-alert error advisor-reassign-alert">{reassignMessage}</div> : null}</div>
+          </div>
+        ) : null}
+        <ServiceBreakdown items={items} formatCurrency={formatVndZero} idPrefix="advisor-service" />
+      </section>
     );
   })() : (
     null
@@ -1899,81 +1899,81 @@ export default function AdvisorDashboard() {
       {tab === "appointments" ? (
         activePanel === "appointment-detail" ? appointmentDetail : (
           <>
-          <section className="ops-panel advisor-list-panel advisor-full-panel advisor-appointment-panel wide">
-            <div className="ops-panel-head advisor-appointment-head">
-              <div><h2>Quản lý lịch hẹn</h2></div>
-              <button className="btn btn-primary advisor-create-trigger" type="button" onClick={openCreateAppointmentModal}>Tạo lịch hẹn</button>
-            </div>
-            <div className="advisor-filter-stack">
-              <div className="advisor-filter-group">
-                <label htmlFor="advisor-appointment-filter">Trạng thái</label>
-                <select id="advisor-appointment-filter" className="advisor-filter-select" value={appointmentListFilter} onChange={(event) => setAppointmentListFilter(event.target.value)}>
-                  {APPOINTMENT_LIST_FILTERS.map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
+            <section className="ops-panel advisor-list-panel advisor-full-panel advisor-appointment-panel wide">
+              <div className="ops-panel-head advisor-appointment-head">
+                <div><h2>Quản lý lịch hẹn</h2></div>
+                <button className="btn btn-primary advisor-create-trigger" type="button" onClick={openCreateAppointmentModal}>Tạo lịch hẹn</button>
               </div>
-              <div className="advisor-filter-group">
-                <label htmlFor="advisor-appointment-type">Loại lịch</label>
-                <select id="advisor-appointment-type" className="advisor-filter-select" value={appointmentTypeFilter} onChange={(event) => setAppointmentTypeFilter(event.target.value)}>
-                  {APPOINTMENT_TYPE_FILTERS.map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
+              <div className="advisor-filter-stack">
+                <div className="advisor-filter-group">
+                  <label htmlFor="advisor-appointment-filter">Trạng thái</label>
+                  <select id="advisor-appointment-filter" className="advisor-filter-select" value={appointmentListFilter} onChange={(event) => setAppointmentListFilter(event.target.value)}>
+                    {APPOINTMENT_LIST_FILTERS.map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="advisor-filter-group">
+                  <label htmlFor="advisor-appointment-type">Loại lịch</label>
+                  <select id="advisor-appointment-type" className="advisor-filter-select" value={appointmentTypeFilter} onChange={(event) => setAppointmentTypeFilter(event.target.value)}>
+                    {APPOINTMENT_TYPE_FILTERS.map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            </div>
 
-            <div className="advisor-row-list advisor-appointment-list">
-              {pagedAppointments.items.map((item) => (
-                <article className={`advisor-row advisor-appointment-row ${selectedAppointment?.id === item.id ? "active" : ""}`} key={item.id}>
-                  <div className="advisor-row-main advisor-appointment-person">
-                    <span className={`advisor-row-kicker ${appointmentTypeClass(item.type)}`}>{appointmentTypeLabel(item.type)}</span>
-                    <strong>{item.customerFullName || "Khách hàng"}</strong>
-                    <span>Mã lịch: {item.id || "Đang cập nhật"}</span>
+              <div className="advisor-row-list advisor-appointment-list">
+                {pagedAppointments.items.map((item) => (
+                  <article className={`advisor-row advisor-appointment-row ${selectedAppointment?.id === item.id ? "active" : ""}`} key={item.id}>
+                    <div className="advisor-row-main advisor-appointment-person">
+                      <span className={`advisor-row-kicker ${appointmentTypeClass(item.type)}`}>{appointmentTypeLabel(item.type)}</span>
+                      <strong>{item.customerFullName || "Khách hàng"}</strong>
+                      <span>Mã lịch: {item.id || "Đang cập nhật"}</span>
+                    </div>
+                    <div className="advisor-row-field">
+                      <span className="advisor-row-field-label">Thời gian</span>
+                      <span className="advisor-row-time">{toDateTime(item) || "Chưa có thời gian"}</span>
+                    </div>
+                    <div className="advisor-row-field">
+                      <span className="advisor-row-field-label">Trạng thái</span>
+                      <span className={statusPillClass(item.status)}>{statusLabel(item.status)}</span>
+                    </div>
+                    <div className="advisor-row-actions">
+                      <button className="advisor-detail-link" type="button" disabled={actionLoading} onClick={() => openAppointment(item.id)}>Chi tiết</button>
+                    </div>
+                  </article>
+                ))}
+                {!pagedAppointments.items.length && !loading ? (
+                  <div className="status-box">
+                    {appointmentListFilter === "PENDING_REVIEW"
+                      ? "Không có lịch chờ xác nhận trong bộ lọc này."
+                      : appointmentListFilter === "UPCOMING"
+                        ? "Không có lịch hẹn sắp tới trong bộ lọc này."
+                        : appointmentListFilter === "TODAY"
+                          ? "Không có lịch hẹn hôm nay trong bộ lọc này."
+                          : "Không có lịch hẹn trong bộ lọc này."}
                   </div>
-                  <div className="advisor-row-field">
-                    <span className="advisor-row-field-label">Thời gian</span>
-                    <span className="advisor-row-time">{toDateTime(item) || "Chưa có thời gian"}</span>
+                ) : null}
+              </div>
+              <Pagination page={pagedAppointments.page} totalPages={pagedAppointments.totalPages} totalItems={sortedAppointments.length} start={pagedAppointments.start} count={pagedAppointments.items.length} onChange={setAppointmentPage} />
+            </section>
+            {createAppointmentOpen ? (
+              <div className="detail-modal-backdrop advisor-create-modal-backdrop" role="presentation" onClick={closeCreateAppointmentModal}>
+                <section className="detail-modal advisor-create-modal" role="dialog" aria-modal="true" aria-labelledby="advisor-create-appointment-title" onClick={(event) => event.stopPropagation()}>
+                  <div className="detail-modal-head advisor-create-modal-head">
+                    <div>
+                      <h2 id="advisor-create-appointment-title">Tạo lịch hẹn</h2>
+                      <span>Chọn khách hàng, ngày làm việc và khung giờ còn trống.</span>
+                    </div>
+                    <button className="advisor-detail-close" type="button" onClick={closeCreateAppointmentModal} aria-label="Đóng tạo lịch hẹn">×</button>
                   </div>
-                  <div className="advisor-row-field">
-                    <span className="advisor-row-field-label">Trạng thái</span>
-                    <span className={statusPillClass(item.status)}>{statusLabel(item.status)}</span>
+                  <div className="detail-modal-body advisor-create-modal-body">
+                    {advisorCreateAppointmentForm}
                   </div>
-                  <div className="advisor-row-actions">
-                    <button className="advisor-detail-link" type="button" disabled={actionLoading} onClick={() => openAppointment(item.id)}>Chi tiết</button>
-                  </div>
-                </article>
-              ))}
-              {!pagedAppointments.items.length && !loading ? (
-                <div className="status-box">
-                  {appointmentListFilter === "PENDING_REVIEW"
-                    ? "Không có lịch chờ xác nhận trong bộ lọc này."
-                    : appointmentListFilter === "UPCOMING"
-                    ? "Không có lịch hẹn sắp tới trong bộ lọc này."
-                    : appointmentListFilter === "TODAY"
-                      ? "Không có lịch hẹn hôm nay trong bộ lọc này."
-                      : "Không có lịch hẹn trong bộ lọc này."}
-                </div>
-              ) : null}
-            </div>
-            <Pagination page={pagedAppointments.page} totalPages={pagedAppointments.totalPages} totalItems={sortedAppointments.length} start={pagedAppointments.start} count={pagedAppointments.items.length} onChange={setAppointmentPage} />
-          </section>
-          {createAppointmentOpen ? (
-            <div className="detail-modal-backdrop advisor-create-modal-backdrop" role="presentation" onClick={closeCreateAppointmentModal}>
-              <section className="detail-modal advisor-create-modal" role="dialog" aria-modal="true" aria-labelledby="advisor-create-appointment-title" onClick={(event) => event.stopPropagation()}>
-                <div className="detail-modal-head advisor-create-modal-head">
-                  <div>
-                    <h2 id="advisor-create-appointment-title">Tạo lịch hẹn</h2>
-                    <span>Chọn khách hàng, ngày làm việc và khung giờ còn trống.</span>
-                  </div>
-                  <button className="advisor-detail-close" type="button" onClick={closeCreateAppointmentModal} aria-label="Đóng tạo lịch hẹn">×</button>
-                </div>
-                <div className="detail-modal-body advisor-create-modal-body">
-                  {advisorCreateAppointmentForm}
-                </div>
-              </section>
-            </div>
-          ) : null}
+                </section>
+              </div>
+            ) : null}
           </>
         )
       ) : null}
@@ -2123,65 +2123,65 @@ export default function AdvisorDashboard() {
       {tab === "tickets" ? (
         activePanel === "ticket-detail" ? ticketDetail : (
           <>
-          <section className="ops-panel advisor-list-panel advisor-full-panel advisor-ticket-panel wide">
-            <div className="ops-panel-head advisor-appointment-head">
-              <div><h2>Phiếu dịch vụ đại lý</h2></div>
-              <button className="btn btn-primary advisor-create-trigger" type="button" onClick={openWalkInModal}>Tạo phiếu dịch vụ</button>
-            </div>
-            <div className="advisor-filter-stack">
-              <div className="advisor-filter-group">
-                <label htmlFor="advisor-ticket-status">Trạng thái</label>
-                <select id="advisor-ticket-status" className="advisor-filter-select" value={ticketStatus} onChange={(event) => setTicketStatus(event.target.value)}>
-                  {TICKET_STATUS_FILTERS.map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
+            <section className="ops-panel advisor-list-panel advisor-full-panel advisor-ticket-panel wide">
+              <div className="ops-panel-head advisor-appointment-head">
+                <div><h2>Phiếu dịch vụ đại lý</h2></div>
+                <button className="btn btn-primary advisor-create-trigger" type="button" onClick={openWalkInModal}>Tạo phiếu dịch vụ</button>
               </div>
-            </div>
-            <div className="advisor-row-list advisor-ticket-list">
-              {pagedTickets.items.map((ticket) => (
-                <article className={`advisor-row advisor-ticket-row ${selectedTicket?.serviceTicket?.id === ticket.id ? "active" : ""}`} key={ticket.id}>
-                  <div className="advisor-row-main advisor-appointment-person">
-                    <span className="advisor-row-kicker advisor-ticket-badge">Dịch vụ chăm sóc xe</span>
-                    <strong>{ticket.customerFullName || "Khách vãng lai"}</strong>
-                    <span>Mã phiếu: {ticket.id || "Đang cập nhật"}</span>
-                  </div>
-                  <div className="advisor-row-field">
-                    <span className="advisor-row-field-label">Cập nhật</span>
-                    <span className="advisor-row-time">{formatAdvisorDateTime(serviceTimeLabel(ticket)) || "Chưa cập nhật"}</span>
-                  </div>
-                  <div className="advisor-row-field">
-                    <span className="advisor-row-field-label">Tổng tiền</span>
-                    <span className="advisor-row-time">{serviceTicketAmountLabel(ticket)}</span>
-                  </div>
-                  <div className="advisor-row-field">
-                    <span className="advisor-row-field-label">Trạng thái</span>
-                    <span className={statusPillClass(ticket.status)}>{statusLabel(ticket.status)}</span>
-                  </div>
-                  <div className="advisor-row-actions">
-                    <button className="advisor-detail-link" type="button" disabled={actionLoading} onClick={() => openTicket(ticket.id)}>Chi tiết</button>
-                  </div>
-                </article>
-              ))}
-              {!pagedTickets.items.length && !loading ? <div className="status-box">Không có phiếu dịch vụ trong bộ lọc này.</div> : null}
-            </div>
-            <Pagination page={pagedTickets.page} totalPages={pagedTickets.totalPages} totalItems={tickets.length} start={pagedTickets.start} count={pagedTickets.items.length} onChange={setTicketPage} />
-          </section>
-          {createWalkInOpen ? (
-            <div className="detail-modal-backdrop advisor-create-modal-backdrop" role="presentation" onClick={closeWalkInModal}>
-              <section className="detail-modal advisor-create-modal" role="dialog" aria-modal="true" aria-labelledby="advisor-create-walkin-title" onClick={(event) => event.stopPropagation()}>
-                <div className="detail-modal-head advisor-create-modal-head">
-                  <div>
-                    <h2 id="advisor-create-walkin-title">Tạo phiếu dịch vụ</h2>
-                  </div>
-                  <button className="advisor-detail-close" type="button" onClick={closeWalkInModal} aria-label="Đóng tạo phiếu dịch vụ">×</button>
+              <div className="advisor-filter-stack">
+                <div className="advisor-filter-group">
+                  <label htmlFor="advisor-ticket-status">Trạng thái</label>
+                  <select id="advisor-ticket-status" className="advisor-filter-select" value={ticketStatus} onChange={(event) => setTicketStatus(event.target.value)}>
+                    {TICKET_STATUS_FILTERS.map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
                 </div>
-                <div className="detail-modal-body advisor-create-modal-body">
-                  {walkInServiceForm}
-                </div>
-              </section>
-            </div>
-          ) : null}
+              </div>
+              <div className="advisor-row-list advisor-ticket-list">
+                {pagedTickets.items.map((ticket) => (
+                  <article className={`advisor-row advisor-ticket-row ${selectedTicket?.serviceTicket?.id === ticket.id ? "active" : ""}`} key={ticket.id}>
+                    <div className="advisor-row-main advisor-appointment-person">
+                      <span className="advisor-row-kicker advisor-ticket-badge">Dịch vụ chăm sóc xe</span>
+                      <strong>{ticket.customerFullName || "Khách vãng lai"}</strong>
+                      <span>Mã phiếu: {ticket.id || "Đang cập nhật"}</span>
+                    </div>
+                    <div className="advisor-row-field">
+                      <span className="advisor-row-field-label">Cập nhật</span>
+                      <span className="advisor-row-time">{formatAdvisorDateTime(serviceTimeLabel(ticket)) || "Chưa cập nhật"}</span>
+                    </div>
+                    <div className="advisor-row-field">
+                      <span className="advisor-row-field-label">Tổng tiền</span>
+                      <span className="advisor-row-time">{serviceTicketAmountLabel(ticket)}</span>
+                    </div>
+                    <div className="advisor-row-field">
+                      <span className="advisor-row-field-label">Trạng thái</span>
+                      <span className={statusPillClass(ticket.status)}>{statusLabel(ticket.status)}</span>
+                    </div>
+                    <div className="advisor-row-actions">
+                      <button className="advisor-detail-link" type="button" disabled={actionLoading} onClick={() => openTicket(ticket.id)}>Chi tiết</button>
+                    </div>
+                  </article>
+                ))}
+                {!pagedTickets.items.length && !loading ? <div className="status-box">Không có phiếu dịch vụ trong bộ lọc này.</div> : null}
+              </div>
+              <Pagination page={pagedTickets.page} totalPages={pagedTickets.totalPages} totalItems={tickets.length} start={pagedTickets.start} count={pagedTickets.items.length} onChange={setTicketPage} />
+            </section>
+            {createWalkInOpen ? (
+              <div className="detail-modal-backdrop advisor-create-modal-backdrop" role="presentation" onClick={closeWalkInModal}>
+                <section className="detail-modal advisor-create-modal" role="dialog" aria-modal="true" aria-labelledby="advisor-create-walkin-title" onClick={(event) => event.stopPropagation()}>
+                  <div className="detail-modal-head advisor-create-modal-head">
+                    <div>
+                      <h2 id="advisor-create-walkin-title">Tạo phiếu dịch vụ</h2>
+                    </div>
+                    <button className="advisor-detail-close" type="button" onClick={closeWalkInModal} aria-label="Đóng tạo phiếu dịch vụ">×</button>
+                  </div>
+                  <div className="detail-modal-body advisor-create-modal-body">
+                    {walkInServiceForm}
+                  </div>
+                </section>
+              </div>
+            ) : null}
           </>
         )
       ) : null}

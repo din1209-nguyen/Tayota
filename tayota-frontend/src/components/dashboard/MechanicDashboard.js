@@ -103,6 +103,43 @@ function formatMechanicDateTime(value) {
   return new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short" }).format(date);
 }
 
+function formatInvoiceDate(value) {
+  if (!value) return "Đang cập nhật";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium" }).format(date);
+}
+
+function plainText(value, fallback = "Đang cập nhật") {
+  const text = String(value || "").trim();
+  return text || fallback;
+}
+
+function invoiceItemAmount(item) {
+  const numeric = Number(item?.finalPrice ?? 0);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function sumInvoiceItems(items, type) {
+  return items
+    .filter((item) => String(item?.itemType || "").toUpperCase() === type)
+    .reduce((total, item) => total + invoiceItemAmount(item), 0);
+}
+
+function buildInvoiceEmail(invoice, ticket) {
+  const subject = encodeURIComponent(`Hoa don dich vu ${invoice.invoiceCode || ticket?.id || ""}`.trim());
+  const body = encodeURIComponent([
+    `Kinh gui ${invoice.customerFullName || ticket?.customerFullName || "Quy khach"},`,
+    "",
+    `Tayota gui hoa don dich vu ${invoice.invoiceCode || ticket?.id || ""}.`,
+    `Tong thanh toan: ${formatVndZero(invoice.totalAmount ?? ticket?.totalAmount ?? 0)}.`,
+    "",
+    "Tran trong,",
+    invoice.dealershipName || "Tayota",
+  ].join("\n"));
+  return `mailto:${invoice.customerEmail || ""}?subject=${subject}&body=${body}`;
+}
+
 function hasReachedServiceStatus(ticket, statuses) {
   return statuses.includes(String(ticket?.status || "").toUpperCase());
 }
@@ -227,6 +264,8 @@ export default function MechanicDashboard() {
   const [selected, setSelected] = useState(null);
   const [accessories, setAccessories] = useState([]);
   const [invoice, setInvoice] = useState(null);
+  const [invoicePreviewOpen, setInvoicePreviewOpen] = useState(false);
+  const [printInvoiceAfterOpen, setPrintInvoiceAfterOpen] = useState(false);
   const [itemForm, setItemForm] = useState(emptyItem());
   const [editingItemId, setEditingItemId] = useState("");
   const [partEntryMode, setPartEntryMode] = useState("recommended");
@@ -286,6 +325,8 @@ export default function MechanicDashboard() {
     setTicketPage(1);
     setSelected(null);
     setInvoice(null);
+    setInvoicePreviewOpen(false);
+    setPrintInvoiceAfterOpen(false);
     setEditingItemId("");
     setItemForm(emptyItem());
     setItemFormError("");
@@ -321,6 +362,8 @@ export default function MechanicDashboard() {
   async function openTicket(id) {
     setActionLoading(true);
     setMessage("");
+    setInvoicePreviewOpen(false);
+    setPrintInvoiceAfterOpen(false);
     try {
       const isHistoryDetail = tab === "history";
       const [detail, recommended, historyInvoice] = await Promise.all([
@@ -347,6 +390,8 @@ export default function MechanicDashboard() {
   function backToList() {
     setSelected(null);
     setInvoice(null);
+    setInvoicePreviewOpen(false);
+    setPrintInvoiceAfterOpen(false);
     setEditingItemId("");
     setItemForm(emptyItem());
     setItemFormError("");
@@ -465,15 +510,215 @@ export default function MechanicDashboard() {
     }
   }
 
-  async function openInvoice() {
+  async function openInvoice(options = {}) {
     if (!ticket?.id) return;
+    const shouldPrint = Boolean(options?.printAfterOpen);
     const result = await run(() => getServiceInvoice(ticket.id), "", { refreshSelected: false });
-    if (result) setInvoice(result);
+    if (result) {
+      setInvoice(result);
+      setInvoicePreviewOpen(true);
+      setPrintInvoiceAfterOpen(shouldPrint);
+    }
   }
 
   function printInvoice() {
     window.print();
   }
+
+  function closeInvoicePreview() {
+    setInvoicePreviewOpen(false);
+    setPrintInvoiceAfterOpen(false);
+  }
+
+  useEffect(() => {
+    if (!printInvoiceAfterOpen || !invoicePreviewOpen || !invoice) return undefined;
+
+    const timer = window.setTimeout(() => {
+      window.print();
+      setPrintInvoiceAfterOpen(false);
+    }, 120);
+
+    return () => window.clearTimeout(timer);
+  }, [invoice, invoicePreviewOpen, printInvoiceAfterOpen]);
+
+  useEffect(() => {
+    if (!invoicePreviewOpen) return undefined;
+
+    function handleAfterPrint() {
+      setInvoicePreviewOpen(false);
+      setPrintInvoiceAfterOpen(false);
+    }
+
+    window.addEventListener("afterprint", handleAfterPrint);
+    return () => window.removeEventListener("afterprint", handleAfterPrint);
+  }, [invoicePreviewOpen]);
+
+  const invoicePreview = invoicePreviewOpen && invoice ? (() => {
+    const items = invoice.items || selected?.items || [];
+    const partItems = items.filter((item) => String(item?.itemType || "").toUpperCase() === "PART");
+    const laborItems = items.filter((item) => String(item?.itemType || "").toUpperCase() === "LABOR");
+    const laborTotal = sumInvoiceItems(items, "LABOR");
+    const partsTotal = sumInvoiceItems(items, "PART");
+    const discountAmount = Number(invoice.discountAmount || 0);
+    const vatAmount = Number(invoice.vatAmount || 0);
+    const finalTotal = Number(invoice.totalAmount ?? ticket?.totalAmount ?? laborTotal + partsTotal);
+    const vehicleBrand = invoice.carBrand || ticket?.carBrand || "Toyota";
+    const customerProblem = invoice.customerProblem || ticket?.customerProblem || ticket?.notes;
+    const mechanicNote = invoice.mechanicNote || ticket?.mechanicNote || invoice.vehicleCondition || ticket?.vehicleCondition;
+
+    return (
+      <section className="invoice-preview">
+        <div className="invoice-toolbar no-print">
+          <div>
+            <span>Hóa đơn dịch vụ</span>
+            <strong>{invoice.invoiceCode || ticket?.id || "Đang cập nhật"}</strong>
+          </div>
+          <div className="invoice-toolbar-actions">
+            <button className="btn btn-primary" type="button" onClick={printInvoice}>In hóa đơn</button>
+            <button className="btn btn-secondary" type="button" onClick={printInvoice}>Xuất PDF</button>
+            <a className={`btn btn-secondary ${invoice.customerEmail ? "" : "disabled"}`} href={buildInvoiceEmail(invoice, ticket)} aria-disabled={!invoice.customerEmail}>Gửi email cho khách hàng</a>
+            <button className="btn btn-ghost" type="button" onClick={closeInvoicePreview}>Quay lại phiếu dịch vụ</button>
+          </div>
+        </div>
+
+        <article className="invoice-sheet">
+          <header className="invoice-header">
+            <div className="invoice-brand">
+              <div className="invoice-logo" aria-label="Tayota">T</div>
+              <div>
+                <strong>{plainText(invoice.dealershipName, "Tayota Service Center")}</strong>
+                <span>{plainText(invoice.dealershipAddress, "Địa chỉ đại lý đang cập nhật")}</span>
+              </div>
+            </div>
+            <div className="invoice-title-block">
+              <p>HÓA ĐƠN DỊCH VỤ</p>
+              <dl>
+                <div><dt>Mã hóa đơn</dt><dd>{plainText(invoice.invoiceCode || ticket?.id)}</dd></div>
+                <div><dt>Ngày lập</dt><dd>{formatInvoiceDate(invoice.issuedAt || ticket?.completedAt)}</dd></div>
+              </dl>
+            </div>
+          </header>
+
+          <section className="invoice-info-grid">
+            <div className="invoice-info-card">
+              <h4>Thông tin khách hàng</h4>
+              <dl>
+                <div><dt>Họ tên</dt><dd>{plainText(invoice.customerFullName || ticket?.customerFullName, "Khách hàng")}</dd></div>
+                <div><dt>Số điện thoại</dt><dd>{plainText(invoice.customerPhone || ticket?.customerPhone)}</dd></div>
+                <div className="invoice-email-field"><dt>Email</dt><dd>{plainText(invoice.customerEmail || ticket?.customerEmail)}</dd></div>
+              </dl>
+            </div>
+            <div className="invoice-info-card invoice-vehicle-card">
+              <h4>Thông tin xe</h4>
+              <dl>
+                <div className="invoice-vin-field"><dt>Số VIN</dt><dd>{plainText(invoice.vinId || ticket?.vinId)}</dd></div>
+                <div><dt>Hãng xe</dt><dd>{vehicleBrand}</dd></div>
+                <div><dt>Dòng xe / phiên bản</dt><dd>{plainText(invoice.carVersionName || ticket?.carVersionName || ticket?.versionName)}</dd></div>
+                <div><dt>Số km hiện tại</dt><dd>{invoice.mileageAtService || ticket?.mileageAtService ? `${invoice.mileageAtService || ticket?.mileageAtService} km` : "Đang cập nhật"}</dd></div>
+              </dl>
+            </div>
+          </section>
+
+          <section className="invoice-service-card">
+            <h4>Thông tin phiếu dịch vụ</h4>
+            <dl>
+              <div><dt>Mã phiếu dịch vụ</dt><dd>{plainText(invoice.serviceTicketId || ticket?.id)}</dd></div>
+              <div><dt>Ngày tiếp nhận</dt><dd>{serviceReceivedAtLabel(ticket)}</dd></div>
+              <div><dt>Ngày hoàn thành</dt><dd>{serviceCompletedAtLabel(ticket)}</dd></div>
+              <div><dt>Kỹ thuật viên</dt><dd>{plainText(invoice.mechanicName || ticket?.mechanicFullName || ticket?.mechanicName)}</dd></div>
+              <div className="wide"><dt>Mô tả vấn đề khách hàng báo</dt><dd>{plainText(formatServiceTicketNote(customerProblem), "Không có")}</dd></div>
+              <div className="wide"><dt>Ghi chú kiểm tra của kỹ thuật viên</dt><dd>{plainText(mechanicNote, "Không có")}</dd></div>
+            </dl>
+          </section>
+
+          <section className="invoice-table-section">
+            <h4>Chi tiết dịch vụ</h4>
+            <h5>Phụ tùng đã thay</h5>
+            <div className="invoice-table-wrap">
+              <table className="invoice-table">
+                <thead>
+                  <tr>
+                    <th className="invoice-cell-center">STT</th>
+                    <th>Tên phụ tùng</th>
+                    <th className="invoice-cell-center">Số lượng</th>
+                    <th className="invoice-cell-money">Đơn giá</th>
+                    <th className="invoice-cell-billing">Hình thức</th>
+                    <th className="invoice-cell-money">Thành tiền</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {partItems.map((item, index) => (
+                    <tr key={item.id || `${item.itemName}-${index}`}>
+                      <td className="invoice-cell-center">{index + 1}</td>
+                      <td><strong>{plainText(item.itemName, "Hạng mục dịch vụ")}</strong>{item.note ? <span>{item.note}</span> : null}</td>
+                      <td className="invoice-cell-center">{item.quantity || 1}</td>
+                      <td className="invoice-cell-money">{formatVndZero(item.unitPrice)}</td>
+                      <td className="invoice-cell-billing">{statusLabel(item.billingType)}</td>
+                      <td className="invoice-cell-money">{formatVndZero(item.finalPrice)}</td>
+                    </tr>
+                  ))}
+                  {!partItems.length ? (
+                    <tr>
+                      <td colSpan={6} className="invoice-empty-cell">Chưa có phụ tùng đã thay.</td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+            <h5>Công thợ</h5>
+            <div className="invoice-table-wrap">
+              <table className="invoice-table invoice-labor-table">
+                <thead>
+                  <tr>
+                    <th className="invoice-cell-center">STT</th>
+                    <th>Tên công việc</th>
+                    <th>Hạng mục</th>
+                    <th className="invoice-cell-money">Thành tiền</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {laborItems.map((item, index) => (
+                    <tr key={item.id || `${item.itemName}-${index}`}>
+                      <td className="invoice-cell-center">{index + 1}</td>
+                      <td><strong>{plainText(item.itemName, "Công thợ")}</strong></td>
+                      <td>{plainText(item.note || statusLabel(item.billingType), "Công thợ")}</td>
+                      <td className="invoice-cell-money">{formatVndZero(item.finalPrice)}</td>
+                    </tr>
+                  ))}
+                  {!laborItems.length ? (
+                    <tr>
+                      <td colSpan={4} className="invoice-empty-cell">Chưa có hạng mục công thợ.</td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="invoice-summary-section">
+            <div className="invoice-warranty-note">
+              <h4>Ghi chú bảo hành dịch vụ</h4>
+              <p>Phụ tùng chính hãng và hạng mục sửa chữa được bảo hành theo chính sách của đại lý. Vui lòng giữ hóa đơn này khi cần đối chiếu hoặc hỗ trợ sau dịch vụ.</p>
+              <p>Cảm ơn Quý khách đã tin tưởng sử dụng dịch vụ của {plainText(invoice.dealershipName, "Tayota")}.</p>
+            </div>
+            <dl className="invoice-totals">
+              <div><dt>Tổng tiền công</dt><dd>{formatVndZero(laborTotal)}</dd></div>
+              <div><dt>Tổng tiền phụ tùng</dt><dd>{formatVndZero(partsTotal)}</dd></div>
+              <div><dt>Giảm giá</dt><dd>{formatVndZero(discountAmount)}</dd></div>
+              <div><dt>Thuế VAT</dt><dd>{formatVndZero(vatAmount)}</dd></div>
+              <div className="invoice-grand-total"><dt>Tổng thanh toán</dt><dd>{formatVndZero(finalTotal)}</dd></div>
+            </dl>
+          </section>
+
+          <footer className="invoice-footer">
+            <div><span>Khách hàng</span><strong>Ký và ghi rõ họ tên</strong></div>
+            <div><span>Cố vấn dịch vụ</span><strong>Ký và ghi rõ họ tên</strong></div>
+            <div><span>Kỹ thuật viên</span><strong>Ký và ghi rõ họ tên</strong></div>
+          </footer>
+        </article>
+      </section>
+    );
+  })() : null;
 
   const listPanel = (
     <section className="ops-panel advisor-list-panel advisor-full-panel wide">
@@ -551,7 +796,9 @@ export default function MechanicDashboard() {
     const historyInvoice = invoice || {};
     const historyItems = historyInvoice.items || selected.items || [];
     const totalAmount = historyInvoice.totalAmount ?? ticket.totalAmount ?? 0;
-    const canceledTicket = String(ticket.status || "").toUpperCase() === "CANCELED";
+    const historyStatus = String(ticket.status || "").toUpperCase();
+    const canceledTicket = historyStatus === "CANCELED";
+    const canExportHistoryInvoice = historyStatus === "COMPLETED";
 
     return (
       <section className="ops-panel advisor-detail-panel advisor-detail-view wide mechanic-detail-panel advisor-service-detail-panel mechanic-history-detail-panel">
@@ -562,6 +809,7 @@ export default function MechanicDashboard() {
           </div>
           <div className="advisor-detail-actions">
             <span className={statusPillClass(ticket.status)}>{statusLabel(ticket.status)}</span>
+            {canExportHistoryInvoice ? <button className="btn btn-secondary" type="button" disabled={actionLoading} onClick={() => openInvoice({ printAfterOpen: true })}>In hóa đơn</button> : null}
             <button className="advisor-detail-close" type="button" onClick={backToList} aria-label="Đóng chi tiết dịch vụ">×</button>
           </div>
         </div>
@@ -589,6 +837,7 @@ export default function MechanicDashboard() {
           </div>
           <MechanicItemCards items={historyItems} />
         </section>
+        {invoicePreview}
       </section>
     );
   })() : null;
@@ -619,7 +868,7 @@ export default function MechanicDashboard() {
         {canReceive ? <button className="btn btn-primary" type="button" disabled={actionLoading} onClick={() => setReceiveConfirmOpen(true)}>Tiếp nhận</button> : null}
         {canStart ? <button className="btn btn-primary" type="button" disabled={actionLoading} onClick={() => run(() => startServiceTicket(ticket.id), "Đã bắt đầu sửa.")}>Bắt đầu sửa</button> : null}
         {canEdit ? <button className="btn btn-primary" type="button" disabled={actionLoading} onClick={() => run(() => completeServiceTicket(ticket.id), "Đã hoàn tất phiếu dịch vụ.")}>Hoàn tất</button> : null}
-        {ticket.status === "COMPLETED" ? <button className="btn btn-secondary" type="button" disabled={actionLoading} onClick={openInvoice}>Xuất phiếu thu</button> : null}
+        {ticket.status === "COMPLETED" ? <button className="btn btn-secondary" type="button" disabled={actionLoading} onClick={() => openInvoice({ printAfterOpen: true })}>Xuất PDF</button> : null}
       </div>
 
       {canReceive ? (
@@ -700,28 +949,7 @@ export default function MechanicDashboard() {
         </div>
       </section> : null}
 
-      {invoice ? (
-        <section className="invoice-preview">
-          <div className="ops-panel-head">
-            <div><p className="eyebrow">Phiếu thu</p><h3>{invoice.invoiceCode}</h3></div>
-            <button className="btn btn-primary no-print" type="button" onClick={printInvoice}>In / Lưu PDF</button>
-          </div>
-          <dl className="summary-list compact">
-            <div><dt>Mã hóa đơn</dt><dd>{invoice.invoiceCode || invoice.id || "Đang cập nhật"}</dd></div>
-            <div><dt>Khách hàng</dt><dd>{invoice.customerFullName || "Khách hàng"}</dd></div>
-            <div><dt>VIN</dt><dd>{invoice.vinId}</dd></div>
-            <div><dt>Xe</dt><dd>{invoice.carVersionName || "Tayota"}</dd></div>
-            <div><dt>Đại lý</dt><dd>{invoice.dealershipName || invoice.dealershipId}</dd></div>
-            <div><dt>Tổng tiền</dt><dd>{formatVndZero(invoice.totalAmount)}</dd></div>
-          </dl>
-          <section className="mechanic-invoice-items">
-            <div className="ops-panel-head compact">
-              <div><p className="eyebrow">Hạng mục</p><h3>Dịch vụ và phụ tùng</h3></div>
-            </div>
-            <MechanicItemCards items={invoice.items || []} />
-          </section>
-        </section>
-      ) : null}
+      {invoicePreview}
     </section>
   ) : null;
 

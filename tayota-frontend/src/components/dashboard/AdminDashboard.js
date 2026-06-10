@@ -16,6 +16,7 @@ import { getValidDashboardTab } from "@/lib/dashboard-nav";
 import { providerLabel, roleLabel, statusLabel, unwrapList } from "@/lib/format";
 import { getDashboardPath, setCurrentUser } from "@/lib/session";
 import ProfilePanel from "@/components/dashboard/ProfilePanel";
+import PasswordInput from "@/components/PasswordInput";
 
 const ROLES = ["ADMIN", "MANAGER", "SERVICE_ADVISOR", "ASSISTANT", "MECHANIC", "USER"];
 const USER_STATUSES = ["ACTIVE", "BANNED"];
@@ -283,7 +284,7 @@ export default function AdminDashboard() {
             </div>
             <form className="ops-form" onSubmit={submitCreateUser}>
               <input className="field" required name="email" type="email" placeholder="Email" value={createForm.email} onChange={changeCreateField} />
-              <input className="field" required name="password" type="password" placeholder="Mật khẩu" value={createForm.password} onChange={changeCreateField} />
+              <PasswordInput required name="password" placeholder="Mật khẩu" value={createForm.password} onChange={changeCreateField} />
               <select className="field" name="role" value={createForm.role} onChange={changeCreateField}>
                 {ROLES.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}
               </select>

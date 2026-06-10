@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import UserAvatar from "@/components/UserAvatar";
 import { changePasswordDirect, getMe, logout } from "@/lib/services/auth";
+import PasswordInput from "@/components/PasswordInput";
 import { uploadMedia } from "@/lib/services/media";
 import { getUserProfile, updateUserProfile } from "@/lib/services/user";
 import { roleLabel } from "@/lib/format";
@@ -241,9 +242,9 @@ export default function ProfilePanel({ heading = "Thông tin cá nhân" }) {
             {securityOpen ? (
               <form className="ops-form password-form" onSubmit={submitPassword}>
                 <div className="form-grid">
-                  <label className="label">Mật khẩu cũ<input className="field" name="currentPassword" type="password" value={passwordForm.currentPassword} onChange={updatePasswordField} required autoComplete="current-password" /></label>
-                  <label className="label">Mật khẩu mới<input className="field" name="newPassword" type="password" value={passwordForm.newPassword} onChange={updatePasswordField} required minLength={8} maxLength={20} autoComplete="new-password" /></label>
-                  <label className="label">Xác nhận mật khẩu mới<input className="field" name="confirmPassword" type="password" value={passwordForm.confirmPassword} onChange={updatePasswordField} required minLength={8} maxLength={20} autoComplete="new-password" /></label>
+                  <label className="label">Mật khẩu cũ<PasswordInput name="currentPassword" value={passwordForm.currentPassword} onChange={updatePasswordField} required autoComplete="current-password" /></label>
+                  <label className="label">Mật khẩu mới<PasswordInput name="newPassword" value={passwordForm.newPassword} onChange={updatePasswordField} required minLength={8} maxLength={20} autoComplete="new-password" /></label>
+                  <label className="label">Xác nhận mật khẩu mới<PasswordInput name="confirmPassword" value={passwordForm.confirmPassword} onChange={updatePasswordField} required minLength={8} maxLength={20} autoComplete="new-password" /></label>
                 </div>
                 <button className="btn btn-secondary" type="submit" disabled={passwordSaving}>
                   {passwordSaving ? "Đang đổi..." : "Đổi mật khẩu"}

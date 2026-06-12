@@ -4,6 +4,7 @@ import com.tayota.operationservice.dto.common.ApiResponse;
 import com.tayota.operationservice.dto.request.admin.AdminResetPasswordRequest;
 import com.tayota.operationservice.dto.request.admin.AdminUpdateDealershipRequest;
 import com.tayota.operationservice.dto.response.admin.AdminUserResponse;
+import com.tayota.operationservice.dto.response.admin.ManagerUserStatsResponse;
 import com.tayota.operationservice.dto.response.car.PaginationResponseDTO;
 import com.tayota.operationservice.enums.user.RoleType;
 import com.tayota.operationservice.enums.user.StatusType;
@@ -40,6 +41,12 @@ public class AdminUserController {
     ) {
         PaginationResponseDTO<AdminUserResponse> result = userService.searchUsers(keyword, role, status, page, size);
         return ApiResponse.success(200, "Lấy danh sách tài khoản thành công.", result);
+    }
+
+    @GetMapping("/stats")
+    public ApiResponse<ManagerUserStatsResponse> getStats() {
+        ManagerUserStatsResponse result = userService.getAdminUserStats();
+        return ApiResponse.success(200, "Lấy thống kê tài khoản thành công.", result);
     }
 
     @GetMapping("/{userId}")

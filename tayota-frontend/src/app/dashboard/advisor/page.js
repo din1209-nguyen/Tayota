@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import AdvisorDashboard from "@/components/dashboard/AdvisorDashboard";
 
 export const metadata = {
-  title: "Advisor Dashboard | Tayota",
+  title: "Trang cố vấn dịch vụ | Tayota",
 };
 
 export default function AdvisorDashboardPage() {

@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import CustomerDashboard from "@/components/dashboard/CustomerDashboard";
 
 export const metadata = {
-  title: "User Dashboard | Tayota",
+  title: "Trang khách hàng | Tayota",
 };
 
 export default function UserDashboardPage() {

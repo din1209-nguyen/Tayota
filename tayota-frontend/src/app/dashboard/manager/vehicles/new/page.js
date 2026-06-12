@@ -1,7 +1,7 @@
 import { ManagerVehicleEditorPage } from "@/components/dashboard/ManagerContentPanels";
 
 export const metadata = {
-  title: "Thêm xe | Manager Dashboard",
+  title: "Thêm xe | Trang quản lý",
 };
 
 export default function NewManagerVehiclePage() {

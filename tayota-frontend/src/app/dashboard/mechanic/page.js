@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import MechanicDashboard from "@/components/dashboard/MechanicDashboard";
 
 export const metadata = {
-  title: "Mechanic Dashboard | Tayota",
+  title: "Trang kỹ thuật viên | Tayota",
 };
 
 export default function MechanicDashboardPage() {

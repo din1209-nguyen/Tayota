@@ -1,7 +1,7 @@
 import LiveChatPanel from "@/components/chat/LiveChatPanel";
 
 export const metadata = {
-  title: "Live Chat | TAYOTA",
+  title: "Trò chuyện trực tuyến | Tayota",
 };
 
 export default function LiveChatPage() {
@@ -9,7 +9,7 @@ export default function LiveChatPage() {
     <section className="section ops-page">
       <div className="shell-container page-title">
         <p className="eyebrow">Support</p>
-        <h1>Live chat</h1>
+        <h1>Trò chuyện trực tuyến</h1>
       </div>
       <div className="shell-container">
         <LiveChatPanel />

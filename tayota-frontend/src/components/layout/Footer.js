@@ -24,7 +24,7 @@ export default function Footer() {
           <h2>Dịch vụ</h2>
           <Link href="/appointments/test-drive">Đặt lái thử</Link>
           <Link href="/appointments/service">Chăm sóc xe</Link>
-          <Link href="/support/live-chat">Live chat</Link>
+          <Link href="/support/live-chat">Trò chuyện trực tuyến</Link>
         </nav>
         <nav aria-label="Tin tức và hỗ trợ">
           <h2>Tin tức & hỗ trợ</h2>
@@ -36,7 +36,7 @@ export default function Footer() {
 
       <div className="shell-container footer-bottom">
         <span>© Tayota digital showroom</span>
-        <span>Catalog, đại lý và dịch vụ trong một trải nghiệm thống nhất.</span>
+        <span>Danh mục xe, đại lý và dịch vụ trong một trải nghiệm thống nhất.</span>
       </div>
     </footer>
   );

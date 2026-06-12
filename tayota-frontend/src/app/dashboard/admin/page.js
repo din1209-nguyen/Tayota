@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import AdminDashboard from "@/components/dashboard/AdminDashboard";
 
 export const metadata = {
-  title: "Admin Dashboard | Tayota",
+  title: "Quản trị hệ thống | Tayota",
 };
 
 export default function AdminDashboardPage() {

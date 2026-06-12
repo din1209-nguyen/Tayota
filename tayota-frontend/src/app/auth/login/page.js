@@ -6,11 +6,11 @@ export default function LoginPage() {
       <video className="auth-bg-video" autoPlay muted loop playsInline aria-hidden="true">
         <source src="/images/giúp_tôi_chỉnh_video_xe_này_ch.mp4" type="video/mp4" />
       </video>
-      <div className="shell-container auth-layout">
+      <div className="shell-container auth-layout password-change-auth">
         <div className="auth-copy">
           <p className="eyebrow">Tài khoản</p>
-          <h1>Đăng nhập Tayota</h1>
-          <p>Quản lý lịch hẹn, lưu xe yêu thích và tiếp tục tư vấn với thông tin cá nhân của bạn.</p>
+          <h1>Đăng nhập</h1>
+          <p>Quản lý lịch hẹn, hồ sơ xe và tiếp tục tư vấn với tài khoản của bạn.</p>
         </div>
         <AuthForm mode="login" />
       </div>

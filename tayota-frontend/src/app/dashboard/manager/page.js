@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import ManagerDashboard from "@/components/dashboard/ManagerDashboard";
 
 export const metadata = {
-  title: "Manager Dashboard | Tayota",
+  title: "Trang quản lý | Tayota",
 };
 
 export default function ManagerDashboardPage() {

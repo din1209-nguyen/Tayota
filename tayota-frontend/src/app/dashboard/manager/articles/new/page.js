@@ -1,7 +1,7 @@
 import { ManagerArticleEditorPage } from "@/components/dashboard/ManagerContentPanels";
 
 export const metadata = {
-  title: "Thêm bài viết | Manager Dashboard",
+  title: "Thêm bài viết | Trang quản lý",
 };
 
 export default function NewManagerArticlePage() {

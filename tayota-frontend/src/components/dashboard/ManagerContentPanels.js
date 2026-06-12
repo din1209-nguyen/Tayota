@@ -56,7 +56,7 @@ const VEHICLE_EDITOR_TABS = [
   ["specs", "Thông số"],
   ["prices", "Giá & màu"],
   ["articles", "Bài viết"],
-  ["gallery", "Gallery"],
+  ["gallery", "Thư viện ảnh"],
 ];
 const EMPTY_VEHICLE_SPEC = {
   origin: "",
@@ -98,6 +98,10 @@ const PRICE_RANGE_OPTIONS = [
   { value: "900000000-1200000000", label: "900 triệu - 1.2 tỷ" },
   { value: "1200000000-", label: "Trên 1.2 tỷ" },
 ];
+
+function normalizeSearchText(value) {
+  return String(value || "").trim().toLowerCase();
+}
 
 function PanelState({ loading, error, empty, children }) {
   if (loading) return <div className="status-box">Đang tải dữ liệu...</div>;
@@ -313,12 +317,11 @@ export function ManagerArticleEditorPage({ articleId }) {
 }
 
 function VehiclePanel() {
-  const emptyFilters = { styleId: "", priceRange: "", numberOfSeats: "", seriesId: "", versionKeyword: "", fuel: "", origin: "" };
+  const emptyFilters = { keyword: "", styleId: "", priceRange: "", numberOfSeats: "", seriesId: "", versionKeyword: "", fuel: "", origin: "" };
   const [vehicles, setVehicles] = useState([]);
   const [styles, setStyles] = useState([]);
   const [series, setSeries] = useState([]);
   const [filters, setFilters] = useState(emptyFilters);
-  const [draftFilters, setDraftFilters] = useState(emptyFilters);
   const [state, setState] = useState({ loading: true, error: "", message: "", busy: false });
 
   const load = useCallback(async () => {
@@ -340,10 +343,14 @@ function VehiclePanel() {
     load();
   }, [load]);
 
-  const draftOptionVehicles = vehicles.filter((vehicle) => {
+  function updateFilters(nextFilters) {
+    setFilters({ ...emptyFilters, ...nextFilters });
+  }
+
+  const optionVehicles = vehicles.filter((vehicle) => {
     const styleId = vehicle.carStyleId || series.find((item) => String(item.id) === String(vehicle.carSeriesId))?.styleId;
-    const matchesStyle = !draftFilters.styleId || String(styleId) === String(draftFilters.styleId);
-    const matchesSeries = !draftFilters.seriesId || String(vehicle.carSeriesId) === String(draftFilters.seriesId);
+    const matchesStyle = !filters.styleId || String(styleId) === String(filters.styleId);
+    const matchesSeries = !filters.seriesId || String(vehicle.carSeriesId) === String(filters.seriesId);
     return matchesStyle && matchesSeries;
   });
   const filteredVehicles = vehicles.filter((vehicle) => {
@@ -352,15 +359,17 @@ function VehiclePanel() {
     const fuel = getVehicleSpecValue(vehicle, ["fuel"]);
     const origin = getVehicleSpecValue(vehicle, ["origin"]);
     const versionName = vehicle.name || "";
+    const keyword = normalizeSearchText(filters.keyword);
     return (!filters.styleId || String(styleId) === String(filters.styleId))
       && (!filters.seriesId || String(vehicle.carSeriesId) === String(filters.seriesId))
       && (!filters.numberOfSeats || String(seats) === String(filters.numberOfSeats))
       && (!filters.versionKeyword || versionName === filters.versionKeyword)
+      && (!keyword || normalizeSearchText(`${vehicle.name} ${vehicle.carSeriesName} ${vehicle.carStyleName}`).includes(keyword))
       && (!filters.fuel || String(fuel).toLowerCase() === String(filters.fuel).toLowerCase())
       && (!filters.origin || String(origin).toLowerCase() === String(filters.origin).toLowerCase())
       && isPriceInRange(vehicle.minPrice, filters.priceRange);
   });
-  const draftSeriesOptions = draftFilters.styleId ? series.filter((item) => String(item.styleId) === String(draftFilters.styleId)) : series;
+  const seriesOptions = filters.styleId ? series.filter((item) => String(item.styleId) === String(filters.styleId)) : series;
 
   async function hide(id) {
     setState((value) => ({ ...value, busy: true, message: "" }));
@@ -378,33 +387,34 @@ function VehiclePanel() {
       <section className="ops-panel">
         <div className="ops-panel-head">
           <div>
-            <p className="eyebrow">Catalog</p>
+            <p className="eyebrow">Danh mục</p>
             <h2>Danh sách xe</h2>
           </div>
           <Link className="btn btn-primary" href="/dashboard/manager/vehicles/new">Thêm xe</Link>
         </div>
         <Feedback message={state.message} />
-        <form className="filter-panel catalog-filter manager-catalog-filter" onSubmit={(event) => { event.preventDefault(); setFilters(draftFilters); }}>
+        <div className="filter-panel catalog-filter manager-catalog-filter">
           <div className="catalog-filter-head">
             <div>
               <p className="eyebrow">Bộ lọc</p>
               <h2>Tìm phiên bản xe</h2>
             </div>
-            <button className="filter-reset" type="button" onClick={() => { setDraftFilters(emptyFilters); setFilters(emptyFilters); }}>Xóa lọc</button>
+            <button className="filter-reset" type="button" onClick={() => updateFilters(emptyFilters)}>Xóa bộ lọc</button>
           </div>
           <div className="catalog-filter-grid">
-            <SelectField label="Kiểu dáng" value={draftFilters.styleId} onChange={(value) => setDraftFilters({ ...draftFilters, styleId: value, seriesId: "", numberOfSeats: "", versionKeyword: "", fuel: "", origin: "" })} options={styles.map((style) => ({ value: style.id, label: style.name }))} />
-            <SelectField label="Giá" value={draftFilters.priceRange} onChange={(value) => setDraftFilters({ ...draftFilters, priceRange: value })} options={PRICE_RANGE_OPTIONS} />
-            <SelectField label="Số chỗ" value={draftFilters.numberOfSeats} onChange={(value) => setDraftFilters({ ...draftFilters, numberOfSeats: value })} options={uniqueOptions(draftOptionVehicles, (vehicle) => getVehicleSpecValue(vehicle, ["numberOfSeats"]))} />
-            <SelectField label="Dòng xe" value={draftFilters.seriesId} onChange={(value) => setDraftFilters({ ...draftFilters, seriesId: value, numberOfSeats: "", versionKeyword: "", fuel: "", origin: "" })} options={draftSeriesOptions.map((item) => ({ value: item.id, label: item.name }))} />
-            <SelectField label="Phiên bản" value={draftFilters.versionKeyword} onChange={(value) => setDraftFilters({ ...draftFilters, versionKeyword: value })} options={uniqueOptions(draftOptionVehicles, (vehicle) => vehicle.name)} />
-            <SelectField label="Nhiên liệu" value={draftFilters.fuel} onChange={(value) => setDraftFilters({ ...draftFilters, fuel: value })} options={uniqueOptions(draftOptionVehicles, (vehicle) => getVehicleSpecValue(vehicle, ["fuel"]))} />
-            <SelectField label="Xuất xứ" value={draftFilters.origin} onChange={(value) => setDraftFilters({ ...draftFilters, origin: value })} options={uniqueOptions(draftOptionVehicles, (vehicle) => getVehicleSpecValue(vehicle, ["origin"]))} />
+            <SelectField label="Kiểu dáng" value={filters.styleId} onChange={(value) => updateFilters({ ...filters, styleId: value, seriesId: "", numberOfSeats: "", versionKeyword: "", fuel: "", origin: "" })} options={styles.map((style) => ({ value: style.id, label: style.name }))} />
+            <SelectField label="Giá" value={filters.priceRange} onChange={(value) => updateFilters({ ...filters, priceRange: value })} options={PRICE_RANGE_OPTIONS} />
+            <SelectField label="Số chỗ" value={filters.numberOfSeats} onChange={(value) => updateFilters({ ...filters, numberOfSeats: value })} options={uniqueOptions(optionVehicles, (vehicle) => getVehicleSpecValue(vehicle, ["numberOfSeats"]))} />
+            <SelectField label="Dòng xe" value={filters.seriesId} onChange={(value) => updateFilters({ ...filters, seriesId: value, numberOfSeats: "", versionKeyword: "", fuel: "", origin: "" })} options={seriesOptions.map((item) => ({ value: item.id, label: item.name }))} />
+            <SelectField label="Phiên bản" value={filters.versionKeyword} onChange={(value) => updateFilters({ ...filters, versionKeyword: value })} options={uniqueOptions(optionVehicles, (vehicle) => vehicle.name)} />
+            <SelectField label="Nhiên liệu" value={filters.fuel} onChange={(value) => updateFilters({ ...filters, fuel: value })} options={uniqueOptions(optionVehicles, (vehicle) => getVehicleSpecValue(vehicle, ["fuel"]))} />
+            <SelectField label="Xuất xứ" value={filters.origin} onChange={(value) => updateFilters({ ...filters, origin: value })} options={uniqueOptions(optionVehicles, (vehicle) => getVehicleSpecValue(vehicle, ["origin"]))} />
           </div>
-          <div className="catalog-filter-actions manager-filter-actions">
-            <button className="btn btn-primary" type="submit">Áp dụng</button>
-          </div>
-        </form>
+          <label className="label catalog-select-field catalog-search-field">
+            Tìm theo tên
+            <input className="field" value={filters.keyword} onChange={(event) => updateFilters({ ...filters, keyword: event.target.value })} placeholder="Nhập tên xe hoặc phiên bản" />
+          </label>
+        </div>
         <PanelState loading={state.loading} error={state.error} empty={!vehicles.length}>
           {!filteredVehicles.length ? <div className="status-box">Không có xe phù hợp với bộ lọc.</div> : null}
           <div className="manager-vehicle-list">
@@ -461,7 +471,6 @@ export function VehicleEditorDialog({ mode, onClose, onSaved, series, styles, ve
   const [specification, setSpecification] = useState(EMPTY_VEHICLE_SPEC);
   const [priceForm, setPriceForm] = useState({ exteriorColorName: "", interiorColorName: "", price: "", exImageUrl: "", inImageUrl: "" });
   const [articleForm, setArticleForm] = useState({ id: "", type: "FEATURE", title: "", content: "", imageUrl: "", published: true });
-  const [galleryUrl, setGalleryUrl] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -496,7 +505,6 @@ export function VehicleEditorDialog({ mode, onClose, onSaved, series, styles, ve
     setActiveTab("general");
     setPriceForm({ exteriorColorName: "", interiorColorName: "", price: "", exImageUrl: "", inImageUrl: "" });
     setArticleForm({ id: "", type: "FEATURE", title: "", content: "", imageUrl: "", published: true });
-    setGalleryUrl("");
     if (isCreate) {
       setDetail(null);
       setForm(emptyForm);
@@ -651,23 +659,6 @@ export function VehicleEditorDialog({ mode, onClose, onSaved, series, styles, ve
     }
   }
 
-  async function addGallery(event) {
-    event.preventDefault();
-    if (!galleryUrl) return;
-    setBusy(true);
-    setMessage("");
-    try {
-      await addVehicleGallery(vehicleId, { imageUrl: galleryUrl });
-      setGalleryUrl("");
-      setMessage("Đã thêm ảnh gallery.");
-      await loadDetail();
-    } catch (error) {
-      setMessage(error.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function uploadGalleryFiles(event) {
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
@@ -766,7 +757,7 @@ export function VehicleEditorDialog({ mode, onClose, onSaved, series, styles, ve
             <VehicleArticlePanel articleForm={articleForm} setArticleForm={setArticleForm} detail={detail} busy={busy} onSave={saveArticle} onHide={hideVehicleArticle} />
           ) : null}
           {!isCreate && activeTab === "gallery" ? (
-            <VehicleGalleryPanel busy={busy} detail={detail} galleryUrl={galleryUrl} setGalleryUrl={setGalleryUrl} onAdd={addGallery} onUpload={uploadGalleryFiles} onReplace={replaceGallery} onRemove={removeGallery} />
+            <VehicleGalleryPanel busy={busy} detail={detail} onUpload={uploadGalleryFiles} onReplace={replaceGallery} onRemove={removeGallery} />
           ) : null}
         </div>
       </section>
@@ -839,7 +830,7 @@ function VehiclePriceCreateForm({ priceForm, setPriceForm }) {
       <div className="manager-editor-grid">
         <TextField label="Màu ngoại thất" value={priceForm.exteriorColorName} onChange={(value) => setPriceForm({ ...priceForm, exteriorColorName: value })} required />
         <TextField label="Màu nội thất" value={priceForm.interiorColorName} onChange={(value) => setPriceForm({ ...priceForm, interiorColorName: value })} required />
-        <TextField label="Giá bán" type="number" value={priceForm.price} onChange={(value) => setPriceForm({ ...priceForm, price: value })} required />
+        <PriceField label="Giá bán" value={priceForm.price} onChange={(value) => setPriceForm({ ...priceForm, price: value })} required />
         <MediaUploadField label="Ảnh ngoại thất" value={priceForm.exImageUrl} onChange={(value) => setPriceForm({ ...priceForm, exImageUrl: value })} context="CAR_PRICE_EXTERIOR" />
         <MediaUploadField label="Ảnh nội thất" value={priceForm.inImageUrl} onChange={(value) => setPriceForm({ ...priceForm, inImageUrl: value })} context="CAR_PRICE_INTERIOR" />
       </div>
@@ -869,7 +860,7 @@ function VehiclePricePanel({ busy, detail, onRemove, onSave, priceForm, setPrice
             <article key={key}>
               <strong>{price.exteriorColorName} / {price.interiorColorName}</strong>
               <div className="manager-editor-grid">
-                <TextField label="Giá bán" type="number" value={draft.price} onChange={(value) => setPriceDraft(key, { ...draft, price: value })} />
+                <PriceField label="Giá bán" value={draft.price} onChange={(value) => setPriceDraft(key, { ...draft, price: value })} />
                 <MediaUploadField label="Ảnh ngoại thất" value={draft.exImageUrl || ""} onChange={(value) => setPriceDraft(key, { ...draft, exImageUrl: value })} context="CAR_PRICE_EXTERIOR" />
                 <MediaUploadField label="Ảnh nội thất" value={draft.inImageUrl || ""} onChange={(value) => setPriceDraft(key, { ...draft, inImageUrl: value })} context="CAR_PRICE_INTERIOR" />
               </div>
@@ -922,20 +913,16 @@ function VehicleArticlePanel({ articleForm, busy, detail, onHide, onSave, setArt
   );
 }
 
-function VehicleGalleryPanel({ busy, detail, galleryUrl, onAdd, onRemove, onReplace, onUpload, setGalleryUrl }) {
+function VehicleGalleryPanel({ busy, detail, onRemove, onReplace, onUpload }) {
   return (
     <div className="manager-detail-block">
-      <h3>Gallery</h3>
+      <h3>Thư viện ảnh</h3>
       <div className="manager-gallery-upload-row">
         <label className="btn btn-secondary">
-          Tải nhiều ảnh
+          Thêm nhiều ảnh
           <input className="visually-hidden" type="file" accept="image/*" multiple onChange={onUpload} />
         </label>
       </div>
-      <form className="manager-filter-row" onSubmit={onAdd}>
-        <input className="field" value={galleryUrl} onChange={(event) => setGalleryUrl(event.target.value)} placeholder="Hoặc nhập URL hình ảnh" />
-        <button className="btn btn-secondary" disabled={busy || !galleryUrl} type="submit">Thêm ảnh</button>
-      </form>
       <div className="manager-gallery-grid">
         {(detail?.galleries || []).map((gallery) => (
           <article key={gallery.id}>
@@ -1009,6 +996,17 @@ function ArticlePanel() {
         </PanelState>
       </section>
     </div>
+  );
+}
+
+function PriceField({ label, value, onChange, required = false }) {
+  return (
+    <label className="manager-field manager-price-field">
+      <span>{label}</span>
+      <div className="manager-price-input">
+        <input className="field" required={required} type="number" min="0" value={value} onChange={(event) => onChange(event.target.value)} />
+      </div>
+    </label>
   );
 }
 function DealershipPanel() {
@@ -1097,7 +1095,7 @@ function DealershipPanel() {
 }
 
 function AccessoryPanel() {
-  const empty = { model: "", brand: "", price: "", description: "", useContent: "", reminderContent: "", type: "", visible: true };
+  const empty = { model: "", brand: "", price: "", description: "", useContent: "", reminderContent: "", type: "", imageUrl: "", visible: true };
   const [items, setItems] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [linkedVehicleId, setLinkedVehicleId] = useState("");
@@ -1157,13 +1155,17 @@ function AccessoryPanel() {
   return (
     <div className="manager-content-grid">
       <section className="ops-panel">
-        <div className="ops-panel-head"><div><p className="eyebrow">Catalog</p><h2>Phụ kiện</h2></div></div>
+        <div className="ops-panel-head"><div><p className="eyebrow">Danh mục</p><h2>Phụ kiện</h2></div></div>
         <Feedback message={state.message} />
         <PanelState loading={state.loading} error={state.error} empty={!items.length}>
           <div className="manager-table-list">
             {items.map((item) => (
               <article key={item.id}>
-                <div><strong>{item.model}</strong><small>{item.type} · {formatVnd(item.price)}</small></div>
+                <span className="manager-accessory-thumb" style={item.imageUrl ? { backgroundImage: `url(${item.imageUrl})` } : undefined} />
+                <div className="manager-accessory-copy">
+                  <strong>{item.model}</strong>
+                  <small><span>{item.type || "Chưa phân loại"}</span><span>{formatVnd(item.price)}</span></small>
+                </div>
                 <span className={`status-pill ${item.visible ? "connected" : "error"}`}>{item.visible ? "Hiển thị" : "Đã ẩn"}</span>
                 <div className="row-actions">
                   <button className="btn btn-ghost" type="button" onClick={() => { setEditing(item.id); setForm({ ...empty, ...item }); }}>Sửa</button>
@@ -1185,6 +1187,7 @@ function AccessoryPanel() {
             <input className="field" required value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })} placeholder="Loại" />
             <input className="field" required min="0" type="number" value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} placeholder="Giá bán" />
           </div>
+          <MediaUploadField label="Ảnh phụ kiện" value={form.imageUrl || ""} onChange={(value) => setForm({ ...form, imageUrl: value })} context="ACCESSORY_IMAGE" />
           <textarea className="field" required value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Mô tả" />
           <textarea className="field" required value={form.useContent} onChange={(event) => setForm({ ...form, useContent: event.target.value })} placeholder="Công dụng" />
           <textarea className="field" required value={form.reminderContent} onChange={(event) => setForm({ ...form, reminderContent: event.target.value })} placeholder="Lưu ý" />
@@ -1318,7 +1321,7 @@ function UserPanel() {
           <form className="manager-filter-row" onSubmit={(event) => { event.preventDefault(); load(); }}>
             <input className="field" value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Tìm email, tên, điện thoại" />
             <select className="field" value={role} onChange={(event) => setRole(event.target.value)}>
-              <option value="">Tất cả role</option>
+              <option value="">Tất cả vai trò</option>
               {LOWER_ROLES.map((item) => <option key={item} value={item}>{roleLabel(item)}</option>)}
             </select>
             <button className="btn btn-secondary" type="submit">Lọc</button>

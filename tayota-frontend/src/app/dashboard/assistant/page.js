@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import AssistantDashboard from "@/components/dashboard/AssistantDashboard";
 
 export const metadata = {
-  title: "Assistant Dashboard | Tayota",
+  title: "Trang tư vấn viên | Tayota",
 };
 
 export default function AssistantDashboardPage() {

@@ -6,5 +6,6 @@ public enum MediaUploadContext {
     CAR_PRICE_EXTERIOR,
     CAR_PRICE_INTERIOR,
     CAR_VIDEO,
-    ARTICLE_IMAGE
+    ARTICLE_IMAGE,
+    ACCESSORY_IMAGE
 }

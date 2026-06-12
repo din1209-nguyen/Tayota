@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 
 const PRICE_OPTIONS = [
@@ -40,11 +42,11 @@ function getSeriesVersions(series = [], selectedSeriesId = "") {
   return scopedSeries.flatMap((item) => item.versions || item.carVersions || []);
 }
 
-function SelectField({ label, name, value, placeholder = "Chọn", options = [] }) {
+function AutoSubmitSelect({ label, name, value, placeholder = "Chọn", options = [] }) {
   return (
     <label className="label catalog-select-field">
       {label}
-      <select className="field" name={name} defaultValue={value}>
+      <select className="field" name={name} defaultValue={value} onChange={(event) => event.currentTarget.form?.requestSubmit()}>
         <option value="">{placeholder}</option>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -56,7 +58,7 @@ function SelectField({ label, name, value, placeholder = "Chọn", options = [] 
   );
 }
 
-export default function VehicleFilters({ searchParams = {}, styles = [] }) {
+export default function VehicleFilters({ keywordValue = "", onKeywordChange, searchParams = {}, styles = [] }) {
   const selectedStyleId = normalizeValue(searchParams.styleId);
   const selectedSeriesId = normalizeValue(searchParams.seriesId);
   const selectedPriceRange = normalizeValue(searchParams.priceRange);
@@ -74,6 +76,7 @@ export default function VehicleFilters({ searchParams = {}, styles = [] }) {
   const activeFilters = [
     selectedStyle?.name,
     seriesOptions.find((series) => String(series.id) === String(selectedSeriesId))?.name,
+    keywordValue && `Tên xe: ${keywordValue}`,
     selectedPriceRange && priceLabel,
     selectedVersionKeyword && `Phiên bản: ${selectedVersionKeyword}`,
     selectedSeats && `${selectedSeats} chỗ`,
@@ -94,44 +97,44 @@ export default function VehicleFilters({ searchParams = {}, styles = [] }) {
       </div>
 
       <div className="catalog-filter-grid">
-        <SelectField
+        <AutoSubmitSelect
           label="Kiểu dáng"
           name="styleId"
           value={selectedStyleId}
           options={styles.map((style) => ({ value: style.id, label: style.name }))}
         />
-        <SelectField
+        <AutoSubmitSelect
           label="Giá"
           name="priceRange"
           value={selectedPriceRange}
           options={PRICE_OPTIONS.slice(1)}
         />
-        <SelectField
+        <AutoSubmitSelect
           label="Số chỗ ngồi"
           name="numberOfSeats"
           value={selectedSeats}
           options={uniqueOptions(versions, (version) => getSpecValue(version, ["numberOfSeats", "seats", "seatCount"]))}
         />
-        <SelectField
+        <AutoSubmitSelect
           label="Dòng xe"
           name="seriesId"
           value={selectedSeriesId}
           placeholder="Tất cả"
           options={seriesOptions.map((series) => ({ value: series.id, label: series.name }))}
         />
-        <SelectField
+        <AutoSubmitSelect
           label="Phiên bản"
           name="versionKeyword"
           value={selectedVersionKeyword}
           options={uniqueOptions(versions, (version) => version.name || version.versionName || version.carVersionName)}
         />
-        <SelectField
+        <AutoSubmitSelect
           label="Nhiên liệu"
           name="fuel"
           value={selectedFuel}
           options={uniqueOptions(versions, (version) => getSpecValue(version, ["fuel", "fuelType", "engineType"]))}
         />
-        <SelectField
+        <AutoSubmitSelect
           label="Xuất xứ"
           name="origin"
           value={selectedOrigin}
@@ -139,11 +142,15 @@ export default function VehicleFilters({ searchParams = {}, styles = [] }) {
         />
       </div>
 
-      <div className="catalog-filter-actions">
-        <button className="btn btn-primary" type="submit">
-          Áp dụng
-        </button>
-      </div>
+      <label className="label catalog-select-field catalog-search-field">
+        Tìm theo tên
+        <input
+          className="field"
+          value={keywordValue}
+          placeholder="Nhập tên xe hoặc phiên bản"
+          onChange={(event) => onKeywordChange?.(event.target.value)}
+        />
+      </label>
 
       {activeFilters.length ? (
         <div className="filter-chips" aria-label="Bộ lọc đang áp dụng">

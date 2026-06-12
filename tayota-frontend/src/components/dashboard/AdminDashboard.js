@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   createAdminUser,
   deleteAiDocument,
+  getAdminUserStats,
   getAdminUsers,
   getAiDocumentJob,
   getAiDocuments,
@@ -21,6 +22,14 @@ import PasswordInput from "@/components/PasswordInput";
 const ROLES = ["ADMIN", "MANAGER", "SERVICE_ADVISOR", "ASSISTANT", "MECHANIC", "USER"];
 const USER_STATUSES = ["ACTIVE", "BANNED"];
 const DOCUMENT_STATUSES = ["uploaded", "indexing", "indexed", "failed"];
+const ROLE_CHART_COLORS = {
+  ADMIN: "#111827",
+  MANAGER: "#d71920",
+  SERVICE_ADVISOR: "#2563eb",
+  ASSISTANT: "#9333ea",
+  MECHANIC: "#16a34a",
+  USER: "#f59e0b",
+};
 const EMPTY_CREATE_FORM = {
   email: "",
   password: "",
@@ -49,6 +58,7 @@ export default function AdminDashboard() {
   const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [users, setUsers] = useState([]);
+  const [userStats, setUserStats] = useState(null);
   const [userPage, setUserPage] = useState({ page: 0, size: 10, totalPages: 0, totalItems: 0 });
   const [documents, setDocuments] = useState([]);
   const [documentStatus, setDocumentStatus] = useState("");
@@ -86,13 +96,17 @@ export default function AdminDashboard() {
 
   const loadUsers = useCallback(
     async (nextPage = 0) => {
-      const result = await getAdminUsers({
-        ...filters,
-        page: nextPage,
-        size: userPage.size,
-      });
+      const [result, stats] = await Promise.all([
+        getAdminUsers({
+          ...filters,
+          page: nextPage,
+          size: userPage.size,
+        }),
+        getAdminUserStats(),
+      ]);
       const items = result?.items || [];
       setUsers(items);
+      setUserStats(stats);
       setUserPage({
         page: result?.page ?? nextPage,
         size: result?.size ?? userPage.size,
@@ -121,6 +135,13 @@ export default function AdminDashboard() {
     if (!admin || tab !== "accounts") return;
     loadUsers(0).catch((error) => setMessage(error.message));
   }, [admin, tab, loadUsers]);
+
+  useEffect(() => {
+    if (!admin) return;
+    getAdminUserStats()
+      .then(setUserStats)
+      .catch((error) => setMessage(error.message));
+  }, [admin]);
 
   useEffect(() => {
     if (!admin || tab !== "documents") return;
@@ -259,11 +280,40 @@ export default function AdminDashboard() {
       : `${Math.max(1, Math.round(size / 1024))} KB`;
   }
 
+  function getRoleChartItems(stats) {
+    const total = Number(stats?.total || 0);
+    let cursor = 0;
+    return ROLES.map((role) => {
+      const count = Number(stats?.byRole?.[role] || 0);
+      const percent = total > 0 ? (count / total) * 100 : 0;
+      const start = cursor;
+      const end = cursor + percent;
+      cursor = end;
+      return {
+        role,
+        count,
+        percent,
+        color: ROLE_CHART_COLORS[role],
+        segment: total > 0 ? `${ROLE_CHART_COLORS[role]} ${start}% ${end}%` : "",
+      };
+    });
+  }
+
+  function getRoleChartBackground(items) {
+    const segments = items.map((item) => item.segment).filter(Boolean);
+    return segments.length ? `conic-gradient(${segments.join(", ")})` : "conic-gradient(#e5e7eb 0 100%)";
+  }
+
+  const roleChartItems = getRoleChartItems(userStats);
+  const chartTotal = Number(userStats?.total || 0);
+  const activeTotal = Number(userStats?.byStatus?.ACTIVE || 0);
+  const activePercent = chartTotal > 0 ? Math.round((activeTotal / chartTotal) * 100) : 0;
+
   return (
     <div className="admin-dashboard">
       <header className="admin-workspace-header">
         <div>
-          <p className="eyebrow">Dashboard / Quản trị</p>
+          <p className="eyebrow">Bảng điều khiển / Quản trị</p>
           <h1>Quản trị hệ thống</h1>
           <p className="admin-workspace-copy">Theo dõi tài khoản nội bộ và dữ liệu tư vấn AI.</p>
         </div>
@@ -299,6 +349,32 @@ export default function AdminDashboard() {
           </section> : null}
 
           <section className="ops-panel admin-users-panel">
+            <section className="manager-role-chart-card admin-role-chart-card">
+              <div className="manager-role-chart-copy">
+                <p className="eyebrow">Thống kê</p>
+                <h2>Phân bổ người dùng hệ thống</h2>
+                <div className="manager-role-chart-meta">
+                  <span>Tổng người dùng <strong>{chartTotal}</strong></span>
+                  <span>Đang hoạt động <strong>{activeTotal}</strong> <small>{activePercent}%</small></span>
+                </div>
+              </div>
+              <div className="manager-role-chart-visual" style={{ "--role-chart": getRoleChartBackground(roleChartItems) }}>
+                <div className="manager-role-donut" aria-label={`Tổng người dùng hệ thống ${chartTotal}`}>
+                  <span>Tổng</span>
+                  <strong>{chartTotal}</strong>
+                </div>
+              </div>
+              <div className="manager-role-legend" aria-label="Chú thích vai trò">
+                {roleChartItems.map((item) => (
+                  <div key={item.role}>
+                    <i style={{ background: item.color }} />
+                    <span>{roleLabel(item.role)}</span>
+                    <strong>{item.count}</strong>
+                    <small>{Math.round(item.percent)}%</small>
+                  </div>
+                ))}
+              </div>
+            </section>
             <div className="ops-panel-head">
               <div>
                 <p className="eyebrow">Quản trị</p>
@@ -309,7 +385,7 @@ export default function AdminDashboard() {
             <form className="admin-filter-form admin-users-toolbar" onSubmit={submitFilters}>
                 <input className="field compact-field" name="keyword" placeholder="Tìm kiếm" value={filters.keyword} onChange={changeFilter} />
                 <select className="field compact-field" name="role" value={filters.role} onChange={changeFilter}>
-                  <option value="">Tất cả role</option>
+                  <option value="">Tất cả vai trò</option>
                   {ROLES.map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}
                 </select>
                 <select className="field compact-field" name="status" value={filters.status} onChange={changeFilter}>
@@ -382,7 +458,7 @@ export default function AdminDashboard() {
         <section className="ops-panel admin-documents">
           <div className="ops-panel-head">
             <div>
-              <p className="eyebrow">AI Chatbot</p>
+              <p className="eyebrow">Trợ lý AI</p>
               <h2>Kho tài liệu tư vấn</h2>
               <p className="muted-text">Tải PDF lên để cập nhật nguồn kiến thức phục vụ tư vấn.</p>
             </div>

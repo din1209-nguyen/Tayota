@@ -11,6 +11,7 @@ import {
 } from "@/lib/format";
 import SpecificationTable from "@/components/vehicles/SpecificationTable";
 import VehicleImageButton from "@/components/vehicles/VehicleImageButton";
+import AccessoryDetailGrid from "@/components/vehicles/AccessoryDetailGrid";
 
 async function getDetail(id) {
   try {
@@ -132,7 +133,7 @@ export default async function VehicleDetailPage({ params }) {
         <section className="shell-container detail-section">
           <div className="section-heading compact">
             <div>
-              <p className="eyebrow">Gallery</p>
+              <p className="eyebrow">Thư viện ảnh</p>
               <h2>Góc nhìn chi tiết của {vehicleName}</h2>
             </div>
           </div>
@@ -140,7 +141,6 @@ export default async function VehicleDetailPage({ params }) {
             {galleries.map((gallery, index) => (
               <figure className="gallery-card" key={gallery.id || gallery.imageUrl}>
                 <VehicleImageButton className="gallery-tile" src={gallery.imageUrl} title={`${vehicleName} - ảnh ${index + 1}`} />
-                <figcaption>{index === 0 ? "Ngoại thất" : index === 1 ? "Khoang lái" : "Trải nghiệm vận hành"}</figcaption>
               </figure>
             ))}
           </div>
@@ -178,15 +178,7 @@ export default async function VehicleDetailPage({ params }) {
               <h2>Phụ kiện tương thích</h2>
             </div>
           </div>
-          <div className="accessory-grid">
-            {accessories.map((accessory) => (
-              <article className="accessory-card card" key={accessory.id}>
-                <h3>{accessory.model}</h3>
-                <p>{accessory.description}</p>
-                <strong>{formatVnd(accessory.price)}</strong>
-              </article>
-            ))}
-          </div>
+          <AccessoryDetailGrid accessories={accessories} />
         </section>
       ) : null}
 

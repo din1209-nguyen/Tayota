@@ -1,8 +1,7 @@
 import { apiFetch, buildQuery } from "@/lib/api";
 import { unwrapList } from "@/lib/format";
-import { filterVehicleItems, groupVehiclesBySeries } from "@/lib/vehicle-filters";
-import VehicleFilters from "@/components/vehicles/VehicleFilters";
-import VehicleSeriesCard from "@/components/vehicles/VehicleSeriesCard";
+import { filterVehicleItems } from "@/lib/vehicle-filters";
+import VehicleCatalogClient from "@/components/vehicles/VehicleCatalogClient";
 
 function normalizeParam(value) {
   return Array.isArray(value) ? value[0] : value || "";
@@ -21,7 +20,7 @@ function parsePriceRange(value) {
 async function getVehicles(searchParams) {
   const priceRange = parsePriceRange(searchParams.priceRange);
   const filters = {
-    keyword: searchParams.versionKeyword || searchParams.keyword,
+    keyword: searchParams.versionKeyword,
     styleId: searchParams.styleId,
     seriesId: searchParams.seriesId,
     modelYear: searchParams.modelYear,
@@ -61,24 +60,16 @@ async function getStyles() {
 export default async function VehiclesPage({ searchParams }) {
   const params = (await searchParams) || {};
   const [{ vehicles, error }, styles] = await Promise.all([getVehicles(params || {}), getStyles()]);
-  const seriesGroups = groupVehiclesBySeries(vehicles);
 
   return (
     <section className="section catalog-page">
       <div className="shell-container page-title catalog-title">
-        <p className="eyebrow">Catalogue</p>
+        <p className="eyebrow">Danh mục</p>
         <h1>Dòng xe Tayota</h1>
         <p>Chọn kiểu dáng, khám phá từng dòng xe và mở phiên bản phù hợp hành trình của bạn.</p>
       </div>
       <div className="shell-container catalog-layout">
-        <VehicleFilters searchParams={params} styles={styles} />
-        <div className="series-grid catalog-grid">
-          {error ? <div className="status-box wide">{error}</div> : null}
-          {!error && vehicles.length === 0 ? <div className="status-box wide">Không tìm thấy xe phù hợp với bộ lọc hiện tại.</div> : null}
-          {seriesGroups.map((group) => (
-            <VehicleSeriesCard group={group} key={group.id} />
-          ))}
-        </div>
+        <VehicleCatalogClient error={error} searchParams={params} styles={styles} vehicles={vehicles} />
       </div>
     </section>
   );

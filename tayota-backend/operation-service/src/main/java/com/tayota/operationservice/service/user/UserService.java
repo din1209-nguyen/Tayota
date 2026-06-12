@@ -110,6 +110,24 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
+    public ManagerUserStatsResponse getAdminUserStats() {
+        Map<String, Long> byRole = Map.of(
+                RoleType.ADMIN.name(), countAdminUsers(RoleType.ADMIN, null),
+                RoleType.MANAGER.name(), countAdminUsers(RoleType.MANAGER, null),
+                RoleType.SERVICE_ADVISOR.name(), countAdminUsers(RoleType.SERVICE_ADVISOR, null),
+                RoleType.ASSISTANT.name(), countAdminUsers(RoleType.ASSISTANT, null),
+                RoleType.MECHANIC.name(), countAdminUsers(RoleType.MECHANIC, null),
+                RoleType.USER.name(), countAdminUsers(RoleType.USER, null)
+        );
+        Map<String, Long> byStatus = Map.of(
+                StatusType.ACTIVE.name(), countAdminUsers(null, StatusType.ACTIVE),
+                StatusType.BANNED.name(), countAdminUsers(null, StatusType.BANNED)
+        );
+        long total = byRole.values().stream().mapToLong(Long::longValue).sum();
+        return new ManagerUserStatsResponse(total, byRole, byStatus);
+    }
+
+    @Transactional(readOnly = true)
     public List<AdvisorCustomerResponse> searchActiveCustomersForAdvisor(String keyword, int size) {
         String normalizedKeyword = StringUtils.hasText(keyword) ? keyword.trim().toLowerCase() : "";
         if (!StringUtils.hasText(normalizedKeyword)) {
@@ -308,6 +326,10 @@ public class UserService {
         return userProfileRepository.searchForManagerWithoutKeyword(
                 MANAGER_TARGET_ROLES, role, status, PageRequest.of(0, 1)
         ).getTotalElements();
+    }
+
+    private long countAdminUsers(RoleType role, StatusType status) {
+        return userProfileRepository.searchForAdminWithoutKeyword(role, status, PageRequest.of(0, 1)).getTotalElements();
     }
 
     private int normalizeSize(int size) {

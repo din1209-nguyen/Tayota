@@ -234,7 +234,7 @@ export default function AdminUserDetail({ userId }) {
           Quay lại danh sách
         </Link>
         <div className="admin-detail-heading">
-          <p className="eyebrow">Dashboard / Tài khoản</p>
+          <p className="eyebrow">Bảng điều khiển / Tài khoản</p>
           <h1>Chi tiết tài khoản</h1>
         </div>
         {message ? <div className="dashboard-feedback" aria-live="polite">

@@ -13,7 +13,7 @@ export const DASHBOARD_NAV = {
     defaultTab: "profile",
     items: [
       ["profile", "Tài khoản"],
-      ["chat", "Live Chat"],
+      ["chat", "Trò chuyện trực tuyến"],
       ["vehicles", "Xe"],
       ["articles", "Bài viết"],
       ["dealerships", "Đại lý"],
@@ -38,7 +38,7 @@ export const DASHBOARD_NAV = {
   ASSISTANT: {
     basePath: "/dashboard/assistant",
     defaultTab: "profile",
-    items: [["profile", "Tài khoản"], ["chat", "Live Chat"]],
+    items: [["profile", "Tài khoản"], ["chat", "Trò chuyện trực tuyến"]],
   },
   MECHANIC: {
     basePath: "/dashboard/mechanic",
@@ -60,7 +60,7 @@ export const DASHBOARD_NAV = {
       ["appointments", "Lịch của tôi"],
       ["services", "Dịch vụ xe của tôi"],
       ["reviews", "Đánh giá"],
-      ["chat", "Live chat"],
+      ["chat", "Trò chuyện trực tuyến"],
     ],
   },
 };

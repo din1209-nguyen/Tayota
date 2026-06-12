@@ -13,7 +13,7 @@ export default function ExperienceBand() {
             hàng ra quyết định tự tin hơn.
           </p>
           <div className="home-experience-points">
-            <span>Catalog theo nhu cầu</span>
+            <span>Danh mục theo nhu cầu</span>
             <span>Đại lý gần bạn</span>
             <span>Lịch hẹn minh bạch</span>
           </div>

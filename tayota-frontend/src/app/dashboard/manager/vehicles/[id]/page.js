@@ -1,7 +1,7 @@
 import { ManagerVehicleEditorPage } from "@/components/dashboard/ManagerContentPanels";
 
 export const metadata = {
-  title: "Sửa xe | Manager Dashboard",
+  title: "Sửa xe | Trang quản lý",
 };
 
 export default async function EditManagerVehiclePage({ params }) {

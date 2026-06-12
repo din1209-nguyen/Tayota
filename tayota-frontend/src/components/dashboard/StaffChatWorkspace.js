@@ -55,7 +55,7 @@ function readOnlyMessageForSession(session) {
 }
 
 export default function StaffChatWorkspace({
-  eyebrow = "Live chat",
+  eyebrow = "Trò chuyện trực tuyến",
   heading = "Inbox tư vấn realtime",
   emptyPanelMessage = "Chọn một phiên để bắt đầu hỗ trợ khách hàng.",
 }) {

@@ -21,8 +21,8 @@ SET row_security = off;
 -- Data for Name: ACCESSORY; Type: TABLE DATA; Schema: public; Owner: tayota
 --
 
-INSERT INTO public."ACCESSORY" VALUES ('30000000-0000-0000-0000-000000000001', 'Tayota', 'Front dash camera package', 'Dash Camera Basic', 2500000.00, 'Check recording status monthly.', 'ELECTRONIC', 'Install on windshield and connect to vehicle power.', true) ON CONFLICT DO NOTHING;
-INSERT INTO public."ACCESSORY" VALUES ('30000000-0000-0000-0000-000000000002', 'Tayota', 'Durable all-weather floor mat', 'Floor Mat Standard', 1200000.00, 'Clean with water and dry before reuse.', 'INTERIOR', 'Place mats in correct seating position.', true) ON CONFLICT DO NOTHING;
+INSERT INTO public."ACCESSORY" (id, brand, description, model, price, reminder_content, type, use_content, is_visible) VALUES ('30000000-0000-0000-0000-000000000001', 'Tayota', 'Front dash camera package', 'Dash Camera Basic', 2500000.00, 'Check recording status monthly.', 'ELECTRONIC', 'Install on windshield and connect to vehicle power.', true) ON CONFLICT DO NOTHING;
+INSERT INTO public."ACCESSORY" (id, brand, description, model, price, reminder_content, type, use_content, is_visible) VALUES ('30000000-0000-0000-0000-000000000002', 'Tayota', 'Durable all-weather floor mat', 'Floor Mat Standard', 1200000.00, 'Clean with water and dry before reuse.', 'INTERIOR', 'Place mats in correct seating position.', true) ON CONFLICT DO NOTHING;
 
 
 --

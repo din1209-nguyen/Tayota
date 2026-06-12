@@ -230,6 +230,14 @@ export default function AuthForm({ mode }) {
 
   return (
     <form className="form-panel auth-form" onSubmit={submit}>
+      <span className="eyebrow">{isRegister ? "Thành viên mới" : "Tài khoản"}</span>
+      <h2>{isRegister ? "Tạo tài khoản" : "Truy cập tài khoản"}</h2>
+      <p className="form-hint">
+        {isRegister
+          ? "Dùng email và mật khẩu mạnh từ 8-20 ký tự để bảo vệ tài khoản."
+          : "Dùng email và mật khẩu đã đăng ký để tiếp tục."}
+      </p>
+
       <label className="label">
         Email
         <input className="field" type="email" name="email" value={form.email} onChange={updateField} required />

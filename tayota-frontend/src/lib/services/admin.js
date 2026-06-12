@@ -11,6 +11,10 @@ export function getAdminUsers(params = {}) {
   return apiFetch(`/user/admin/users${buildQuery(params)}`, { cache: "no-store" });
 }
 
+export function getAdminUserStats() {
+  return apiFetch("/user/admin/users/stats", { cache: "no-store" });
+}
+
 export function getAdminUser(userId) {
   return apiFetch(`/user/admin/users/${userId}`, { cache: "no-store" });
 }

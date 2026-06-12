@@ -1,7 +1,7 @@
 import { ManagerArticleEditorPage } from "@/components/dashboard/ManagerContentPanels";
 
 export const metadata = {
-  title: "Sửa bài viết | Manager Dashboard",
+  title: "Sửa bài viết | Trang quản lý",
 };
 
 export default async function EditManagerArticlePage({ params }) {

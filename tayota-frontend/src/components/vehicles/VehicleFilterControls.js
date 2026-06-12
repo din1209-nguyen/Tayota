@@ -66,7 +66,7 @@ export default function VehicleFilterControls({
           </select>
           {onReset ? (
             <button className="filter-clear" type="button" onClick={onReset}>
-              Xóa lọc
+              Xóa bộ lọc
             </button>
           ) : null}
         </div>

@@ -151,7 +151,7 @@ export default function Header() {
   const dashboardPath = getDashboardPath(user?.role);
   const inDashboard = pathname.startsWith("/dashboard");
   const accountHref = inDashboard ? "/" : dashboardPath;
-  const accountLabel = inDashboard ? "Về trang chính" : "Đi tới dashboard";
+  const accountLabel = inDashboard ? "Về trang chính" : "Đi tới bảng điều khiển";
   const dashboardNavEntry = getDashboardNavByPath(pathname);
   const dashboardRole = dashboardNavEntry?.[0];
   const dashboardConfig = dashboardNavEntry?.[1];
@@ -272,7 +272,7 @@ export default function Header() {
           ))}
           {user ? (
             <Link className="btn btn-primary" href={dashboardPath} onClick={() => setOpen(false)}>
-              Dashboard
+              Bảng điều khiển
             </Link>
           ) : (
             <div className="mobile-auth-actions">

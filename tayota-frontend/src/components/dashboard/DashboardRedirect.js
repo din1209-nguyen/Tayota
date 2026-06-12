@@ -35,15 +35,15 @@ export default function DashboardRedirect() {
   return (
     <section className="section ops-page">
       <div className="shell-container page-title">
-        <p className="eyebrow">Dashboard</p>
+        <p className="eyebrow">Bảng điều khiển</p>
         <h1>Điều hướng theo vai trò</h1>
       </div>
       <div className="shell-container dashboard-role-grid">
         <div className="status-box wide">{message}</div>
-        <Link className="role-card" href="/dashboard/admin">Admin</Link>
+        <Link className="role-card" href="/dashboard/admin">Quản trị viên</Link>
         <Link className="role-card" href="/dashboard/manager">Quản lý</Link>
         <Link className="role-card" href="/dashboard/advisor">Cố vấn</Link>
-        <Link className="role-card" href="/dashboard/assistant">Assistant</Link>
+        <Link className="role-card" href="/dashboard/assistant">Tư vấn viên</Link>
         <Link className="role-card" href="/dashboard/mechanic">Kỹ thuật viên</Link>
         <Link className="role-card" href="/dashboard/user">Khách hàng</Link>
       </div>

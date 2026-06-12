@@ -39,10 +39,6 @@ export function assignAssistantChatSession(sessionId) {
   return apiFetch(`/user/assistant/chat/sessions/${sessionId}/assign`, { method: "PATCH" });
 }
 
-export function resolveAssistantChatSession(sessionId) {
-  return apiFetch(`/user/assistant/chat/sessions/${sessionId}/resolve`, { method: "PATCH" });
-}
-
 export function closeAssistantChatSession(sessionId) {
   return apiFetch(`/user/assistant/chat/sessions/${sessionId}/close`, { method: "PATCH" });
 }

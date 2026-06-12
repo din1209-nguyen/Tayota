@@ -78,6 +78,8 @@ public class AppointmentService {
     // Dịch vụ tạo lịch hẹn lái thử cho cả user đã đăng nhập và guest chưa đăng nhập, phân biệt bằng userId có null hay không
     @Transactional
     public AppointmentCreatedResponse createTestDriveAppointment(CreateTestDriveAppointmentRequest request, UUID userId, String clientIp) {
+        validateCurrentAssistantCannotBookTestDrive();
+
         // Kiểm tra đại lý có tồn tại không
         UUID dealershipId = parseUuid(request.getDealershipId(), "Đại lý không hợp lệ");
 
@@ -446,6 +448,16 @@ public class AppointmentService {
             return getCurrentUserId();
         } catch (IllegalStateException | IllegalArgumentException | ClassCastException exception) {
             return null;
+        }
+    }
+
+    private void validateCurrentAssistantCannotBookTestDrive() {
+        try {
+            if ("ROLE_ASSISTANT".equals(SecurityContextUtil.getCurrentUserRole())) {
+                throw new CustomException(403, "Nhân viên tư vấn không có quyền đặt lịch lái thử");
+            }
+        } catch (IllegalStateException exception) {
+            // Guest requests do not have a role and can continue through the public booking flow.
         }
     }
 

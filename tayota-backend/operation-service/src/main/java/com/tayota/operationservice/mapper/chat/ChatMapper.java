@@ -60,7 +60,6 @@ public class ChatMapper {
                 .createdAt(chatSession.getCreatedAt())
                 .updatedAt(chatSession.getUpdatedAt())
                 .closedAt(chatSession.getClosedAt())
-                .resolvedAt(chatSession.getResolvedAt())
                 .build();
     }
 }

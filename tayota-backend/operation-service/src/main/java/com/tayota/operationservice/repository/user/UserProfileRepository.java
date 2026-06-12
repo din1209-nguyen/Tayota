@@ -129,7 +129,7 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, UUID> 
                    userProfile.user.email as email,
                    userProfile.phone as phone
             from UserProfile userProfile
-            where userProfile.id = :userId
+            where userProfile.user.id = :userId
             """)
     Optional<UserContactView> findContactByUserId(@Param("userId") UUID userId);
 

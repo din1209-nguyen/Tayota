@@ -25,7 +25,7 @@ spring:
             - id: operation-user-ws-route
               uri: ws://${OPERATION_SERVICE_HOST:operation-service}:${OPERATION_SERVICE_PORT:8091}
               predicates:
-                - Path=/user/chat/ws/**
+                - Path=/user/chat/ws,/user/chat/ws/**
               filters:
                 - StripPrefix=1
             - id: operation-user-route

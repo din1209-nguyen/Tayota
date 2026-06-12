@@ -47,6 +47,4 @@ public class ChatSessionResponseDTO {
     // Trả về thời điểm đóng phiên chat
     private Instant closedAt;
 
-    // Trả về thời điểm xử lý phiên chat
-    private Instant resolvedAt;
 }

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createAppointment, getAvailabilityCalendar, getAvailableSlots, validateServiceVin } from "@/lib/services/appointments";
 import { getAllCarVersions, getCarStylesWithVersions, getDealerships, getMyVehicles } from "@/lib/services/car";
 import { getMe } from "@/lib/services/auth";
-import { getAccessToken } from "@/lib/session";
+import { getAccessToken, getCurrentUser } from "@/lib/session";
 import { formatVnd, getGoogleMapsUrl, getVehicleId, getVehicleImage, getVehicleName, getVehiclePrice, unwrapList } from "@/lib/format";
 import { EMPTY_VEHICLE_FILTERS, filterVehicleItems } from "@/lib/vehicle-filters";
 import VehicleFilterControls from "@/components/vehicles/VehicleFilterControls";
@@ -188,6 +188,8 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
   const calendarCells = useMemo(() => getCalendarCells(calendarMonth, daysByDate), [calendarMonth, daysByDate]);
 
   useEffect(() => {
+    const cachedUser = getCurrentUser();
+    if (cachedUser) setProfile(cachedUser);
     setAuthenticated(Boolean(getAccessToken()));
     setAuthReady(true);
   }, []);
@@ -320,6 +322,10 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
       alive = false;
     };
   }, [form.appointmentDate, form.dealershipId, isService]);
+
+  const assistantRole = profile?.role === "ASSISTANT" || profile?.role === "ROLE_ASSISTANT";
+  const testDriveBlockedForAssistant = !isService && assistantRole;
+  const serviceLockedForAssistant = isService && assistantRole;
 
   function updateField(event) {
     const { name, value } = event.target;
@@ -460,6 +466,43 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
     );
   }
 
+  if (testDriveBlockedForAssistant) {
+    return (
+      <section className="appointment-blocked form-panel">
+        <div className="appointment-blocked-head">
+          <p className="eyebrow">Không gian trợ lý</p>
+          <h2>Hỗ trợ khách đặt lịch lái thử</h2>
+          <p>
+            Tài khoản trợ lý không trực tiếp tạo lịch lái thử. Bạn có thể tiếp nhận tư vấn,
+            điều phối khách hàng và theo dõi các yêu cầu cần xử lý từ dashboard.
+          </p>
+        </div>
+        <div className="appointment-blocked-grid" aria-label="Tác vụ dành cho trợ lý">
+          <article>
+            <span>01</span>
+            <strong>Tư vấn nhanh</strong>
+            <p>Tra cứu dòng xe, phiên bản và thông tin khách quan tâm trước khi chuyển lịch.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <strong>Tiếp nhận hội thoại</strong>
+            <p>Xử lý phiên chat đang mở và ghi nhận nhu cầu lái thử của khách hàng.</p>
+          </article>
+          <article>
+            <span>03</span>
+            <strong>Hướng dẫn khách hàng đăng ký lái thử</strong>
+            <p>Nhân viên tư vấn hướng dẫn khách hàng thao tác đăng ký lái thử xe mong muốn.</p>
+          </article>
+        </div>
+        <div className="appointment-blocked-actions">
+          <Link className="btn btn-ghost" href="/vehicles">
+            Xem danh sách xe
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <form className="form-panel appointment-wizard appointment-wizard-large" onSubmit={submit}>
       <div className="wizard-steps" aria-label="Các bước đặt lịch">
@@ -485,7 +528,7 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
               {authenticated && myVehicles.length ? (
                 <label className="label">
                   Xe của tôi
-                  <select className="field" value={form.vinId} onChange={(event) => choose("vinId", event.target.value)}>
+                  <select className="field" value={form.vinId} onChange={(event) => choose("vinId", event.target.value)} disabled={serviceLockedForAssistant}>
                     <option value="">Chọn VIN đã gán với tài khoản</option>
                     {myVehicles.map((vehicle) => (
                       <option key={vehicle.vinId} value={vehicle.vinId}>
@@ -503,6 +546,7 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
                   value={form.vinId}
                   onChange={updateField}
                   maxLength={17}
+                  disabled={serviceLockedForAssistant}
                   placeholder="17 ký tự trên giấy đăng ký hoặc thân xe"
                 />
               </label>
@@ -512,7 +556,10 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
               {!authReady ? (
                 <div className="status-box">Đang kiểm tra trạng thái tài khoản...</div>
               ) : null}
-              {authReady && authenticated && !myVehicles.length ? (
+              {authReady && serviceLockedForAssistant ? (
+                <div className="status-box">Tài khoản trợ lý không trực tiếp tạo lịch chăm sóc xe. Vui lòng hướng dẫn khách hàng đăng nhập tài khoản khách hàng để đăng ký lịch.</div>
+              ) : null}
+              {authReady && authenticated && !myVehicles.length && !serviceLockedForAssistant ? (
                 <div className="status-box">Tài khoản của bạn chưa có VIN được gán. Bạn vẫn có thể nhập VIN, hệ thống sẽ kiểm tra quyền sở hữu khi gửi lịch.</div>
               ) : null}
               {authReady && !authenticated ? (
@@ -707,20 +754,22 @@ export default function AppointmentForm({ type, defaultCarVersionId = "" }) {
         {message ? <div className="form-alert error">{message}</div> : null}
       </div>
 
-      <div className="wizard-actions">
-        <button className="btn btn-secondary" type="button" onClick={back} disabled={step === 0 || submitting || validatingVin}>
-          Quay lại
-        </button>
-        {step < STEPS.length - 1 ? (
-          <button className="btn btn-primary" type="button" onClick={next} disabled={validatingVin || loadingInitial || !authReady}>
-            {validatingVin ? "Đang kiểm tra VIN..." : "Tiếp tục"}
+      {!serviceLockedForAssistant ? (
+        <div className="wizard-actions">
+          <button className="btn btn-secondary" type="button" onClick={back} disabled={step === 0 || submitting || validatingVin}>
+            Quay lại
           </button>
-        ) : (
-          <button className="btn btn-primary" type="submit" disabled={submitting || loadingInitial || !authReady}>
-            {submitting ? "Đang gửi..." : "Xác nhận lịch hẹn"}
-          </button>
-        )}
-      </div>
+          {step < STEPS.length - 1 ? (
+            <button className="btn btn-primary" type="button" onClick={next} disabled={validatingVin || loadingInitial || !authReady}>
+              {validatingVin ? "Đang kiểm tra VIN..." : "Tiếp tục"}
+            </button>
+          ) : (
+            <button className="btn btn-primary" type="submit" disabled={submitting || loadingInitial || !authReady}>
+              {submitting ? "Đang gửi..." : "Xác nhận lịch hẹn"}
+            </button>
+          )}
+        </div>
+      ) : null}
     </form>
   );
 }

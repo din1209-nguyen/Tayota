@@ -81,6 +81,25 @@ class ChatServiceTest {
     }
 
     @Test
+    void getCurrentSessionAttachesGuestCookieSessionToAuthenticatedUser() {
+        UUID sessionId = UUID.randomUUID();
+        ChatSession guestSession = session(sessionId, null, ChatSessionStatus.WAITING, null);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        when(cookieUtil.getCookieValue(request, CookieUtil.CHAT_SESSION_COOKIE)).thenReturn(sessionId.toString());
+        when(chatSessionRepository.findByUserIdAndStatusInOrderByUpdatedAtDesc(currentUserId, List.of(ChatSessionStatus.WAITING, ChatSessionStatus.CHATTING)))
+                .thenReturn(List.of());
+        when(chatSessionRepository.findById(sessionId)).thenReturn(Optional.of(guestSession));
+        when(chatSessionRepository.save(guestSession)).thenReturn(guestSession);
+
+        var result = service().getOrCreateCurrentSessionResponse(request, response);
+
+        assertThat(result.getId()).isEqualTo(sessionId);
+        assertThat(guestSession.getUserId()).isEqualTo(currentUserId);
+        verify(cookieUtil).setCookie(any(), org.mockito.ArgumentMatchers.eq(CookieUtil.CHAT_SESSION_COOKIE), org.mockito.ArgumentMatchers.eq(sessionId.toString()), org.mockito.ArgumentMatchers.eq(CookieUtil.CHAT_SESSION_MAX_AGE_SEC));
+    }
+
+    @Test
     void assignSessionRejectsAlreadyAssignedSession() {
         UUID sessionId = UUID.randomUUID();
         ChatSession assigned = session(sessionId, UUID.randomUUID(), ChatSessionStatus.CHATTING, UUID.randomUUID());
@@ -141,21 +160,21 @@ class ChatServiceTest {
     }
 
     @Test
-    void customerMessageReopensResolvedSessionAndClearsAssignedAssistant() {
+    void customerMessageReopensClosedSessionAndClearsAssignedAssistant() {
         UUID sessionId = UUID.randomUUID();
         UUID assignedAssistantId = UUID.randomUUID();
-        ChatSession resolved = session(sessionId, currentUserId, ChatSessionStatus.RESOLVED, assignedAssistantId);
-        resolved.setResolvedAt(Instant.now());
+        ChatSession closed = session(sessionId, currentUserId, ChatSessionStatus.CLOSED, assignedAssistantId);
+        closed.setClosedAt(Instant.now());
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
         when(cookieUtil.getCookieValue(request, CookieUtil.CHAT_SESSION_COOKIE)).thenReturn(sessionId.toString());
         when(chatSessionRepository.findByUserIdAndStatusInOrderByUpdatedAtDesc(currentUserId, List.of(ChatSessionStatus.WAITING, ChatSessionStatus.CHATTING)))
                 .thenReturn(List.of());
-        when(chatSessionRepository.findById(sessionId)).thenReturn(Optional.of(resolved));
-        when(chatSessionRepository.save(resolved)).thenReturn(resolved);
+        when(chatSessionRepository.findById(sessionId)).thenReturn(Optional.of(closed));
+        when(chatSessionRepository.save(closed)).thenReturn(closed);
         ChatMessage savedMessage = ChatMessage.builder()
                 .id(UUID.randomUUID())
-                .session(resolved)
+                .session(closed)
                 .senderId(currentUserId)
                 .senderType(ChatSenderType.CUSTOMER)
                 .content("Tôi cần hỗ trợ tiếp")
@@ -166,10 +185,10 @@ class ChatServiceTest {
 
         service().customerSendMessage("Tôi cần hỗ trợ tiếp", request, response);
 
-        assertThat(resolved.getStatus()).isEqualTo(ChatSessionStatus.WAITING);
-        assertThat(resolved.getAssignedAssistantId()).isNull();
-        assertThat(resolved.getResolvedAt()).isNull();
-        assertThat(resolved.getClosedAt()).isNull();
+        assertThat(closed.getStatus()).isEqualTo(ChatSessionStatus.WAITING);
+        assertThat(closed.getAssignedAssistantId()).isNull();
+        assertThat(closed.getResolvedAt()).isNull();
+        assertThat(closed.getClosedAt()).isNull();
     }
 
     @Test
@@ -188,7 +207,7 @@ class ChatServiceTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         when(cookieUtil.getCookieValue(request, CookieUtil.CHAT_SESSION_COOKIE)).thenReturn(guestSessionId.toString());
         when(chatSessionRepository.findById(guestSessionId)).thenReturn(Optional.of(guestSession));
-        when(chatSessionRepository.findByUserIdAndStatusInOrderByUpdatedAtDesc(currentUserId, List.of(ChatSessionStatus.WAITING, ChatSessionStatus.CHATTING, ChatSessionStatus.RESOLVED)))
+        when(chatSessionRepository.findByUserIdAndStatusInOrderByUpdatedAtDesc(currentUserId, List.of(ChatSessionStatus.WAITING, ChatSessionStatus.CHATTING, ChatSessionStatus.CLOSED)))
                 .thenReturn(List.of(duplicateSession));
         when(chatSessionRepository.save(guestSession)).thenReturn(guestSession);
         when(chatSessionRepository.save(duplicateSession)).thenReturn(duplicateSession);

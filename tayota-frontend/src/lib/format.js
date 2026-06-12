@@ -106,7 +106,6 @@ export function statusLabel(status) {
   const chatLabels = {
     WAITING: "Đang chờ",
     CHATTING: "Đang tư vấn",
-    RESOLVED: "Đã xử lý",
     CLOSED: "Đã đóng",
     IDLE: "Chưa kết nối",
     CONNECTING: "Đang kết nối",
@@ -142,7 +141,6 @@ export function statusLabel(status) {
     LABOR: "Công thợ",
     WAITING: "Đang chờ",
     CHATTING: "Đang chat",
-    RESOLVED: "Đã xử lý",
     CLOSED: "Đã đóng",
     IDLE: "Chưa kết nối",
     CONNECTING: "Đang kết nối",
@@ -155,7 +153,7 @@ export function statusLabel(status) {
 
 export function statusToneClass(status) {
   const normalized = String(status || "").toUpperCase();
-  if (["COMPLETED", "SUBMITTED", "RESOLVED", "ACTIVE", "SOLD"].includes(normalized)) return "status-success";
+  if (["COMPLETED", "SUBMITTED", "ACTIVE", "SOLD"].includes(normalized)) return "status-success";
   if (["CONFIRMED", "CHECKED_IN", "RECEIVING", "IN_PROGRESS", "CHATTING"].includes(normalized)) return "status-info";
   if (["PENDING", "WAITING", "NEEDS_REASSIGNMENT", "CONNECTING", "MAINTENANCE"].includes(normalized)) return "status-warning";
   if (["CANCELED", "CANCELLED", "REJECTED", "EXPIRED", "ERROR", "FAILED"].includes(normalized)) return "status-danger";

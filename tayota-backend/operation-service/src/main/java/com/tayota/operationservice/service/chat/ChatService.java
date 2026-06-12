@@ -38,7 +38,7 @@ public class ChatService {
     private static final List<ChatSessionStatus> MERGE_SESSION_STATUSES = List.of(
             ChatSessionStatus.WAITING,
             ChatSessionStatus.CHATTING,
-            ChatSessionStatus.RESOLVED
+            ChatSessionStatus.CLOSED
     );
     private static final String GUEST_DISPLAY_NAME = "Khách vãng lai";
 
@@ -59,7 +59,7 @@ public class ChatService {
         // Lấy hoặc tạo phiên chat hiện tại từ cookie chat_session
         ChatSession chatSession = getOrCreateCurrentSession(request, response);
 
-        // Mở lại phiên chat nếu phiên đã xử lý hoặc đã đóng
+        // Mở lại phiên chat nếu phiên đã đóng
         chatSession = reopenSessionIfFinished(chatSession);
 
         // Tạo tin nhắn khách hàng và lưu vào database
@@ -86,7 +86,7 @@ public class ChatService {
         // Tìm phiên chat theo ID nhận từ header chat_session
         ChatSession chatSession = findChatSessionWithoutLock(chatSessionId);
 
-        // Mở lại phiên chat nếu phiên đã xử lý hoặc đã đóng
+        // Mở lại phiên chat nếu phiên đã đóng
         chatSession = reopenSessionIfFinished(chatSession);
 
         // Tạo tin nhắn khách hàng và lưu vào database
@@ -240,30 +240,6 @@ public class ChatService {
         return mapSessionResponse(savedChatSession);
     }
 
-    // Đánh dấu phiên chat đã xử lý
-    @Transactional
-    public ChatSessionResponseDTO resolveSession(UUID chatSessionId) {
-        UUID assistantId = requireCurrentUserId();
-        // Tìm phiên chat theo ID
-        ChatSession chatSession = findChatSessionWithoutLock(chatSessionId);
-        validateAssignedAssistant(chatSession, assistantId);
-
-        // Chuyển trạng thái phiên chat sang đã xử lý
-        chatSession.setStatus(ChatSessionStatus.RESOLVED);
-
-        // Lưu thời điểm xử lý xong phiên chat
-        chatSession.setResolvedAt(Instant.now());
-
-        // Lưu phiên chat đã được cập nhật trạng thái
-        ChatSession savedChatSession = chatSessionRepository.save(chatSession);
-
-        // Gửi trạng thái phiên chat mới nhất đến các topic liên quan
-        publishChatSessionUpdate(savedChatSession);
-
-        // Chuyển phiên chat sang DTO phản hồi
-        return mapSessionResponse(savedChatSession);
-    }
-
     // Đóng phiên chat
     @Transactional
     public ChatSessionResponseDTO closeSession(UUID chatSessionId) {
@@ -325,6 +301,19 @@ public class ChatService {
             ChatSession existingChatSession = findChatSessionOrNull(chatSessionId);
 
             // Gia hạn cookie nếu phiên chat vẫn tồn tại
+            if (existingChatSession != null) {
+                if (currentUserId != null) {
+                    if (existingChatSession.getUserId() == null) {
+                        existingChatSession.setUserId(currentUserId);
+                        existingChatSession = chatSessionRepository.save(existingChatSession);
+                        publishChatSessionUpdate(existingChatSession);
+                    }
+                    else if (!currentUserId.equals(existingChatSession.getUserId())) {
+                        existingChatSession = null;
+                    }
+                }
+            }
+
             if (existingChatSession != null) {
                 setChatSessionCookie(response, existingChatSession);
                 return existingChatSession;
@@ -449,10 +438,10 @@ public class ChatService {
         return cookieUtil.getCookieValue(request, CookieUtil.CHAT_SESSION_COOKIE);
     }
 
-    // Mở lại phiên chat nếu phiên đã xử lý hoặc đã đóng
+    // Mở lại phiên chat nếu phiên đã đóng
     private ChatSession reopenSessionIfFinished(ChatSession chatSession) {
         // Bỏ qua nếu phiên chat vẫn đang chờ hoặc đang trò chuyện
-        if (chatSession.getStatus() != ChatSessionStatus.RESOLVED && chatSession.getStatus() != ChatSessionStatus.CLOSED) {
+        if (chatSession.getStatus() != ChatSessionStatus.CLOSED) {
             return chatSession;
         }
 
@@ -465,7 +454,7 @@ public class ChatService {
         // Xóa thời điểm đóng phiên chat cũ
         chatSession.setClosedAt(null);
 
-        // Xóa thời điểm xử lý phiên chat cũ
+        // Xóa thời điểm xử lý cũ nếu dữ liệu cũ còn lưu
         chatSession.setResolvedAt(null);
 
         // Lưu phiên chat đã được mở lại

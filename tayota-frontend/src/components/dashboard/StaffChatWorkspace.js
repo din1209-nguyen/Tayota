@@ -5,14 +5,23 @@ import { useCallback, useEffect, useState } from "react";
 import LiveChatPanel from "@/components/chat/LiveChatPanel";
 import {
   assignAssistantChatSession,
+  closeAssistantChatSession,
   getAssistantChatSessions,
   getChatWebSocketUrl,
-  resolveAssistantChatSession,
 } from "@/lib/services/chat";
 import { statusLabel, unwrapList } from "@/lib/format";
 import { getCurrentUser, onSessionChange } from "@/lib/session";
 
-const INBOX_STATUSES = ["WAITING", "CHATTING", "RESOLVED"];
+const INBOX_STATUSES = ["WAITING", "CHATTING", "CLOSED"];
+const SESSION_STATUS_PRIORITY = {
+  WAITING: 0,
+  CHATTING: 1,
+  CLOSED: 2,
+};
+
+function sessionSortTime(session) {
+  return new Date(session?.lastMessageAt || session?.updatedAt || session?.createdAt || 0).getTime();
+}
 
 function mergeSessions(...groups) {
   const map = new Map();
@@ -20,9 +29,10 @@ function mergeSessions(...groups) {
     if (session?.id) map.set(session.id, session);
   });
   return Array.from(map.values()).sort((left, right) => {
-    const leftTime = new Date(left.lastMessageAt || left.updatedAt || left.createdAt || 0).getTime();
-    const rightTime = new Date(right.lastMessageAt || right.updatedAt || right.createdAt || 0).getTime();
-    return rightTime - leftTime;
+    const leftPriority = SESSION_STATUS_PRIORITY[left.status] ?? 99;
+    const rightPriority = SESSION_STATUS_PRIORITY[right.status] ?? 99;
+    if (leftPriority !== rightPriority) return leftPriority - rightPriority;
+    return sessionSortTime(right) - sessionSortTime(left);
   });
 }
 
@@ -39,7 +49,7 @@ function statusClass(status) {
 }
 
 function readOnlyMessageForSession(session) {
-  if (session?.status === "RESOLVED") return "Phiên đã kết thúc. Bạn vẫn có thể xem lại lịch sử tin nhắn.";
+  if (session?.status === "CLOSED") return "Phiên đã đóng. Bạn vẫn có thể xem lại lịch sử tin nhắn.";
   if (session?.status === "WAITING") return "Nhấn nhận phiên để tiếp tục nhắn trong phiên này.";
   return "Phiên này đang được xử lý bởi nhân viên khác. Bạn chỉ có thể xem lịch sử.";
 }
@@ -85,6 +95,10 @@ export default function StaffChatWorkspace({
     }
   }, []);
 
+  const syncSessionsAfterRealtimeMessage = useCallback(() => {
+    load();
+  }, [load]);
+
   useEffect(() => {
     load({ showLoading: true });
   }, [load]);
@@ -95,24 +109,38 @@ export default function StaffChatWorkspace({
   }, []);
 
   useEffect(() => {
+    let manuallyClosed = false;
     const client = new Client({
       brokerURL: getChatWebSocketUrl(),
       reconnectDelay: 5000,
       onConnect: () => {
+        setError("");
         client.subscribe("/topic/assistant.chat.sessions", (frame) => {
           const payload = JSON.parse(frame.body);
           if (!payload?.id) return;
           updateSession(payload);
         });
+        load();
       },
       onStompError: (frame) => {
         setError(frame.headers?.message || "Không thể nhận cập nhật live chat.");
       },
+      onWebSocketClose: () => {
+        if (manuallyClosed) return;
+        setError("Mất kết nối live chat realtime. Hệ thống sẽ tự kết nối lại.");
+      },
+      onWebSocketError: () => {
+        if (manuallyClosed) return;
+        setError("Không thể kết nối live chat realtime. Vui lòng kiểm tra gateway WebSocket.");
+      },
     });
 
     client.activate();
-    return () => client.deactivate();
-  }, [updateSession]);
+    return () => {
+      manuallyClosed = true;
+      client.deactivate();
+    };
+  }, [load, updateSession]);
 
   async function runAction(actionName, action, sessionId) {
     setBusyAction(`${actionName}:${sessionId}`);
@@ -187,9 +215,9 @@ export default function StaffChatWorkspace({
                     className="btn btn-ghost"
                     type="button"
                     disabled={Boolean(busyAction)}
-                    onClick={() => runAction("resolve", resolveAssistantChatSession, session.id)}
+                    onClick={() => runAction("close", closeAssistantChatSession, session.id)}
                   >
-                    {isBusy("resolve", session.id) ? "Đang kết thúc..." : "Kết thúc phiên"}
+                    {isBusy("close", session.id) ? "Đang đóng..." : "Kết thúc phiên"}
                   </button>
                 ) : null}
               </div>
@@ -205,6 +233,7 @@ export default function StaffChatWorkspace({
           sessionId={activeSessionId}
           readOnly={activeSessionReadOnly}
           readOnlyMessage={activeSessionReadOnlyMessage}
+          onMessageReceived={syncSessionsAfterRealtimeMessage}
           onSessionUpdate={updateSession}
           onRestrictedAction={() => load()}
         />

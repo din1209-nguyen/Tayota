@@ -46,13 +46,6 @@ public class AssistantChatController {
         return ApiResponse.success(200, "Nhận phiên chat thành công", chatSession);
     }
 
-    // Đánh dấu phiên chat đã xử lý
-    @PatchMapping("/sessions/{sessionId}/resolve")
-    public ApiResponse<ChatSessionResponseDTO> resolveSession(@PathVariable UUID sessionId) {
-        ChatSessionResponseDTO chatSession = chatService.resolveSession(sessionId);
-        return ApiResponse.success(200, "Đánh dấu phiên chat đã xử lý", chatSession);
-    }
-
     // Đóng phiên chat
     @PatchMapping("/sessions/{sessionId}/close")
     public ApiResponse<ChatSessionResponseDTO> closeSession(@PathVariable UUID sessionId) {

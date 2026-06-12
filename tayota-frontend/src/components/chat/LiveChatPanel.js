@@ -51,6 +51,7 @@ export default function LiveChatPanel({
   readOnlyMessage = "Phiên này đang được xử lý bởi nhân viên khác. Bạn chỉ có thể xem lịch sử.",
   showHeader = true,
   onStatusChange,
+  onMessageReceived,
   onSessionUpdate,
   onRestrictedAction,
 }) {
@@ -118,6 +119,9 @@ export default function LiveChatPanel({
               }
               if (!payload?.content) return;
               setMessages((current) => appendUnique(current, payload));
+              if (isAssistant && payload.senderType === "CUSTOMER") {
+                onMessageReceived?.(payload);
+              }
             });
           },
           onStompError: (frame) => {
@@ -146,7 +150,7 @@ export default function LiveChatPanel({
       clientRef.current = null;
       if (client) client.deactivate();
     };
-  }, [isAssistant, liveChatAllowed, onSessionUpdate, providedSessionId]);
+  }, [isAssistant, liveChatAllowed, onMessageReceived, onSessionUpdate, providedSessionId]);
 
   async function send(event) {
     event.preventDefault();

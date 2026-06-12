@@ -76,7 +76,7 @@ export default function ComparePicker({ selectedIds = [], selectedVehicles: comp
       <div className="compare-picker-head">
         <div>
           <p className="eyebrow">So sánh xe</p>
-          <h1>Chọn ba phiên bản để đối chiếu</h1>
+          <h2>Chọn ba phiên bản để đối chiếu</h2>
         </div>
         <button className="btn btn-primary" type="button" onClick={() => applySelection()}>
           Cập nhật so sánh
@@ -126,10 +126,17 @@ export default function ComparePicker({ selectedIds = [], selectedVehicles: comp
           {filteredVehicles.map((vehicle) => {
             const id = getVehicleId(vehicle);
             const active = selected.some((item) => String(item) === String(id));
+            const imageUrl = getVehicleImage(vehicle);
             return (
-              <button className={`choice-card ${active ? "selected" : ""}`} key={id} type="button" onClick={() => toggle(id)}>
-                <strong>{getVehicleName(vehicle)}</strong>
-                <span>{formatVnd(getVehiclePrice(vehicle))}</span>
+              <button className={`choice-card compare-choice-card ${active ? "selected" : ""}`} key={id} type="button" onClick={() => toggle(id)}>
+                <span className="compare-choice-image" style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : undefined}>
+                  {!imageUrl ? "TAYOTA" : null}
+                </span>
+                <span className="compare-choice-copy">
+                  <strong>{getVehicleName(vehicle)}</strong>
+                  <span>Giá từ {formatVnd(getVehiclePrice(vehicle))}</span>
+                </span>
+                <span className="compare-choice-state">{active ? "Đã chọn" : "Chọn xe"}</span>
               </button>
             );
           })}

@@ -3,25 +3,56 @@ import Link from "next/link";
 export default function Footer() {
   return (
     <footer className="footer">
-      <div className="shell-container footer-grid">
+      <div className="shell-container footer-cta">
         <div>
+          <p className="eyebrow">Tayota showroom số</p>
+          <h2>Sẵn sàng cho hành trình tiếp theo?</h2>
+          <p>Chọn xe, đặt lịch và kết nối đại lý trong cùng một trải nghiệm số liền mạch.</p>
+        </div>
+        <div className="footer-cta-actions">
+          <Link className="btn btn-secondary" href="/appointments/test-drive">
+            Đặt lái thử
+          </Link>
+          <Link className="btn btn-ghost" href="/dealerships">
+            Tìm đại lý
+          </Link>
+        </div>
+      </div>
+
+      <div className="shell-container footer-grid">
+        <div className="footer-brand-block">
           <Link className="brand footer-brand" href="/">
             TAYOTA
           </Link>
-          <p>Không gian số dành cho khám phá xe, đặt lịch lái thử và chăm sóc sở hữu theo cách riêng tư.</p>
+          <p>Không gian số dành cho khám phá xe, so sánh phiên bản, đặt lịch lái thử và chăm sóc sở hữu theo cách riêng tư.</p>
+          <div className="footer-contact">
+            <span>Hotline: 1900 5588</span>
+            <span>Email: care@tayota.vn</span>
+          </div>
         </div>
-        <div>
-          <h2>Trải nghiệm</h2>
-          <Link href="/vehicles">Sản phẩm</Link>
+        <nav aria-label="Khám phá">
+          <h2>Khám phá</h2>
+          <Link href="/vehicles">Dòng xe</Link>
           <Link href="/compare">So sánh</Link>
-          <Link href="/appointments/test-drive">Lái thử</Link>
-        </div>
-        <div>
-          <h2>Hỗ trợ</h2>
-          <Link href="/appointments/service">Dịch vụ</Link>
+          <Link href="/dealerships">Đại lý</Link>
+        </nav>
+        <nav aria-label="Dịch vụ">
+          <h2>Dịch vụ</h2>
+          <Link href="/appointments/test-drive">Đặt lái thử</Link>
+          <Link href="/appointments/service">Chăm sóc xe</Link>
           <Link href="/support/live-chat">Live chat</Link>
+        </nav>
+        <nav aria-label="Tin tức và hỗ trợ">
+          <h2>Tin tức & hỗ trợ</h2>
+          <Link href="/news">Bài viết</Link>
+          <Link href="/notifications">Thông báo</Link>
           <Link href="#ai-chat">AI tư vấn</Link>
-        </div>
+        </nav>
+      </div>
+
+      <div className="shell-container footer-bottom">
+        <span>© Tayota digital showroom</span>
+        <span>Catalog, đại lý và dịch vụ trong một trải nghiệm thống nhất.</span>
       </div>
     </footer>
   );

@@ -23,6 +23,8 @@ const navItems = [
   ["Đặt lịch chăm sóc xe", "/appointments/service"],
 ];
 
+navItems.push(["Tin tức", "/news"]);
+
 const NOTIFICATION_PREVIEW_LIMIT = 5;
 
 function NotificationIcon() {
@@ -160,6 +162,13 @@ export default function Header() {
     : navItems.map(([label, href]) => [label, href, ""]);
   const previewNotifications = notifications.slice(0, NOTIFICATION_PREVIEW_LIMIT);
 
+  function getNavClassName(href, tabId) {
+    if (showDashboardNav) {
+      return tabId && activeDashboardTab === tabId ? "active" : "";
+    }
+    return pathname === href || pathname.startsWith(`${href}/`) ? "active" : "";
+  }
+
   function formatNotificationTime(value) {
     if (!value) return statusLabel("PENDING");
     const date = new Date(value);
@@ -176,7 +185,7 @@ export default function Header() {
 
         <nav className="desktop-nav" aria-label="Điều hướng chính">
           {activeNavItems.map(([label, href, tabId]) => (
-            <Link className={tabId && activeDashboardTab === tabId ? "active" : ""} key={href} href={href}>
+            <Link className={getNavClassName(href, tabId)} key={href} href={href}>
               {label}
             </Link>
           ))}
@@ -230,9 +239,14 @@ export default function Header() {
               </div>
             </div>
           ) : sessionReady ? (
-            <Link className="btn btn-primary header-cta" href="/auth/login">
-              Đăng nhập
-            </Link>
+            <div className="header-guest-actions">
+              <Link className="btn btn-ghost header-cta" href="/auth/register">
+                Đăng ký
+              </Link>
+              <Link className="btn btn-primary header-cta" href="/auth/login">
+                Đăng nhập
+              </Link>
+            </div>
           ) : null}
 
           <button
@@ -252,13 +266,24 @@ export default function Header() {
       {open ? (
         <div className="mobile-nav">
           {activeNavItems.map(([label, href, tabId]) => (
-            <Link className={tabId && activeDashboardTab === tabId ? "active" : ""} key={href} href={href} onClick={() => setOpen(false)}>
+            <Link className={getNavClassName(href, tabId)} key={href} href={href} onClick={() => setOpen(false)}>
               {label}
             </Link>
           ))}
-          <Link className="btn btn-primary" href={user ? dashboardPath : "/auth/login"} onClick={() => setOpen(false)}>
-            {user ? "Dashboard" : "Đăng nhập"}
-          </Link>
+          {user ? (
+            <Link className="btn btn-primary" href={dashboardPath} onClick={() => setOpen(false)}>
+              Dashboard
+            </Link>
+          ) : (
+            <div className="mobile-auth-actions">
+              <Link className="btn btn-ghost" href="/auth/register" onClick={() => setOpen(false)}>
+                Đăng ký
+              </Link>
+              <Link className="btn btn-primary" href="/auth/login" onClick={() => setOpen(false)}>
+                Đăng nhập
+              </Link>
+            </div>
+          )}
         </div>
       ) : null}
 

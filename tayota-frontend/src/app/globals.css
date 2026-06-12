@@ -11692,3 +11692,561 @@ button.customer-data-row:active .customer-row-action>.customer-detail-text {
     font-size: 0.98rem;
   }
 }
+/* Public UI refinements */
+.desktop-nav a {
+  position: relative;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 9px 12px;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.desktop-nav a.active {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.desktop-nav a.active::after {
+  position: absolute;
+  right: 16px;
+  bottom: 4px;
+  left: 16px;
+  height: 2px;
+  border-radius: 999px;
+  background: #ffffff;
+  content: "";
+}
+
+.header-guest-actions,
+.mobile-auth-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-guest-actions .btn {
+  min-width: 112px;
+  min-height: 42px;
+  justify-content: center;
+  padding-inline: 16px;
+}
+
+.site-header .btn-ghost {
+  border-color: rgba(255, 255, 255, 0.38);
+  background: transparent;
+  color: #ffffff;
+}
+
+.mobile-nav a.active {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 3px 0 0 #ffffff;
+}
+
+.mobile-auth-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mobile-auth-actions .btn {
+  min-height: 44px;
+  justify-content: center;
+}
+
+.hero {
+  background: #050505;
+}
+
+.hero-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.hero::before {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(90deg, rgba(5, 5, 5, 0.94), rgba(5, 5, 5, 0.58) 44%, rgba(5, 5, 5, 0.18)),
+    linear-gradient(180deg, transparent 72%, #ffffff 100%);
+  content: "";
+}
+
+.hero-content {
+  z-index: 2;
+}
+
+.footer-cta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02)),
+    #0a0a0a;
+  padding: 28px 22px;
+  margin-bottom: 34px;
+  text-align: center;
+}
+
+.footer-cta h2 {
+  margin: 4px 0 0;
+  color: #ffffff;
+  font-size: 1.55rem;
+}
+
+.footer-cta p:not(.eyebrow) {
+  max-width: 620px;
+  margin: 10px auto 0;
+  color: #c5cbd3;
+  line-height: 1.6;
+}
+
+.footer-cta-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(160px, 1fr));
+  gap: 10px;
+  width: min(100%, 380px);
+}
+
+.footer-cta-actions .btn {
+  min-height: 44px;
+  justify-content: center;
+}
+
+.footer-contact {
+  display: grid;
+  gap: 7px;
+  margin-top: 16px;
+  color: #d8dce1;
+  font-size: 0.92rem;
+}
+
+.footer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  margin-top: 32px;
+  padding-top: 18px;
+  color: #9aa1aa;
+  font-size: 0.88rem;
+}
+
+footer.footer .btn-secondary {
+  border-color: #ffffff;
+}
+
+footer.footer .btn-ghost {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: transparent;
+  color: #ffffff;
+}
+
+.dealer-shell {
+  width: min(100%, 1440px);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.dealer-layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.85fr) minmax(520px, 1.15fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.dealer-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.dealer-card {
+  position: relative;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-color: var(--border);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.dealer-card.selected {
+  border-color: var(--ink);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+}
+
+.dealer-card-map-hitarea {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.dealer-card-map-hitarea:disabled {
+  cursor: default;
+}
+
+.dealer-card-head,
+.dealer-card h2,
+.dealer-info {
+  position: relative;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.dealer-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dealer-card h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.25;
+}
+
+.dealer-status {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+  border: 1px solid rgba(22, 163, 74, 0.26);
+  border-radius: 999px;
+  background: rgba(22, 163, 74, 0.08);
+  color: #166534;
+  padding: 0 10px;
+  font-size: 0.78rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.dealer-status span {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #16a34a;
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.14);
+}
+
+.dealer-status.inactive {
+  border-color: var(--border);
+  background: var(--surface-muted);
+  color: var(--muted);
+}
+
+.dealer-status.inactive span {
+  background: #94a3b8;
+  box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.18);
+}
+
+.dealer-info {
+  flex: 1;
+}
+
+.dealer-info div {
+  min-width: 0;
+}
+
+.dealer-info dd {
+  overflow-wrap: anywhere;
+}
+
+.dealer-actions {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.dealer-actions .btn {
+  width: 100%;
+  min-height: 42px;
+  min-width: 0;
+  justify-content: center;
+  text-align: center;
+}
+
+.dealer-map-panel {
+  position: sticky;
+  top: 92px;
+  min-height: 720px;
+}
+
+.dealer-map-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dealer-map-panel iframe,
+.dealer-map-empty {
+  min-height: 560px;
+}
+
+.home-experience {
+  background: var(--surface-muted);
+}
+
+.home-experience-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  align-items: stretch;
+  gap: 24px;
+}
+
+.home-experience-media {
+  min-height: 420px;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(5, 5, 5, 0.05), rgba(5, 5, 5, 0.22)),
+    url("/images/tayota-tech-hero.png");
+  background-position: center;
+  background-size: cover;
+}
+
+.home-experience-copy {
+  display: grid;
+  align-content: center;
+  gap: 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 30px;
+}
+
+.home-experience-copy h2 {
+  margin: 0;
+  font-size: var(--title-section);
+}
+
+.home-experience-copy p:not(.eyebrow) {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.home-experience-points,
+.home-experience-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.home-experience-points span {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  padding: 9px 12px;
+  font-weight: 720;
+  font-size: 0.88rem;
+}
+
+.home-article-grid {
+  display: grid;
+  grid-template-columns: 1.25fr repeat(2, minmax(0, 0.875fr));
+  gap: 18px;
+}
+
+.home-article-card {
+  overflow: hidden;
+}
+
+.home-article-image {
+  min-height: 210px;
+  background-color: var(--surface-muted);
+  background-position: center;
+  background-size: cover;
+}
+
+.home-article-card.featured .home-article-image {
+  min-height: 300px;
+}
+
+.home-article-copy {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+
+.home-article-copy h3 {
+  margin: 0;
+  font-size: 1.18rem;
+}
+
+.home-article-card.featured h3 {
+  font-size: 1.45rem;
+}
+
+.home-article-copy p:not(.eyebrow) {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.compare-choice-card {
+  position: relative;
+  overflow: hidden;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 12px;
+  min-height: 0;
+  padding: 10px;
+}
+
+.compare-choice-image {
+  min-height: 82px;
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(8, 8, 8, 0.08), rgba(8, 8, 8, 0.02)),
+    var(--surface-muted);
+  background-position: center;
+  background-size: cover;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+}
+
+.compare-choice-copy {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 7px;
+}
+
+.compare-choice-copy span {
+  color: var(--muted);
+}
+
+.compare-choice-state {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--ink-soft);
+  padding: 0 9px;
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.compare-choice-card.selected .compare-choice-copy span,
+.compare-choice-card.selected .compare-choice-state {
+  color: #ffffff;
+}
+
+.compare-choice-card.selected .compare-choice-state {
+  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+@media (max-width: 1040px) {
+  .dealer-layout,
+  .home-experience-inner,
+  .home-article-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dealer-map-panel {
+    position: static;
+    order: -1;
+    min-height: 0;
+  }
+
+  .dealer-map-panel iframe,
+  .dealer-map-empty {
+    min-height: 360px;
+  }
+}
+
+@media (max-width: 760px) {
+  .dealer-shell {
+    padding: 0 16px;
+  }
+
+  .dealer-card-head,
+  .dealer-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dealer-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .dealer-status {
+    width: fit-content;
+  }
+
+  .home-experience-media,
+  .home-article-card.featured .home-article-image {
+    min-height: 260px;
+  }
+
+  .footer-bottom {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .compare-choice-card {
+    grid-template-columns: 88px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .footer-cta-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .compare-choice-card {
+    grid-template-columns: 1fr;
+  }
+
+  .compare-choice-image {
+    aspect-ratio: 16 / 9;
+  }
+
+  .compare-choice-state {
+    position: static;
+    width: fit-content;
+  }
+}
+
+footer.footer .footer-grid {
+  display: grid;
+  grid-template-columns: 1.45fr repeat(3, minmax(0, 1fr));
+  gap: 30px;
+}
+
+@media (max-width: 760px) {
+  footer.footer .footer-grid {
+    grid-template-columns: 1fr;
+  }
+}

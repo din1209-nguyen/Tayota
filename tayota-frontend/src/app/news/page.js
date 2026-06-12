@@ -21,7 +21,7 @@ export default async function NewsPage() {
       <div className="shell-container page-title">
         <p className="eyebrow">Tin tức Tayota</p>
         <h1>Câu chuyện và cập nhật mới</h1>
-        <p>Khám phá công nghệ, phong cách sống và thông tin sản phẩm từ Tayota.</p>
+        <p>Khám phá công nghệ, phong cách sống, phụ kiện và thông tin sản phẩm từ Tayota.</p>
       </div>
       <div className="shell-container news-grid">
         {error ? <div className="status-box wide">{error}</div> : null}

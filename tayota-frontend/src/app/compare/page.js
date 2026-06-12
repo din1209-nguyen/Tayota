@@ -21,7 +21,12 @@ export default async function ComparePage({ searchParams }) {
   const { vehicles, error } = await getCompare(selectedIds);
 
   return (
-    <section className="compare-page">
+    <section className="compare-page section">
+      <div className="shell-container page-title">
+        <p className="eyebrow">So sánh xe</p>
+        <h1>Đối chiếu phiên bản Tayota</h1>
+        <p>Chọn tối đa ba phiên bản để xem khác biệt về giá, thông số, tiện nghi và khả năng vận hành.</p>
+      </div>
       <ComparePicker selectedIds={selectedIds} selectedVehicles={vehicles} />
 
       <div className="shell-container compare-results">

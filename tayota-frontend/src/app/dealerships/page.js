@@ -25,8 +25,8 @@ export default async function DealershipsPage() {
         <h1>Xem các đại lý Tayota</h1>
         <p>Chọn đại lý gần bạn để lái thử, bảo dưỡng hoặc nhận tư vấn trực tiếp.</p>
       </div>
-      <div className="shell-container">
-        {error ? <div className="status-box">{error}</div> : <DealerGrid dealerships={dealerships} />}
+      <div className="dealer-shell">
+        {error ? <div className="shell-container status-box">{error}</div> : <DealerGrid dealerships={dealerships} />}
       </div>
     </section>
   );

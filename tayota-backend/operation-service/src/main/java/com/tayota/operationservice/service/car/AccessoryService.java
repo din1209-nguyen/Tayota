@@ -105,6 +105,7 @@ public class AccessoryService {
                 .useContent(requestDTO.getUseContent())
                 .reminderContent(requestDTO.getReminderContent())
                 .type(requestDTO.getType())
+                .imageUrl(requestDTO.getImageUrl())
                 .visible(requestDTO.getVisible() == null || requestDTO.getVisible())
                 .build();
 
@@ -127,6 +128,7 @@ public class AccessoryService {
         accessory.setUseContent(requestDTO.getUseContent());
         accessory.setReminderContent(requestDTO.getReminderContent());
         accessory.setType(requestDTO.getType());
+        accessory.setImageUrl(requestDTO.getImageUrl());
         if (requestDTO.getVisible() != null) {
             accessory.setVisible(requestDTO.getVisible());
         }

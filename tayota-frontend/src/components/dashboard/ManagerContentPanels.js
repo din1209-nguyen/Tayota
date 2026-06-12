@@ -1,10 +1,14 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import MediaUploadField from "@/components/dashboard/MediaUploadField";
+import { getMe } from "@/lib/services/auth";
 import { getCarStylesWithVersions } from "@/lib/services/car";
 import { uploadMedia } from "@/lib/services/media";
 import { formatVnd, roleLabel, statusLabel, unwrapList } from "@/lib/format";
+import { getDashboardPath, setCurrentUser } from "@/lib/session";
 import {
   addVehicleGallery,
   attachAccessoryToVehicle,
@@ -40,12 +44,18 @@ import {
 } from "@/lib/services/manager";
 
 const LOWER_ROLES = ["SERVICE_ADVISOR", "ASSISTANT", "MECHANIC", "USER"];
+const LOWER_ROLE_CHART_COLORS = {
+  SERVICE_ADVISOR: "#2563eb",
+  ASSISTANT: "#d71920",
+  MECHANIC: "#16a34a",
+  USER: "#f59e0b",
+};
 const NEW_OPTION_VALUE = "__new__";
 const VEHICLE_EDITOR_TABS = [
   ["general", "Thông tin chung"],
-  ["specs", "Thông số kỹ thuật"],
+  ["specs", "Thông số"],
   ["prices", "Giá & màu"],
-  ["articles", "Bài viết của xe"],
+  ["articles", "Bài viết"],
   ["gallery", "Gallery"],
 ];
 const EMPTY_VEHICLE_SPEC = {
@@ -146,6 +156,162 @@ export default function ManagerContentPanels({ tab }) {
   return <UserPanel />;
 }
 
+export function ManagerVehicleEditorPage({ vehicleId }) {
+  const router = useRouter();
+  const isCreate = !vehicleId || vehicleId === "new";
+  const [ready, setReady] = useState(false);
+  const [styles, setStyles] = useState([]);
+  const [series, setSeries] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+  const [message, setMessage] = useState("");
+
+  const load = useCallback(async () => {
+    try {
+      const user = await getMe();
+      setCurrentUser(user);
+      if (user?.role !== "MANAGER") {
+        router.replace(getDashboardPath(user?.role));
+        return;
+      }
+      const [styleData, vehicleData] = await Promise.all([getCarStylesWithVersions(), getManagerVehicles()]);
+      const nextStyles = unwrapList(styleData).map((style) => ({ ...style, series: style.series || style.carSeries || [] }));
+      setStyles(nextStyles);
+      setSeries(nextStyles.flatMap((style) => (style.series || []).map((item) => ({ ...item, styleId: style.id, styleName: style.name }))));
+      setVehicles(unwrapList(vehicleData));
+      setReady(true);
+    } catch (error) {
+      setMessage(error.message || "Phiên đăng nhập đã hết hạn.");
+      router.replace("/auth/login");
+    }
+  }, [router]);
+
+  useEffect(() => {
+    void Promise.resolve().then(load);
+  }, [load]);
+
+  if (!ready) return <div className="status-box">{message || "Đang tải trình chỉnh sửa xe..."}</div>;
+
+  const vehicle = vehicles.find((item) => String(item.id) === String(vehicleId));
+
+  return (
+    <VehicleEditorDialog
+      mode={isCreate ? "create" : "edit"}
+      onClose={() => router.push("/dashboard/manager?tab=vehicles")}
+      onSaved={async (savedVehicleId) => {
+        if (isCreate && savedVehicleId) router.replace(`/dashboard/manager/vehicles/${savedVehicleId}`);
+        else await load();
+      }}
+      series={series}
+      styles={styles}
+      vehicle={vehicle}
+      vehicleId={isCreate ? "" : vehicleId}
+      variant="page"
+    />
+  );
+}
+
+export function ManagerArticleEditorPage({ articleId }) {
+  const router = useRouter();
+  const isCreate = !articleId || articleId === "new";
+  const empty = useMemo(() => ({ type: "NEWS", title: "", content: "", imageUrl: "", carVersionId: "", published: true }), []);
+  const [ready, setReady] = useState(false);
+  const [vehicles, setVehicles] = useState([]);
+  const [form, setForm] = useState(empty);
+  const [state, setState] = useState({ message: "", busy: false });
+
+  const load = useCallback(async () => {
+    try {
+      const user = await getMe();
+      setCurrentUser(user);
+      if (user?.role !== "MANAGER") {
+        router.replace(getDashboardPath(user?.role));
+        return;
+      }
+      const [articles, vehicleData] = await Promise.all([getManagerArticles(), getManagerVehicles()]);
+      const nextArticles = unwrapList(articles);
+      setVehicles(unwrapList(vehicleData));
+      if (!isCreate) {
+        const article = nextArticles.find((item) => String(item.id) === String(articleId));
+        if (article) setForm({ ...empty, ...article, carVersionId: article.carVersionId || "" });
+        else setState((value) => ({ ...value, message: "Không tìm thấy bài viết." }));
+      }
+      setReady(true);
+    } catch (error) {
+      setState((value) => ({ ...value, message: error.message || "Phiên đăng nhập đã hết hạn." }));
+      router.replace("/auth/login");
+    }
+  }, [articleId, empty, isCreate, router]);
+
+  useEffect(() => {
+    void Promise.resolve().then(load);
+  }, [load]);
+
+  async function submit(event) {
+    event.preventDefault();
+    setState({ message: "", busy: true });
+    try {
+      if (isCreate) await createArticle(form);
+      else await updateArticle(articleId, form);
+      router.push("/dashboard/manager?tab=articles");
+    } catch (error) {
+      setState({ message: error.message, busy: false });
+    }
+  }
+
+  async function hide() {
+    if (isCreate) return;
+    setState({ message: "", busy: true });
+    try {
+      await hideArticle(articleId);
+      router.push("/dashboard/manager?tab=articles");
+    } catch (error) {
+      setState({ message: error.message, busy: false });
+    }
+  }
+
+  if (!ready) return <div className="status-box">{state.message || "Đang tải trình biên tập bài viết..."}</div>;
+
+  return (
+    <div className="manager-editor-page-shell">
+      <section className="manager-editor-page">
+        <header className="manager-modal-head">
+          <div>
+            <p className="eyebrow">Biên tập nội dung</p>
+            <h2>{isCreate ? "Thêm bài viết" : "Sửa bài viết"}</h2>
+          </div>
+          <Link className="btn btn-ghost" href="/dashboard/manager?tab=articles">Quay lại</Link>
+        </header>
+        <div className="manager-modal-body manager-article-editor-layout">
+          <Feedback message={state.message} />
+          <form className="ops-form manager-editor-main-form" onSubmit={submit}>
+            <div className="manager-form-row">
+              <input className="field" required value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })} placeholder="Loại bài viết" />
+              <select className="field" value={form.carVersionId || ""} onChange={(event) => setForm({ ...form, carVersionId: event.target.value })}>
+                <option value="">Tin tức chung</option>
+                {vehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.name}</option>)}
+              </select>
+            </div>
+            <input className="field" required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Tiêu đề" />
+            <MediaUploadField label="Ảnh bài viết" value={form.imageUrl} onChange={(value) => setForm({ ...form, imageUrl: value })} context="ARTICLE_IMAGE" />
+            <textarea className="field manager-textarea large" required value={form.content} onChange={(event) => setForm({ ...form, content: event.target.value })} placeholder="Nội dung bài viết" />
+            <label className="manager-checkbox"><input type="checkbox" checked={form.published} onChange={(event) => setForm({ ...form, published: event.target.checked })} /> Xuất bản công khai</label>
+            <div className="row-actions manager-modal-actions">
+              <button className="btn btn-primary" disabled={state.busy} type="submit">{state.busy ? "Đang lưu..." : "Lưu bài viết"}</button>
+              {!isCreate && form.published ? <button className="btn btn-ghost" disabled={state.busy} type="button" onClick={hide}>Ẩn bài viết</button> : null}
+            </div>
+          </form>
+          <aside className="manager-editor-preview">
+            <span className="manager-preview-image" style={form.imageUrl ? { backgroundImage: `url(${form.imageUrl})` } : undefined} />
+            <p className="eyebrow">{form.type || "NEWS"}</p>
+            <h3>{form.title || "Tiêu đề bài viết"}</h3>
+            <p>{form.content || "Nội dung xem trước sẽ hiển thị tại đây khi bạn nhập bài viết."}</p>
+          </aside>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function VehiclePanel() {
   const emptyFilters = { styleId: "", priceRange: "", numberOfSeats: "", seriesId: "", versionKeyword: "", fuel: "", origin: "" };
   const [vehicles, setVehicles] = useState([]);
@@ -153,8 +319,6 @@ function VehiclePanel() {
   const [series, setSeries] = useState([]);
   const [filters, setFilters] = useState(emptyFilters);
   const [draftFilters, setDraftFilters] = useState(emptyFilters);
-  const [selectedId, setSelectedId] = useState("");
-  const [editorMode, setEditorMode] = useState("");
   const [state, setState] = useState({ loading: true, error: "", message: "", busy: false });
 
   const load = useCallback(async () => {
@@ -197,7 +361,6 @@ function VehiclePanel() {
       && isPriceInRange(vehicle.minPrice, filters.priceRange);
   });
   const draftSeriesOptions = draftFilters.styleId ? series.filter((item) => String(item.styleId) === String(draftFilters.styleId)) : series;
-  const selectedVehicle = vehicles.find((vehicle) => String(vehicle.id) === String(selectedId));
 
   async function hide(id) {
     setState((value) => ({ ...value, busy: true, message: "" }));
@@ -210,16 +373,6 @@ function VehiclePanel() {
     }
   }
 
-  function openCreate() {
-    setSelectedId("");
-    setEditorMode("create");
-  }
-
-  function openEdit(vehicle) {
-    setSelectedId(vehicle.id);
-    setEditorMode("edit");
-  }
-
   return (
     <div className="manager-content-grid manager-vehicle-layout list-only">
       <section className="ops-panel">
@@ -228,7 +381,7 @@ function VehiclePanel() {
             <p className="eyebrow">Catalog</p>
             <h2>Danh sách xe</h2>
           </div>
-          <button className="btn btn-primary" type="button" onClick={openCreate}>Thêm xe</button>
+          <Link className="btn btn-primary" href="/dashboard/manager/vehicles/new">Thêm xe</Link>
         </div>
         <Feedback message={state.message} />
         <form className="filter-panel catalog-filter manager-catalog-filter" onSubmit={(event) => { event.preventDefault(); setFilters(draftFilters); }}>
@@ -256,7 +409,7 @@ function VehiclePanel() {
           {!filteredVehicles.length ? <div className="status-box">Không có xe phù hợp với bộ lọc.</div> : null}
           <div className="manager-vehicle-list">
             {filteredVehicles.map((vehicle) => (
-              <article className={String(selectedId) === String(vehicle.id) ? "active" : ""} key={vehicle.id}>
+              <article key={vehicle.id}>
                 <span className="manager-vehicle-thumb" style={vehicle.imageUrl ? { backgroundImage: `url(${vehicle.imageUrl})` } : undefined} />
                 <div className="manager-vehicle-main">
                   <strong>{vehicle.name}</strong>
@@ -265,7 +418,7 @@ function VehiclePanel() {
                 </div>
                 <span className={`status-pill ${vehicle.visible ? "connected" : "error"}`}>{vehicle.visible ? "Đang hiển thị" : "Đã ẩn"}</span>
                 <div className="row-actions">
-                  <button className="btn btn-ghost" type="button" onClick={() => openEdit(vehicle)}>Chi tiết</button>
+                  <Link className="btn btn-ghost" href={`/dashboard/manager/vehicles/${vehicle.id}`}>Chi tiết</Link>
                   {vehicle.visible ? <button className="btn btn-ghost" disabled={state.busy} type="button" onClick={() => hide(vehicle.id)}>Ẩn</button> : null}
                 </div>
               </article>
@@ -273,28 +426,9 @@ function VehiclePanel() {
           </div>
         </PanelState>
       </section>
-      {editorMode ? (
-        <VehicleEditorDialog
-          mode={editorMode}
-          onClose={() => setEditorMode("")}
-          onSaved={async (vehicleId, message) => {
-            setState((value) => ({ ...value, message }));
-            await load();
-            if (vehicleId) {
-              setSelectedId(vehicleId);
-              setEditorMode("edit");
-            }
-          }}
-          series={series}
-          styles={styles}
-          vehicle={selectedVehicle}
-          vehicleId={selectedId}
-        />
-      ) : null}
     </div>
   );
 }
-
 function SelectField({ label, value, onChange, options }) {
   return (
     <label className="label catalog-select-field">
@@ -307,7 +441,7 @@ function SelectField({ label, value, onChange, options }) {
   );
 }
 
-function VehicleEditorDialog({ mode, onClose, onSaved, series, styles, vehicle, vehicleId }) {
+export function VehicleEditorDialog({ mode, onClose, onSaved, series, styles, vehicle, vehicleId, variant = "modal" }) {
   const isCreate = mode === "create";
   const emptyForm = useMemo(() => ({
     carStyleId: "",
@@ -582,15 +716,17 @@ function VehicleEditorDialog({ mode, onClose, onSaved, series, styles, vehicle, 
     }
   }
 
+  const isPage = variant === "page";
+
   return (
-    <div className="manager-modal-backdrop" role="presentation">
-      <section className="manager-modal" role="dialog" aria-modal="true" aria-labelledby="manager-vehicle-dialog-title">
+    <div className={isPage ? "manager-editor-page-shell" : "manager-modal-backdrop"} role={isPage ? undefined : "presentation"}>
+      <section className={isPage ? "manager-editor-page" : "manager-modal"} role={isPage ? "region" : "dialog"} aria-modal={isPage ? undefined : "true"} aria-labelledby="manager-vehicle-dialog-title">
         <header className="manager-modal-head">
           <div>
             <p className="eyebrow">{isCreate ? "Thêm xe" : "Chi tiết xe"}</p>
             <h2 id="manager-vehicle-dialog-title">{isCreate ? "Thêm phiên bản xe" : form.name || vehicle?.name}</h2>
           </div>
-          <button className="btn btn-ghost" type="button" onClick={onClose}>Đóng</button>
+          <button className="btn btn-ghost" type="button" onClick={onClose}>{isPage ? "Quay lại" : "Đóng"}</button>
         </header>
         <div className="manager-modal-body">
           <Feedback message={message} />
@@ -642,33 +778,41 @@ function VehicleGeneralForm({ availableSeries, form, isCreate, isCreatingSeries,
   return (
     <div className="manager-detail-block">
       <h3>Thông tin chung</h3>
-      <div className="manager-editor-grid">
-        <label className="manager-field">
-          <span>Kiểu dáng</span>
-          <select className="field" required value={form.carStyleId} onChange={(event) => {
-            const nextStyleId = event.target.value;
-            setForm({ ...form, carStyleId: nextStyleId, carSeriesId: nextStyleId === NEW_OPTION_VALUE ? NEW_OPTION_VALUE : "" });
-          }}>
-            <option value="">Chọn kiểu dáng</option>
-            {styles.map((style) => <option key={style.id} value={style.id}>{style.name}</option>)}
-            {isCreate ? <option value={NEW_OPTION_VALUE}>Nhập kiểu dáng mới</option> : null}
-          </select>
-        </label>
-        {isCreatingStyle ? <TextField label="Tên kiểu dáng mới" value={form.carStyleName} onChange={(value) => setForm({ ...form, carStyleName: value })} required /> : null}
-        <label className="manager-field">
-          <span>Dòng xe</span>
-          <select className="field" disabled={isCreatingStyle} required value={form.carSeriesId} onChange={(event) => setForm({ ...form, carSeriesId: event.target.value })}>
-            <option value="">Chọn dòng xe</option>
-            {availableSeries.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            {isCreate ? <option value={NEW_OPTION_VALUE}>Nhập dòng xe mới</option> : null}
-          </select>
-        </label>
-        {isCreatingSeries ? <TextField label="Tên dòng xe mới" value={form.carSeriesName} onChange={(value) => setForm({ ...form, carSeriesName: value })} required /> : null}
-        <TextField label="Tên phiên bản" value={form.name} onChange={(value) => setForm({ ...form, name: value })} required />
-        <TextField label="Năm mẫu xe" type="number" value={form.modelYear} onChange={(value) => setForm({ ...form, modelYear: value })} required />
-        <TextField label="Phần trăm giảm giá" type="number" value={form.salePercent} onChange={(value) => setForm({ ...form, salePercent: value })} />
-        <MediaUploadField label="Ảnh đại diện" required={isCreate} value={form.imageUrl} onChange={(value) => setForm({ ...form, imageUrl: value })} context="CAR_GALLERY" />
-        <MediaUploadField label="Video giới thiệu" value={form.videoUrl} onChange={(value) => setForm({ ...form, videoUrl: value })} context="CAR_VIDEO" accept="video/*" preview="video" placeholder="https://.../video-xe.mp4" />
+      <div className="manager-editor-section">
+        <h4>Thông tin cơ bản</h4>
+        <div className="manager-editor-grid compact">
+          <label className="manager-field">
+            <span>Kiểu dáng</span>
+            <select className="field" required value={form.carStyleId} onChange={(event) => {
+              const nextStyleId = event.target.value;
+              setForm({ ...form, carStyleId: nextStyleId, carSeriesId: nextStyleId === NEW_OPTION_VALUE ? NEW_OPTION_VALUE : "" });
+            }}>
+              <option value="">Chọn kiểu dáng</option>
+              {styles.map((style) => <option key={style.id} value={style.id}>{style.name}</option>)}
+              {isCreate ? <option value={NEW_OPTION_VALUE}>Nhập kiểu dáng mới</option> : null}
+            </select>
+          </label>
+          {isCreatingStyle ? <TextField label="Tên kiểu dáng mới" value={form.carStyleName} onChange={(value) => setForm({ ...form, carStyleName: value })} required /> : null}
+          <label className="manager-field">
+            <span>Dòng xe</span>
+            <select className="field" disabled={isCreatingStyle} required value={form.carSeriesId} onChange={(event) => setForm({ ...form, carSeriesId: event.target.value })}>
+              <option value="">Chọn dòng xe</option>
+              {availableSeries.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              {isCreate ? <option value={NEW_OPTION_VALUE}>Nhập dòng xe mới</option> : null}
+            </select>
+          </label>
+          {isCreatingSeries ? <TextField label="Tên dòng xe mới" value={form.carSeriesName} onChange={(value) => setForm({ ...form, carSeriesName: value })} required /> : null}
+          <TextField label="Tên phiên bản" value={form.name} onChange={(value) => setForm({ ...form, name: value })} required />
+          <TextField label="Năm mẫu xe" type="number" value={form.modelYear} onChange={(value) => setForm({ ...form, modelYear: value })} required />
+          <TextField label="Giảm giá (%)" type="number" value={form.salePercent} onChange={(value) => setForm({ ...form, salePercent: value })} />
+        </div>
+      </div>
+      <div className="manager-editor-section">
+        <h4>Hình ảnh & video</h4>
+        <div className="manager-media-layout">
+          <MediaUploadField label="Ảnh đại diện" required={isCreate} value={form.imageUrl} onChange={(value) => setForm({ ...form, imageUrl: value })} context="CAR_GALLERY" />
+          <MediaUploadField label="Video giới thiệu" value={form.videoUrl} onChange={(value) => setForm({ ...form, videoUrl: value })} context="CAR_VIDEO" accept="video/*" preview="video" placeholder="https://.../video-xe.mp4" />
+        </div>
       </div>
       <label className="manager-checkbox"><input type="checkbox" checked={form.visible} onChange={(event) => setForm({ ...form, visible: event.target.checked })} /> Hiển thị trên website</label>
     </div>
@@ -815,18 +959,13 @@ function TextField({ label, value, onChange, type = "text", required = false }) 
 }
 
 function ArticlePanel() {
-  const empty = { type: "NEWS", title: "", content: "", imageUrl: "", carVersionId: "", published: true };
   const [items, setItems] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
-  const [form, setForm] = useState(empty);
-  const [editing, setEditing] = useState("");
-  const [state, setState] = useState({ loading: true, error: "", message: "", busy: false });
+  const [state, setState] = useState({ loading: true, error: "", message: "" });
 
   const load = useCallback(async () => {
     try {
-      const [articles, vehicleData] = await Promise.all([getManagerArticles(), getManagerVehicles()]);
+      const articles = await getManagerArticles();
       setItems(unwrapList(articles));
-      setVehicles(unwrapList(vehicleData));
       setState((value) => ({ ...value, loading: false, error: "" }));
     } catch (error) {
       setState((value) => ({ ...value, loading: false, error: error.message }));
@@ -836,21 +975,6 @@ function ArticlePanel() {
   useEffect(() => {
     load();
   }, [load]);
-
-  async function submit(event) {
-    event.preventDefault();
-    setState((value) => ({ ...value, busy: true, message: "" }));
-    try {
-      if (editing) await updateArticle(editing, form);
-      else await createArticle(form);
-      setEditing("");
-      setForm(empty);
-      setState((value) => ({ ...value, busy: false, message: "Đã lưu bài viết." }));
-      await load();
-    } catch (error) {
-      setState((value) => ({ ...value, busy: false, message: error.message }));
-    }
-  }
 
   async function hide(id) {
     try {
@@ -863,9 +987,12 @@ function ArticlePanel() {
   }
 
   return (
-    <div className="manager-content-grid">
+    <div className="manager-content-grid manager-vehicle-layout list-only">
       <section className="ops-panel">
-        <div className="ops-panel-head"><div><p className="eyebrow">Tin tức</p><h2>Danh sách bài viết</h2></div></div>
+        <div className="ops-panel-head">
+          <div><p className="eyebrow">Tin tức</p><h2>Danh sách bài viết</h2></div>
+          <Link className="btn btn-primary" href="/dashboard/manager/articles/new">Thêm bài viết</Link>
+        </div>
         <Feedback message={state.message} />
         <PanelState loading={state.loading} error={state.error} empty={!items.length}>
           <div className="manager-table-list">
@@ -873,7 +1000,7 @@ function ArticlePanel() {
               <article key={item.id}>
                 <div><strong>{item.title}</strong><small>{item.type} · {item.published ? "Đã xuất bản" : "Đã ẩn"}</small></div>
                 <div className="row-actions">
-                  <button className="btn btn-ghost" type="button" onClick={() => { setEditing(item.id); setForm({ ...empty, ...item, carVersionId: item.carVersionId || "" }); }}>Sửa</button>
+                  <Link className="btn btn-ghost" href={`/dashboard/manager/articles/${item.id}`}>Sửa</Link>
                   {item.published ? <button className="btn btn-ghost" type="button" onClick={() => hide(item.id)}>Ẩn</button> : null}
                 </div>
               </article>
@@ -881,27 +1008,9 @@ function ArticlePanel() {
           </div>
         </PanelState>
       </section>
-      <section className="ops-panel">
-        <div className="ops-panel-head"><div><p className="eyebrow">Biên tập</p><h2>{editing ? "Sửa bài viết" : "Thêm bài viết"}</h2></div></div>
-        <form className="ops-form" onSubmit={submit}>
-          <div className="manager-form-row">
-            <input className="field" required value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })} placeholder="Loại bài viết" />
-            <select className="field" value={form.carVersionId || ""} onChange={(event) => setForm({ ...form, carVersionId: event.target.value })}>
-              <option value="">Tin tức chung</option>
-              {vehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.name}</option>)}
-            </select>
-          </div>
-          <input className="field" required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Tiêu đề" />
-          <MediaUploadField label="Ảnh bài viết" value={form.imageUrl} onChange={(value) => setForm({ ...form, imageUrl: value })} context="ARTICLE_IMAGE" />
-          <textarea className="field manager-textarea" required value={form.content} onChange={(event) => setForm({ ...form, content: event.target.value })} placeholder="Nội dung bài viết" />
-          <label className="manager-checkbox"><input type="checkbox" checked={form.published} onChange={(event) => setForm({ ...form, published: event.target.checked })} /> Xuất bản công khai</label>
-          <button className="btn btn-primary" disabled={state.busy} type="submit">{state.busy ? "Đang lưu..." : "Lưu bài viết"}</button>
-        </form>
-      </section>
     </div>
   );
 }
-
 function DealershipPanel() {
   const empty = { name: "", address: "", latitude: "", longitude: "", placeId: "", phone: "", operatingHours: "", active: true };
   const [items, setItems] = useState([]);
@@ -1100,6 +1209,31 @@ function AccessoryPanel() {
   );
 }
 
+function getRoleChartItems(stats) {
+  const total = Number(stats?.total || 0);
+  let cursor = 0;
+  return LOWER_ROLES.map((role) => {
+    const count = Number(stats?.byRole?.[role] || 0);
+    const percent = total > 0 ? (count / total) * 100 : 0;
+    const start = cursor;
+    const end = cursor + percent;
+    cursor = end;
+    return {
+      role,
+      count,
+      percent,
+      color: LOWER_ROLE_CHART_COLORS[role],
+      label: roleLabel(role),
+      segment: total > 0 ? `${LOWER_ROLE_CHART_COLORS[role]} ${start}% ${end}%` : "",
+    };
+  });
+}
+
+function getRoleChartBackground(items) {
+  const segments = items.map((item) => item.segment).filter(Boolean);
+  return segments.length ? `conic-gradient(${segments.join(", ")})` : "conic-gradient(#e5e7eb 0 100%)";
+}
+
 function UserPanel() {
   const [items, setItems] = useState([]);
   const [stats, setStats] = useState(null);
@@ -1144,13 +1278,39 @@ function UserPanel() {
     }
   }
 
+  const roleChartItems = getRoleChartItems(stats);
+  const chartTotal = Number(stats?.total || 0);
+  const activeTotal = Number(stats?.byStatus?.ACTIVE || 0);
+  const activePercent = chartTotal > 0 ? Math.round((activeTotal / chartTotal) * 100) : 0;
+
   return (
     <div className="manager-users">
-      <div className="manager-stat-grid">
-        <article><span>Tổng người dùng cấp dưới</span><strong>{stats?.total || 0}</strong></article>
-        <article><span>Đang hoạt động</span><strong>{stats?.byStatus?.ACTIVE || 0}</strong></article>
-        {LOWER_ROLES.map((item) => <article key={item}><span>{roleLabel(item)}</span><strong>{stats?.byRole?.[item] || 0}</strong></article>)}
-      </div>
+      <section className="manager-role-chart-card">
+        <div className="manager-role-chart-copy">
+          <p className="eyebrow">Nhân sự</p>
+          <h2>Phân bổ người dùng cấp dưới</h2>
+          <div className="manager-role-chart-meta">
+            <span>Tổng người dùng <strong>{chartTotal}</strong></span>
+            <span>Đang hoạt động <strong>{activeTotal}</strong> <small>{activePercent}%</small></span>
+          </div>
+        </div>
+        <div className="manager-role-chart-visual" style={{ "--role-chart": getRoleChartBackground(roleChartItems) }}>
+          <div className="manager-role-donut" aria-label={`Tổng người dùng cấp dưới ${chartTotal}`}>
+            <span>Tổng</span>
+            <strong>{chartTotal}</strong>
+          </div>
+        </div>
+        <div className="manager-role-legend" aria-label="Chú thích vai trò">
+          {roleChartItems.map((item) => (
+            <div key={item.role}>
+              <i style={{ background: item.color }} />
+              <span>{item.label}</span>
+              <strong>{item.count}</strong>
+              <small>{Math.round(item.percent)}%</small>
+            </div>
+          ))}
+        </div>
+      </section>
       <div className="manager-content-grid">
         <section className="ops-panel">
           <div className="ops-panel-head"><div><p className="eyebrow">Hồ sơ</p><h2>Người dùng cấp dưới</h2></div></div>
@@ -1193,3 +1353,5 @@ function UserPanel() {
     </div>
   );
 }
+
+

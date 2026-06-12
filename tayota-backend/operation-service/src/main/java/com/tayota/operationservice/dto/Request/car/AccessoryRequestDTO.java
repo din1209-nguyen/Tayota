@@ -38,5 +38,8 @@ public class AccessoryRequestDTO {
     @Size(max = 100, message = "Loại phụ kiện không được vượt quá 100 ký tự")
     private String type;
 
+    @Size(max = 1024, message = "Link ảnh phụ kiện không được vượt quá 1024 ký tự")
+    private String imageUrl;
+
     private Boolean visible = true;
 }

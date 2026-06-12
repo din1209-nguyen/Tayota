@@ -170,14 +170,11 @@ export default function StaffChatWorkspace({
   return (
     <div className="ops-grid workspace-tabs-layout staff-chat-workspace fullscreen-chat">
       <section className="ops-panel staff-chat-sidebar">
-        <div className="ops-panel-head">
+        <div className="ops-panel-head staff-chat-sidebar-head">
           <div>
             <p className="eyebrow">{eyebrow}</p>
             <h2>{heading}</h2>
           </div>
-          <button className="btn btn-ghost" type="button" onClick={() => load({ showLoading: true })} disabled={loading || Boolean(busyAction)}>
-            Tải lại
-          </button>
         </div>
 
         <div className="live-chat-feedback" aria-live="polite">
@@ -188,13 +185,16 @@ export default function StaffChatWorkspace({
           {loading ? <div className="status-box">Đang tải phiên chat...</div> : null}
           {!loading && sessions.length ? sessions.map((session) => (
             <article className={activeSessionId === session.id ? "active" : ""} key={session.id}>
-              <div className="ops-panel-head">
+              <div className="staff-session-top">
                 <strong>{sessionCustomerLabel(session)}</strong>
                 <span className={`status-pill ${statusClass(session.status)}`}>{statusLabel(session.status)}</span>
               </div>
-              <small className="staff-session-latest">{sessionLatestMessage(session)}</small>
+              <div className="staff-session-latest">
+                <span>Tin mới</span>
+                <strong>{sessionLatestMessage(session)}</strong>
+              </div>
               {session.status === "CHATTING" && !isAssignedToCurrentUser(session) ? (
-                <small>Đang được xử lý bởi nhân viên khác</small>
+                <small className="staff-session-note">Đang được xử lý bởi nhân viên khác</small>
               ) : null}
               <div className="row-actions">
                 {session.status === "WAITING" ? (

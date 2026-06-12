@@ -1,28 +1,29 @@
 import { formatNumber } from "@/lib/format";
 
 const SPEC_LABELS = [
-  ["origin", "Xuất xứ"],
-  ["fuel", "Nhiên liệu"],
-  ["numberOfSeats", "Số chỗ", (value) => `${value} chỗ`],
-  ["length", "Dài", (value) => formatNumber(value, "mm")],
-  ["width", "Rộng", (value) => formatNumber(value, "mm")],
-  ["height", "Cao", (value) => formatNumber(value, "mm")],
-  ["capacity", "Dung tích bình nhiên liệu", (value) => formatNumber(value, "L")],
-  ["cylinderCapacity", "Dung tích xy-lanh"],
-  ["cylinder", "Số xy-lanh"],
-  ["gearbox", "Hộp số"],
-  ["maximumSpeed", "Tốc độ tối đa", (value) => formatNumber(value, "km/h")],
-  ["acceleration", "Tăng tốc"],
-  ["torque", "Mô-men xoắn"],
-  ["grossWeightAllowance", "Khối lượng toàn tải", (value) => formatNumber(value, "kg")],
-  ["trademarks", "Thương hiệu"],
+  ["origin", "Xuất xứ", "Tổng quan"],
+  ["fuel", "Nhiên liệu", "Tổng quan"],
+  ["numberOfSeats", "Số chỗ", "Tổng quan", (value) => `${value} chỗ`],
+  ["trademarks", "Thương hiệu", "Tổng quan"],
+  ["length", "Dài", "Kích thước", (value) => formatNumber(value, "mm")],
+  ["width", "Rộng", "Kích thước", (value) => formatNumber(value, "mm")],
+  ["height", "Cao", "Kích thước", (value) => formatNumber(value, "mm")],
+  ["grossWeightAllowance", "Khối lượng toàn tải", "Kích thước", (value) => formatNumber(value, "kg")],
+  ["capacity", "Dung tích bình nhiên liệu", "Vận hành", (value) => formatNumber(value, "L")],
+  ["cylinderCapacity", "Dung tích xy-lanh", "Vận hành"],
+  ["cylinder", "Số xy-lanh", "Vận hành"],
+  ["gearbox", "Hộp số", "Vận hành"],
+  ["maximumSpeed", "Tốc độ tối đa", "Vận hành", (value) => formatNumber(value, "km/h")],
+  ["acceleration", "Tăng tốc", "Vận hành"],
+  ["torque", "Mô-men xoắn", "Vận hành"],
 ];
 
 export function getSpecificationRows(specification = {}) {
-  return SPEC_LABELS.map(([key, label, formatter]) => {
+  return SPEC_LABELS.map(([key, label, group, formatter]) => {
     const value = specification?.[key];
     if (value === null || value === undefined || value === "") return null;
     return {
+      group,
       key,
       label,
       value: formatter ? formatter(value) : String(value),

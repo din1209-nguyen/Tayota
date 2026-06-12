@@ -18,6 +18,7 @@ public class AccessoryMapper {
                 accessory.getUseContent(),
                 accessory.getReminderContent(),
                 accessory.getType(),
+                accessory.getImageUrl(),
                 accessory.isVisible()
         );
     }

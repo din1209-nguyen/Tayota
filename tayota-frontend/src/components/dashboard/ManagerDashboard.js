@@ -44,13 +44,6 @@ export default function ManagerDashboard() {
 
   return (
     <div className="admin-dashboard manager-dashboard">
-      <header className="admin-workspace-header">
-        <div>
-          <p className="eyebrow">Dashboard / Manager</p>
-          <h1>Quản lý nội dung website</h1>
-          <p className="admin-workspace-copy">Cập nhật catalog, tin tức, đại lý, phụ kiện và tư vấn khách hàng.</p>
-        </div>
-      </header>
       {tab === "profile" ? (
         <ProfilePanel heading="Hồ sơ cá nhân" />
       ) : tab === "chat" ? (

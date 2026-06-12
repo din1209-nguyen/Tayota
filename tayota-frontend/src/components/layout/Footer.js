@@ -3,22 +3,6 @@ import Link from "next/link";
 export default function Footer() {
   return (
     <footer className="footer">
-      <div className="shell-container footer-cta">
-        <div>
-          <p className="eyebrow">Tayota showroom số</p>
-          <h2>Sẵn sàng cho hành trình tiếp theo?</h2>
-          <p>Chọn xe, đặt lịch và kết nối đại lý trong cùng một trải nghiệm số liền mạch.</p>
-        </div>
-        <div className="footer-cta-actions">
-          <Link className="btn btn-secondary" href="/appointments/test-drive">
-            Đặt lái thử
-          </Link>
-          <Link className="btn btn-ghost" href="/dealerships">
-            Tìm đại lý
-          </Link>
-        </div>
-      </div>
-
       <div className="shell-container footer-grid">
         <div className="footer-brand-block">
           <Link className="brand footer-brand" href="/">

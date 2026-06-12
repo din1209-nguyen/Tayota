@@ -75,12 +75,7 @@ export default function DealerGrid({ dealerships = [] }) {
                 </div>
               </dl>
               <div className="dealer-actions">
-                <button
-                  className="btn btn-primary"
-                  type="button"
-                  disabled={!canShowOnMap}
-                  onClick={() => setSelectedDealerId(dealer.id)}
-                >
+                <button className="btn btn-primary" type="button" disabled={!canShowOnMap} onClick={() => setSelectedDealerId(dealer.id)}>
                   Xem trên bản đồ
                 </button>
                 {dealer.phone ? (

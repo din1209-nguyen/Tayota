@@ -21,10 +21,11 @@ function appendUnique(messages, nextMessage) {
   return [...messages, nextMessage];
 }
 
-function senderLabel(type) {
-  if (type === "ASSISTANT" || type === "STAFF") return "Tayota";
+function senderLabel(type, isAssistant) {
   if (type === "SYSTEM") return "Hệ thống";
-  return "Khách hàng";
+  const sentByStaff = type === "ASSISTANT" || type === "STAFF";
+  if (sentByStaff) return isAssistant ? "Bạn" : "Tayota";
+  return isAssistant ? "Khách hàng" : "Bạn";
 }
 
 function messageTone(senderType, isAssistant) {
@@ -41,6 +42,13 @@ function canUseCustomerLiveChat(user) {
 
 function statusClass(status) {
   return `status-${String(status || "idle").toLowerCase()}`;
+}
+
+function formatMessageTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
 }
 
 export default function LiveChatPanel({
@@ -64,6 +72,7 @@ export default function LiveChatPanel({
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const clientRef = useRef(null);
+  const messagesEndRef = useRef(null);
   const liveChatAllowed = isAssistant || canUseCustomerLiveChat(currentUser);
 
   useEffect(() => {
@@ -74,6 +83,10 @@ export default function LiveChatPanel({
     setCurrentUser(getCurrentUser());
     return onSessionChange(() => setCurrentUser(getCurrentUser()));
   }, []);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ block: "end" });
+  }, [messages.length, sessionId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -177,10 +190,11 @@ export default function LiveChatPanel({
   return (
     <section className={`ops-panel live-chat-panel ${variant === "widget" ? "live-chat-widget-panel" : ""} ${!showHeader ? "live-chat-panel-no-head" : ""}`}>
       {showHeader ? (
-        <div className="ops-panel-head">
+        <div className="live-chat-header">
+          <div className="live-chat-avatar" aria-hidden="true">{isAssistant ? "KH" : "TY"}</div>
           <div>
             <h2>{isAssistant ? "Hỗ trợ khách hàng" : "Tư vấn trực tiếp"}</h2>
-            {sessionId && variant !== "widget" ? <p className="muted-text">Phiên {sessionId}</p> : null}
+            {sessionId && variant !== "widget" ? <p>Phiên #{sessionId}</p> : <p>Tayota luôn sẵn sàng hỗ trợ</p>}
           </div>
           <span className={`status-pill ${statusClass(status)}`}>{statusLabel(status.toUpperCase())}</span>
         </div>
@@ -194,18 +208,28 @@ export default function LiveChatPanel({
 
       {liveChatAllowed ? <div className="live-chat-messages">
         {messages.length ? (
-          messages.map((message) => (
-            <div
-              className={`live-chat-message ${messageTone(message.senderType, isAssistant)}`}
-              key={message.id || `${message.senderType}-${message.createdAt}-${message.content}`}
-            >
-              <strong>{senderLabel(message.senderType)}</strong>
-              <p>{message.content}</p>
-            </div>
-          ))
+          messages.map((message) => {
+            const tone = messageTone(message.senderType, isAssistant);
+            return (
+              <div
+                className={`live-chat-message ${tone}`}
+                key={message.id || `${message.senderType}-${message.createdAt}-${message.content}`}
+              >
+                <div className="live-chat-bubble">
+                  <span>{senderLabel(message.senderType, isAssistant)}</span>
+                  <p>{message.content}</p>
+                  {formatMessageTime(message.createdAt) ? <time dateTime={message.createdAt}>{formatMessageTime(message.createdAt)}</time> : null}
+                </div>
+              </div>
+            );
+          })
         ) : (
-          <div className="status-box">Chưa có tin nhắn.</div>
+          <div className="live-chat-empty">
+            <strong>Chưa có tin nhắn</strong>
+            <span>{isAssistant ? "Chọn phiên hoặc nhận phiên để bắt đầu hỗ trợ." : "Gửi lời chào để Tayota hỗ trợ bạn nhanh hơn."}</span>
+          </div>
         )}
+        <div ref={messagesEndRef} />
       </div> : null}
 
       {liveChatAllowed && !readOnly ? <form className="live-chat-form" onSubmit={send}>
@@ -213,7 +237,7 @@ export default function LiveChatPanel({
           className="field"
           value={content}
           onChange={(event) => setContent(event.target.value)}
-          placeholder="Nhập tin nhắn"
+          placeholder="Nhập tin nhắn..."
           disabled={sending}
         />
         <button className="btn btn-primary" type="submit" disabled={!sessionId || !content.trim() || sending}>

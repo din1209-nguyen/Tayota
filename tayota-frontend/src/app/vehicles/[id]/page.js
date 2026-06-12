@@ -10,30 +10,21 @@ import {
   getVehicleStyleName,
 } from "@/lib/format";
 import SpecificationTable from "@/components/vehicles/SpecificationTable";
+import VehicleImageButton from "@/components/vehicles/VehicleImageButton";
 
-// Lấy chi tiết xe ở Server Component để trả HTML có dữ liệu ngay từ server.
 async function getDetail(id) {
   try {
-    // Gọi API catalog chi tiết xe từ server và không lưu cache ở tầng Next.js.
     const vehicle = await apiFetch(`/car/catalog/car-versions/${id}`, { cache: "no-store" });
-
-    // Trả dữ liệu xe khi API phản hồi thành công.
     return { vehicle, error: null };
   } catch (error) {
-    // Trả lỗi thân thiện để trang vẫn render được trạng thái thất bại.
     return { vehicle: null, error: error.message };
   }
 }
 
-// Hiển thị trang giới thiệu xe bằng Server Component.
 export default async function VehicleDetailPage({ params }) {
-  // Lấy id xe từ dynamic route của Next.js.
   const { id } = await params;
-
-  // Lấy dữ liệu chi tiết trước khi render HTML.
   const { vehicle, error } = await getDetail(id);
 
-  // Hiển thị lỗi nếu backend không trả được dữ liệu xe.
   if (error) {
     return (
       <section className="section">
@@ -42,26 +33,29 @@ export default async function VehicleDetailPage({ params }) {
     );
   }
 
-  // Chuẩn hóa ảnh hero để dùng làm background nếu có.
   const imageUrl = getVehicleImage(vehicle);
-
-  // Chuẩn hóa danh sách giá để tránh lỗi khi API trả thiếu dữ liệu.
+  const vehicleName = getVehicleName(vehicle);
   const prices = Array.isArray(vehicle?.prices) ? vehicle.prices : [];
-
-  // Chuẩn hóa danh sách bài viết giới thiệu để render có điều kiện.
+  const galleries = Array.isArray(vehicle?.galleries) ? vehicle.galleries.filter((item) => item?.imageUrl) : [];
   const articles = Array.isArray(vehicle?.articles) ? vehicle.articles : [];
-
-  // Chuẩn hóa danh sách phụ kiện để render có điều kiện.
   const accessories = Array.isArray(vehicle?.accessories) ? vehicle.accessories : [];
 
-  // Trả về toàn bộ nội dung giới thiệu xe đã có dữ liệu server-side.
   return (
     <section className="detail-page">
-      <div className="detail-hero" style={imageUrl ? { backgroundImage: `linear-gradient(90deg, rgba(5, 5, 5, 0.94), rgba(5, 5, 5, 0.28)), linear-gradient(180deg, transparent 72%, #ffffff 100%), url(${imageUrl})` } : undefined}>
+      <div
+        className="detail-hero"
+        style={
+          imageUrl
+            ? {
+                backgroundImage: `linear-gradient(90deg, rgba(0, 0, 0, 0.9), rgba(5, 5, 5, 0.46) 46%, rgba(5, 5, 5, 0.18)), linear-gradient(180deg, transparent 72%, #ffffff 100%), url(${imageUrl})`,
+              }
+            : undefined
+        }
+      >
         <div className="shell-container detail-hero-inner">
           <div>
             <p className="eyebrow">{getVehicleStyleName(vehicle)}</p>
-            <h1>{getVehicleName(vehicle)}</h1>
+            <h1>{vehicleName}</h1>
             <p>{vehicle?.carSeries?.description || "Thiết kế tinh gọn, vận hành êm và sẵn sàng cho mọi hành trình riêng."}</p>
             <div className="hero-actions">
               <Link className="btn btn-primary" href={`/appointments/test-drive?carVersionId=${id}`}>
@@ -78,7 +72,9 @@ export default async function VehicleDetailPage({ params }) {
           <div className="detail-price">
             <span>Giá từ</span>
             <strong>{formatVnd(getVehiclePrice(vehicle))}</strong>
-            <small>{getVehicleSeriesName(vehicle)} · {vehicle?.modelYear || "Năm mới nhất"}</small>
+            <small>
+              {getVehicleSeriesName(vehicle)} · {vehicle?.modelYear || "Năm mới nhất"}
+            </small>
           </div>
         </div>
       </div>
@@ -92,17 +88,17 @@ export default async function VehicleDetailPage({ params }) {
         ))}
       </div>
 
-      <div className="shell-container detail-content" id="specifications">
-        <div>
+      <div className="shell-container detail-content detail-spec-section" id="specifications">
+        <div className="detail-spec-heading">
           <p className="eyebrow">Thông số</p>
           <h2>Thông tin xe liên quan</h2>
-          <p className="muted-text">Các thông tin được chuẩn hóa nhãn tiếng Việt từ dữ liệu catalogue.</p>
+          <p className="muted-text">Các chỉ số chính để đọc nhanh và so sánh phiên bản phù hợp.</p>
         </div>
         <SpecificationTable specification={vehicle?.specification} />
       </div>
 
       {prices.length ? (
-        <section className="shell-container detail-section">
+        <section className="shell-container detail-section price-detail-section">
           <div className="section-heading compact">
             <div>
               <p className="eyebrow">Màu sắc và giá</p>
@@ -115,16 +111,37 @@ export default async function VehicleDetailPage({ params }) {
                 <div className="price-image-pair">
                   <div>
                     <span>Ngoại thất</span>
-                    <div className="price-image" style={price.exImageUrl ? { backgroundImage: `url(${price.exImageUrl})` } : undefined} />
+                    <VehicleImageButton className="price-image" src={price.exImageUrl} title={`${vehicleName} - ${price.exteriorColorName || "Ngoại thất"}`} />
                   </div>
                   <div>
                     <span>Nội thất</span>
-                    <div className="price-image" style={price.inImageUrl ? { backgroundImage: `url(${price.inImageUrl})` } : undefined} />
+                    <VehicleImageButton className="price-image" src={price.inImageUrl} title={`${vehicleName} - ${price.interiorColorName || "Nội thất"}`} />
                   </div>
                 </div>
-                <h3>{price.exteriorColorName || "Ngoại thất"} / {price.interiorColorName || "Nội thất"}</h3>
+                <h3>
+                  {price.exteriorColorName || "Ngoại thất"} / {price.interiorColorName || "Nội thất"}
+                </h3>
                 <strong>{formatVnd(price.price)}</strong>
               </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {galleries.length ? (
+        <section className="shell-container detail-section">
+          <div className="section-heading compact">
+            <div>
+              <p className="eyebrow">Gallery</p>
+              <h2>Góc nhìn chi tiết của {vehicleName}</h2>
+            </div>
+          </div>
+          <div className="gallery-grid">
+            {galleries.map((gallery, index) => (
+              <figure className="gallery-card" key={gallery.id || gallery.imageUrl}>
+                <VehicleImageButton className="gallery-tile" src={gallery.imageUrl} title={`${vehicleName} - ảnh ${index + 1}`} />
+                <figcaption>{index === 0 ? "Ngoại thất" : index === 1 ? "Khoang lái" : "Trải nghiệm vận hành"}</figcaption>
+              </figure>
             ))}
           </div>
         </section>
@@ -135,13 +152,13 @@ export default async function VehicleDetailPage({ params }) {
           <div className="section-heading compact">
             <div>
               <p className="eyebrow">Khám phá</p>
-              <h2>Ngoại thất, nội thất và an toàn</h2>
+              <h2>Bài viết và điểm nổi bật theo từng phiên bản</h2>
             </div>
           </div>
           <div className="article-grid">
             {articles.map((article) => (
               <article className="article-card card" key={article.id}>
-                {article.imageUrl ? <div className="article-image" style={{ backgroundImage: `url(${article.imageUrl})` }} /> : null}
+                {article.imageUrl ? <VehicleImageButton className="article-image" src={article.imageUrl} title={article.title} /> : null}
                 <div>
                   <p className="eyebrow">{article.type || "Tính năng"}</p>
                   <h3>{article.title}</h3>

@@ -45,6 +45,9 @@ public class Accessory {
     @Column(nullable = false, length = 100)
     String type;
 
+    @Column(name = "image_url", length = 1024)
+    String imageUrl;
+
     @Builder.Default
     @ColumnDefault("true")
     @Column(name = "is_visible", nullable = false)

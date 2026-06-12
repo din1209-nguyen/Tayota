@@ -1,10 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import UserAvatar from "@/components/UserAvatar";
-import { changePasswordDirect, getMe, logout } from "@/lib/services/auth";
-import PasswordInput from "@/components/PasswordInput";
+import { getMe, logout } from "@/lib/services/auth";
 import { uploadMedia } from "@/lib/services/media";
 import { getUserProfile, updateUserProfile } from "@/lib/services/user";
 import { roleLabel } from "@/lib/format";
@@ -20,12 +20,6 @@ const EMPTY_PROFILE = {
   avatarUrl: "",
 };
 
-const EMPTY_PASSWORD_FORM = {
-  currentPassword: "",
-  newPassword: "",
-  confirmPassword: "",
-};
-
 function toProfileForm(user, profile) {
   return {
     userId: String(user?.id || profile?.id || ""),
@@ -38,7 +32,16 @@ function toProfileForm(user, profile) {
   };
 }
 
-export default function ProfilePanel({ heading = "Thông tin cá nhân" }) {
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+export default function ProfilePanel({ heading = "Hồ sơ cá nhân" }) {
   const router = useRouter();
   const avatarInputRef = useRef(null);
   const [user, setUser] = useState(null);
@@ -48,11 +51,7 @@ export default function ProfilePanel({ heading = "Thông tin cá nhân" }) {
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarMessage, setAvatarMessage] = useState("");
-  const [securityOpen, setSecurityOpen] = useState(false);
-  const [passwordForm, setPasswordForm] = useState(EMPTY_PASSWORD_FORM);
-  const [passwordSaving, setPasswordSaving] = useState(false);
   const [logoutSaving, setLogoutSaving] = useState(false);
-  const [passwordMessage, setPasswordMessage] = useState("");
   const [message, setMessage] = useState("");
 
   async function loadProfile() {
@@ -83,11 +82,6 @@ export default function ProfilePanel({ heading = "Thông tin cá nhân" }) {
   function updateField(event) {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
-  }
-
-  function updatePasswordField(event) {
-    const { name, value } = event.target;
-    setPasswordForm((current) => ({ ...current, [name]: value }));
   }
 
   async function uploadAvatar(event) {
@@ -134,31 +128,6 @@ export default function ProfilePanel({ heading = "Thông tin cá nhân" }) {
     }
   }
 
-  async function submitPassword(event) {
-    event.preventDefault();
-    if (passwordSaving) return;
-
-    setPasswordMessage("");
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordMessage("Mật khẩu mới và xác nhận mật khẩu mới không khớp.");
-      return;
-    }
-
-    setPasswordSaving(true);
-    try {
-      await changePasswordDirect({
-        currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword,
-      });
-      setPasswordForm(EMPTY_PASSWORD_FORM);
-      setPasswordMessage("Đã đổi mật khẩu. Vui lòng đăng nhập lại ở các thiết bị khác nếu cần.");
-    } catch (error) {
-      setPasswordMessage(error.message || "Không thể đổi mật khẩu.");
-    } finally {
-      setPasswordSaving(false);
-    }
-  }
-
   async function signOut() {
     if (logoutSaving) return;
     setLogoutSaving(true);
@@ -166,7 +135,7 @@ export default function ProfilePanel({ heading = "Thông tin cá nhân" }) {
     try {
       await logout();
     } catch {
-      // Local session cleanup still keeps the UI consistent if the server session is already gone.
+      // Local cleanup keeps the UI consistent if the server session is already gone.
     } finally {
       clearSession();
       router.push("/");
@@ -191,8 +160,15 @@ export default function ProfilePanel({ heading = "Thông tin cá nhân" }) {
             <div className="profile-avatar-wrap">
               <div className="profile-avatar-control">
                 <UserAvatar className="profile-avatar" src={form.avatarUrl} label="Ảnh đại diện" />
-                <button className="profile-avatar-button" type="button" onClick={() => avatarInputRef.current?.click()} disabled={avatarUploading} aria-label={avatarUploading ? "Đang tải ảnh đại diện" : "Đổi ảnh đại diện"} title={avatarUploading ? "Đang tải..." : "Đổi ảnh đại diện"}>
-                  {avatarUploading ? "..." : "✎"}
+                <button
+                  className="profile-avatar-button"
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  aria-label={avatarUploading ? "Đang tải ảnh đại diện" : "Đổi ảnh đại diện"}
+                  title={avatarUploading ? "Đang tải..." : "Đổi ảnh đại diện"}
+                >
+                  {avatarUploading ? "..." : <PencilIcon />}
                 </button>
               </div>
               <input ref={avatarInputRef} className="visually-hidden" type="file" accept="image/*" onChange={uploadAvatar} />
@@ -203,6 +179,11 @@ export default function ProfilePanel({ heading = "Thông tin cá nhân" }) {
               <span>{user.email}</span>
               <small>{roleLabel(user.role)}</small>
             </div>
+
+            <Link className="btn profile-password-button" href="/dashboard/change-password">
+              Đổi mật khẩu
+            </Link>
+
             <button className="btn btn-ghost profile-logout-button" type="button" onClick={signOut} disabled={logoutSaving}>
               {logoutSaving ? "Đang đăng xuất..." : "Đăng xuất"}
             </button>
@@ -230,28 +211,6 @@ export default function ProfilePanel({ heading = "Thông tin cá nhân" }) {
               {saving ? "Đang lưu..." : "Lưu hồ sơ"}
             </button>
           </form>
-
-          <section className={`security-panel ${securityOpen ? "open" : ""}`}>
-            <button className="security-toggle" type="button" onClick={() => setSecurityOpen((current) => !current)} aria-expanded={securityOpen} aria-label={securityOpen ? "Thu gọn đổi mật khẩu" : "Mở đổi mật khẩu"}>
-              <span>
-                <strong>Đổi mật khẩu</strong>
-              </span>
-              <span className="security-toggle-icon" aria-hidden="true">{securityOpen ? "⌃" : "⌄"}</span>
-            </button>
-            {passwordMessage ? <div className="status-box compact-status" aria-live="polite">{passwordMessage}</div> : null}
-            {securityOpen ? (
-              <form className="ops-form password-form" onSubmit={submitPassword}>
-                <div className="form-grid">
-                  <label className="label">Mật khẩu cũ<PasswordInput name="currentPassword" value={passwordForm.currentPassword} onChange={updatePasswordField} required autoComplete="current-password" /></label>
-                  <label className="label">Mật khẩu mới<PasswordInput name="newPassword" value={passwordForm.newPassword} onChange={updatePasswordField} required minLength={8} maxLength={20} autoComplete="new-password" /></label>
-                  <label className="label">Xác nhận mật khẩu mới<PasswordInput name="confirmPassword" value={passwordForm.confirmPassword} onChange={updatePasswordField} required minLength={8} maxLength={20} autoComplete="new-password" /></label>
-                </div>
-                <button className="btn btn-secondary" type="submit" disabled={passwordSaving}>
-                  {passwordSaving ? "Đang đổi..." : "Đổi mật khẩu"}
-                </button>
-              </form>
-            ) : null}
-          </section>
         </div>
       ) : null}
     </section>

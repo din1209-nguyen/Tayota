@@ -46,23 +46,23 @@ export default function ComparePicker({ selectedIds = [], selectedVehicles: comp
   const selectedVehicles = selected.map((id) => vehicleMap.get(String(id))).filter(Boolean);
   const filteredVehicles = useMemo(() => filterVehicleItems(vehicles, filters), [filters, vehicles]);
 
-  function toggle(id) {
-    setMessage("");
-    setSelected((current) => {
-      if (current.some((item) => String(item) === String(id))) {
-        return current.filter((item) => String(item) !== String(id));
-      }
-      if (current.length >= MAX_COMPARE_VEHICLES) {
-        setMessage("Bạn có thể so sánh tối đa 3 xe cùng lúc.");
-        return current;
-      }
-      return [...current, id];
-    });
+  function applySelection(nextSelected) {
+    const query = nextSelected.map((id) => `ids=${encodeURIComponent(id)}`).join("&");
+    router.replace(query ? `/compare?${query}` : "/compare", { scroll: false });
   }
 
-  function applySelection(nextSelected = selected) {
-    const query = nextSelected.map((id) => `ids=${encodeURIComponent(id)}`).join("&");
-    router.push(query ? `/compare?${query}` : "/compare");
+  function toggle(id) {
+    setMessage("");
+    const active = selected.some((item) => String(item) === String(id));
+    if (!active && selected.length >= MAX_COMPARE_VEHICLES) {
+      setMessage("Bạn có thể so sánh tối đa 3 xe cùng lúc.");
+      return;
+    }
+    const nextSelected = active
+      ? selected.filter((item) => String(item) !== String(id))
+      : [...selected, id];
+    setSelected(nextSelected);
+    applySelection(nextSelected);
   }
 
   function remove(id) {
@@ -73,16 +73,6 @@ export default function ComparePicker({ selectedIds = [], selectedVehicles: comp
 
   return (
     <section className="compare-studio shell-container">
-      <div className="compare-picker-head">
-        <div>
-          <p className="eyebrow">So sánh xe</p>
-          <h2>Chọn ba phiên bản để đối chiếu</h2>
-        </div>
-        <button className="btn btn-primary" type="button" onClick={() => applySelection()}>
-          Cập nhật so sánh
-        </button>
-      </div>
-
       <div className="compare-slots">
         {Array.from({ length: MAX_COMPARE_VEHICLES }, (_, index) => {
           const vehicle = selectedVehicles[index];
@@ -134,7 +124,7 @@ export default function ComparePicker({ selectedIds = [], selectedVehicles: comp
                 </span>
                 <span className="compare-choice-copy">
                   <strong>{getVehicleName(vehicle)}</strong>
-                  <span>Giá từ {formatVnd(getVehiclePrice(vehicle))}</span>
+                  <span>{formatVnd(getVehiclePrice(vehicle))}</span>
                 </span>
                 <span className="compare-choice-state">{active ? "Đã chọn" : "Chọn xe"}</span>
               </button>

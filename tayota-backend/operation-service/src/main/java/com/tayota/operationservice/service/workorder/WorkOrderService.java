@@ -414,6 +414,7 @@ public class WorkOrderService {
                         accessory.getUseContent(),
                         accessory.getReminderContent(),
                         accessory.getType(),
+                        accessory.getImageUrl(),
                         accessory.isVisible()
                 ))
                 .toList();

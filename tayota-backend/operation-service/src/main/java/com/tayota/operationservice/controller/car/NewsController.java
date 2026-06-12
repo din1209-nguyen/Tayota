@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/news")
+@RequestMapping({"/news", "/car/news"})
 public class NewsController {
     private final ArticleService articleService;
 

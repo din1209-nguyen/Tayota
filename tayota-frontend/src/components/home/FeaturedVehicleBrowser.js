@@ -15,7 +15,9 @@ export default function FeaturedVehicleBrowser({ vehicles, styles }) {
     <>
       <div className="shell-container featured-filter">
         <VehicleFilterControls filters={filters} onChange={setFilters} styles={styles} variant="minimal" advanced={false} />
-        <Link className="featured-filter-link" href={catalogHref}>Xem đầy đủ lựa chọn</Link>
+        <Link className="featured-filter-link" href={catalogHref}>
+          Xem đầy đủ lựa chọn
+        </Link>
       </div>
       <div className="shell-container vehicle-grid">
         {shownVehicles.map((vehicle, index) => (

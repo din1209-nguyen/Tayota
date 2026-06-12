@@ -9,8 +9,8 @@ export default function ExperienceBand() {
           <p className="eyebrow">Tư vấn thông minh</p>
           <h2>Một hành trình mua xe rõ ràng hơn từ showroom đến dịch vụ</h2>
           <p>
-            Tayota gom catalog, so sánh phiên bản, lịch lái thử, đại lý và chăm sóc sau bán hàng vào một trải nghiệm
-            liền mạch để khách hàng ra quyết định tự tin hơn.
+            Tayota gom catalog, so sánh phiên bản, lịch lái thử, đại lý và chăm sóc sau bán hàng vào một trải nghiệm liền mạch để khách
+            hàng ra quyết định tự tin hơn.
           </p>
           <div className="home-experience-points">
             <span>Catalog theo nhu cầu</span>

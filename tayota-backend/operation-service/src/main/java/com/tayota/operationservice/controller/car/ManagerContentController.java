@@ -23,7 +23,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/manager")
+@RequestMapping({"/manager", "/car/manager"})
 @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
 public class ManagerContentController {
     private final CarVersionService carVersionService;

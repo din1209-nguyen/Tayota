@@ -29,7 +29,11 @@ export default async function FeaturedVehicles() {
           Xem tất cả
         </Link>
       </div>
-      {error ? <div className="shell-container status-box">Chưa kết nối được gateway catalog. Vui lòng kiểm tra NEXT_PUBLIC_API_BASE_URL hoặc khởi động backend.</div> : null}
+      {error ? (
+        <div className="shell-container status-box">
+          Chưa kết nối được gateway catalog. Vui lòng kiểm tra NEXT_PUBLIC_API_BASE_URL hoặc khởi động backend.
+        </div>
+      ) : null}
       {!error && vehicles.length === 0 ? <div className="shell-container status-box">Hiện chưa có xe phù hợp trong catalog.</div> : null}
       {!error && vehicles.length ? <FeaturedVehicleBrowser vehicles={vehicles} styles={styles} /> : null}
     </section>

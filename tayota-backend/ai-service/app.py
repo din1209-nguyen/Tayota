@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from performance import env_flag
 
 from conversation_state_manager import MongoStateError, state_manager
 from mongo_storage import (
@@ -38,6 +39,10 @@ load_dotenv()
 class Source(BaseModel):
     source: str | None = None
     document_category: str | None = None
+    document_tags: list[str] = Field(default_factory=list)
+    mentioned_models: list[str] = Field(default_factory=list)
+    label_source: str | None = None
+    label_confidence: float | None = None
     page: int | None = None
     score: float | None = None
     chunk_id: str | None = None
@@ -166,6 +171,17 @@ DOCUMENT_CATEGORIES = {
     DOCUMENT_CATEGORY_WIGO,
     DOCUMENT_CATEGORY_MPV,
 }
+EMBED_WARMUP_ON_START = env_flag("EMBED_WARMUP_ON_START", "false")
+
+
+@app.on_event("startup")
+def warmup_embedding_model() -> None:
+    """Optionally preload the local embedding model before the first chat request."""
+    if not EMBED_WARMUP_ON_START:
+        return
+    from embed import get_model
+
+    get_model()
 
 
 @app.middleware("http")

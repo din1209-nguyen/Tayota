@@ -28,6 +28,7 @@ COLLECTION = os.getenv("COLLECTION", "atbm_httt")
 EMBED_DIM = 384
 BATCH_SIZE = 100
 T = TypeVar("T")
+_client: QdrantClient | None = None
 
 DOCUMENT_CATEGORY_SUMMARY = "summary"
 DOCUMENT_CATEGORY_BASIC_ADVICE = "basic_advice"
@@ -85,7 +86,10 @@ def _qdrant_call(action: str, operation: Callable[[], T]) -> T:
 
 def get_client() -> QdrantClient:
     """Khởi tạo QdrantClient từ cấu hình môi trường."""
-    return QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+    global _client
+    if _client is None:
+        _client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+    return _client
 
 
 def qdrant_point_id(chunk_id: str) -> str:
@@ -145,6 +149,10 @@ def _chunk_payload(chunk: Dict[str, Any]) -> Dict[str, Any]:
         "content_hash": metadata.get("content_hash"),
         "document_id": metadata.get("document_id"),
         "gridfs_file_id": metadata.get("gridfs_file_id"),
+        "document_tags": metadata.get("document_tags", []),
+        "mentioned_models": metadata.get("mentioned_models", []),
+        "label_source": metadata.get("label_source"),
+        "label_confidence": metadata.get("label_confidence"),
     }
 
 
@@ -179,10 +187,17 @@ def search(
     score_threshold: float = 0.4,
     source_names: List[str] | None = None,
     document_categories: List[str] | None = None,
+    document_tags: List[str] | None = None,
+    mentioned_models: List[str] | None = None,
 ) -> List[Dict[str, Any]]:
     """Tìm các chunk gần nhất trong Qdrant theo vector truy vấn."""
     client = get_client()
-    query_filter = _source_filter(source_names, document_categories)
+    query_filter = _source_filter(
+        source_names,
+        document_categories,
+        document_tags=document_tags,
+        mentioned_models=mentioned_models,
+    )
 
     if hasattr(client, "query_points"):
         results = _qdrant_call(
@@ -264,6 +279,8 @@ def scroll_chunks(
     *,
     source_names: List[str] | None = None,
     document_categories: List[str] | None = None,
+    document_tags: List[str] | None = None,
+    mentioned_models: List[str] | None = None,
     limit: int = 1000,
 ) -> List[Dict[str, Any]]:
     """Scroll chunk từ Qdrant, tùy chọn lọc theo danh sách source."""
@@ -272,7 +289,12 @@ def scroll_chunks(
         "scroll chunks",
         lambda: client.scroll(
             collection_name=COLLECTION,
-            scroll_filter=_source_filter(source_names, document_categories),
+            scroll_filter=_source_filter(
+                source_names,
+                document_categories,
+                document_tags=document_tags,
+                mentioned_models=mentioned_models,
+            ),
             limit=limit,
             with_payload=True,
             with_vectors=False,
@@ -284,13 +306,23 @@ def scroll_chunks(
 def _source_filter(
     source_names: List[str] | None,
     document_categories: List[str] | None = None,
+    *,
+    document_tags: List[str] | None = None,
+    mentioned_models: List[str] | None = None,
 ) -> Filter | None:
     """Tạo filter Qdrant theo category ổn định, kèm fallback source cũ nếu có."""
     source_names = [source for source in (source_names or []) if source]
     document_categories = [
         category for category in (document_categories or []) if category
     ]
-    if not source_names and not document_categories:
+    document_tags = [tag for tag in (document_tags or []) if tag]
+    mentioned_models = [model for model in (mentioned_models or []) if model]
+    if (
+        not source_names
+        and not document_categories
+        and not document_tags
+        and not mentioned_models
+    ):
         return None
 
     conditions = []
@@ -306,6 +338,20 @@ def _source_filter(
             FieldCondition(
                 key="source",
                 match=MatchAny(any=source_names),
+            )
+        )
+    if document_tags:
+        conditions.append(
+            FieldCondition(
+                key="document_tags",
+                match=MatchAny(any=document_tags),
+            )
+        )
+    if mentioned_models:
+        conditions.append(
+            FieldCondition(
+                key="mentioned_models",
+                match=MatchAny(any=mentioned_models),
             )
         )
 
@@ -332,6 +378,10 @@ def _point_payload_result(payload: Dict[str, Any], score: float = 1.0) -> Dict[s
         "char_end": payload.get("char_end"),
         "document_id": payload.get("document_id"),
         "gridfs_file_id": payload.get("gridfs_file_id"),
+        "document_tags": payload.get("document_tags") or [],
+        "mentioned_models": payload.get("mentioned_models") or [],
+        "label_source": payload.get("label_source"),
+        "label_confidence": payload.get("label_confidence"),
     }
 
 
@@ -437,6 +487,10 @@ def upsert_summary_chunk(car_names: List[str]) -> None:
                         "char_start": 0,
                         "char_end": len(content),
                         "content_hash": None,
+                        "document_tags": [],
+                        "mentioned_models": unique_names,
+                        "label_source": "rule",
+                        "label_confidence": 1.0,
                     },
                 )
             ],
@@ -474,6 +528,7 @@ def ingest_documents(
         extract_multiple_pdfs,
         mark_documents_processed,
     )
+    from document_labeler import apply_document_labels
     from embed import embed_chunks
 
     if rebuild:
@@ -506,6 +561,7 @@ def ingest_documents(
         print("[INFO] Khong co tai lieu de ingest.")
         return get_collection_info()
 
+    docs = apply_document_labels(docs)
     chunks = chunk_documents(docs)
     if not chunks:
         print("[INFO] Khong tao duoc chunk nao.")

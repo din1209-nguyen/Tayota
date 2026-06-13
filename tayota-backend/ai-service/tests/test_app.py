@@ -185,6 +185,7 @@ def test_list_documents_returns_uploaded_documents(monkeypatch):
                 "document_id": "doc-1",
                 "filename": "toyota.pdf",
                 "status": "indexed",
+                "document_category": None,
                 "content_type": "application/pdf",
                 "size_bytes": 123,
                 "sha256": "abc",
@@ -202,12 +203,13 @@ def test_list_documents_returns_uploaded_documents(monkeypatch):
         "count": 1,
         "documents": [
             {
-                "document_id": "doc-1",
-                "filename": "toyota.pdf",
-                "status": "indexed",
-                "content_type": "application/pdf",
-                "size_bytes": 123,
-                "sha256": "abc",
+                    "document_id": "doc-1",
+                    "filename": "toyota.pdf",
+                    "status": "indexed",
+                    "document_category": None,
+                    "content_type": "application/pdf",
+                    "size_bytes": 123,
+                    "sha256": "abc",
                 "uploaded_by_user_id": "user-1",
                 "uploaded_at": "2026-05-24T00:00:00Z",
                 "updated_at": None,
@@ -255,11 +257,19 @@ def test_upload_document_requires_admin_role():
 def test_upload_document_allows_admin_role(monkeypatch):
     captured = {}
 
-    def fake_save_pdf(*, filename, content_type, file_obj, uploaded_by_user_id=None):
+    def fake_save_pdf(
+        *,
+        filename,
+        content_type,
+        file_obj,
+        uploaded_by_user_id=None,
+        document_category=None,
+    ):
         captured["filename"] = filename
         captured["content_type"] = content_type
         captured["content"] = file_obj.read()
         captured["uploaded_by_user_id"] = uploaded_by_user_id
+        captured["document_category"] = document_category
         return {
             "document_id": "doc-1",
             "filename": filename,
@@ -291,6 +301,7 @@ def test_upload_document_allows_admin_role(monkeypatch):
     assert captured["filename"] == "toyota.pdf"
     assert captured["content"] == b"%PDF-test"
     assert captured["uploaded_by_user_id"] == "admin-1"
+    assert captured["document_category"] is None
     assert captured["job_status"] == "queued"
     assert captured["job_document_id"] == "doc-1"
     assert captured["ingest_document_id"] == "doc-1"

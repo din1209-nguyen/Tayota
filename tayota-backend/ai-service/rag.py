@@ -39,6 +39,7 @@ from business_rules import rules_engine
 from slot_extractor import extract_slots, should_extract_slots
 from conversation_state_manager import state_manager, ConversationState
 from logic_smart_car_consultant import smart_consultant
+from performance import StageTimer, env_flag, env_int
 
 from dotenv import load_dotenv
 
@@ -52,11 +53,16 @@ LLM_PROVIDER = "groq"
 
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
-TOP_K = 5
-RETRIEVAL_CANDIDATES_TOP_K = 30
-LIST_CONTEXT_TOP_K = 15
-MAX_CONTEXT_CHUNKS = 12
-MAX_CONTEXT_CHARS = 10000
+TOP_K = env_int("RAG_TOP_K", 5)
+RETRIEVAL_CANDIDATES_TOP_K = env_int("RAG_RETRIEVAL_CANDIDATES_TOP_K", 20)
+LIST_CONTEXT_TOP_K = env_int("RAG_LIST_CONTEXT_TOP_K", 10)
+MAX_CONTEXT_CHUNKS = env_int("RAG_MAX_CONTEXT_CHUNKS", 8)
+MAX_CONTEXT_CHARS = env_int("RAG_MAX_CONTEXT_CHARS", 8000)
+RAG_METADATA_SUPPORT_LIMIT = env_int("RAG_METADATA_SUPPORT_LIMIT", 50)
+RAG_LEXICAL_SUPPORT_LIMIT = env_int("RAG_LEXICAL_SUPPORT_LIMIT", 50)
+RAG_NEIGHBOR_TOP_N = env_int("RAG_NEIGHBOR_TOP_N", 3)
+RAG_TIMING_ENABLED = env_flag("RAG_TIMING_ENABLED", "false")
+CHAT_LOG_SYNC = env_flag("CHAT_LOG_SYNC", "true")
 
 GENERAL_DOCUMENT_CATEGORIES = [
     DOCUMENT_CATEGORY_BASIC_ADVICE,
@@ -156,6 +162,34 @@ HIGH_VALUE_VEHICLE_TERMS = [
     "nhien lieu",
     "so cho",
 ]
+DOCUMENT_QUERY_TAG_RULES = {
+    "gia_xe": [
+        "gia",
+        "gia xe",
+        "gia ban",
+        "gia khoi diem",
+        "niem yet",
+    ],
+    "thong_so": [
+        "thong so",
+        "dong co",
+        "kich thuoc",
+        "cong suat",
+        "mo men",
+        "hop so",
+        "nhien lieu",
+        "tieu hao",
+    ],
+    "bao_duong": ["bao duong", "bao tri", "phu tung"],
+    "lai_thu": ["lai thu", "dat lich lai thu", "dang ky lai thu"],
+    "tra_gop": ["tra gop", "vay mua xe", "tai chinh", "ngan hang"],
+    "an_toan": ["an toan", "tui khi", "phanh", "camera", "canh bao"],
+    "khuyen_mai": ["khuyen mai", "uu dai"],
+    "bao_hanh": ["bao hanh"],
+    "thu_tuc": ["thu tuc", "ho so", "giay to", "dang ky", "dang ki"],
+    "so_sanh": ["so sanh", "khac nhau"],
+    "tu_van_chon_xe": ["tu van", "chon xe", "phu hop", "nhu cau"],
+}
 OFFROAD_KEYWORDS = [
     "off-road",
     "offroad",
@@ -335,6 +369,13 @@ def _build_retrieval_query(
             parts.append(f"Nhu cau da biet: {slot_text}")
 
     return "\n".join(parts)
+
+
+def _history_messages_for_generation(query: str, state: ConversationState) -> List[Dict[str, str]]:
+    """Lay history cho generation, bo qua khi query xe moi co the dung doc lap."""
+    if _mentions_vehicle_detail(query, state) and not _needs_history_for_retrieval(query):
+        return []
+    return state.get_recent_history(n_turns=3)
 
 
 def _normalize_lookup_text(text: str) -> str:
@@ -539,6 +580,37 @@ def _mentioned_specific_models(query: str, state: ConversationState) -> List[str
     return models
 
 
+def _metadata_values(doc: Dict[str, Any], key: str) -> List[str]:
+    """Lay danh sach metadata tu payload moi, chap nhan ca gia tri string cu."""
+    value = doc.get(key)
+    if isinstance(value, list):
+        return [str(item) for item in value if item]
+    if isinstance(value, str) and value:
+        return [value]
+    return []
+
+
+def _preferred_document_tags_for_query(query: str, state: ConversationState) -> List[str]:
+    """Suy ra tag tai lieu nen uu tien dua tren query va ngu canh ngan."""
+    lookup_text = _normalize_lookup_text(query)
+    if _needs_history_for_retrieval(query):
+        previous_user_turns = [
+            msg["content"]
+            for msg in state.get_recent_history(n_turns=2)
+            if msg.get("role") == "user"
+        ]
+        if previous_user_turns:
+            lookup_text = _normalize_lookup_text(
+                f"{query}\n" + "\n".join(previous_user_turns)
+            )
+
+    tags = []
+    for tag, keywords in DOCUMENT_QUERY_TAG_RULES.items():
+        if any(_contains_lookup_keyword(lookup_text, keyword) for keyword in keywords):
+            tags.append(tag)
+    return _unique_values(tags)
+
+
 def _is_overview_query(query: str) -> bool:
     """Nhận diện câu hỏi yêu cầu giới thiệu/tổng quan/thông tin chung về xe."""
     normalized_text = _normalize_lookup_text(query)
@@ -551,7 +623,7 @@ def _lexical_support_docs(
     document_categories: List[str],
     legacy_source_names: List[str],
     *,
-    limit: int = 8,
+    limit: int = RAG_LEXICAL_SUPPORT_LIMIT,
 ) -> List[Dict[str, Any]]:
     """Tìm thêm chunk bằng lexical match khi query nhắc rõ model xe."""
     mentioned_models = _mentioned_specific_models(query, state)
@@ -561,7 +633,7 @@ def _lexical_support_docs(
     all_docs = scroll_chunks(
         source_names=legacy_source_names,
         document_categories=document_categories,
-        limit=1000,
+        limit=limit,
     )
     scored_docs = []
     overview_query = _is_overview_query(query)
@@ -574,6 +646,7 @@ def _lexical_support_docs(
             model
             for model in mentioned_models
             if _contains_lookup_keyword(normalized_doc, model)
+            or model in _metadata_values(doc, "mentioned_models")
         ]
         if not matched_models:
             continue
@@ -592,6 +665,57 @@ def _lexical_support_docs(
         adjusted["score"] = max(float(doc.get("score") or 0), lexical_score)
         adjusted["lexical_match"] = True
         adjusted["matched_models"] = matched_models
+        scored_docs.append(adjusted)
+
+    scored_docs.sort(key=lambda item: item.get("score", 0), reverse=True)
+    return scored_docs[:limit]
+
+
+def _metadata_support_docs(
+    query: str,
+    state: ConversationState,
+    document_categories: List[str],
+    legacy_source_names: List[str],
+    *,
+    limit: int = RAG_METADATA_SUPPORT_LIMIT,
+) -> List[Dict[str, Any]]:
+    """Tim them chunk bang metadata tags/models khi collection da duoc auto-label."""
+    preferred_tags = _preferred_document_tags_for_query(query, state)
+    mentioned_models = _mentioned_specific_models(query, state)
+    if not preferred_tags and not mentioned_models:
+        return []
+
+    all_docs = scroll_chunks(
+        document_categories=document_categories,
+        document_tags=preferred_tags,
+        mentioned_models=mentioned_models,
+        limit=limit,
+    )
+    scored_docs = []
+    allowed_categories = set(document_categories)
+    allowed_sources = set(legacy_source_names)
+
+    for doc in all_docs:
+        document_category = _document_category_for_doc(doc)
+        source = doc.get("source")
+        if document_category not in allowed_categories and source not in allowed_sources:
+            continue
+
+        doc_tags = set(_metadata_values(doc, "document_tags"))
+        doc_models = set(_metadata_values(doc, "mentioned_models"))
+        matching_tags = set(preferred_tags) & doc_tags
+        matching_models = set(mentioned_models) & doc_models
+        if not matching_tags and not matching_models:
+            continue
+
+        adjusted = dict(doc)
+        adjusted["score"] = max(
+            float(doc.get("score") or 0),
+            0.5 + min(0.25, 0.08 * len(matching_tags)) + min(0.25, 0.12 * len(matching_models)),
+        )
+        adjusted["metadata_match"] = True
+        adjusted["matched_tags"] = sorted(matching_tags)
+        adjusted["matched_models"] = sorted(matching_models)
         scored_docs.append(adjusted)
 
     scored_docs.sort(key=lambda item: item.get("score", 0), reverse=True)
@@ -744,6 +868,7 @@ def _rerank_retrieved_docs(
     normalized_query = _normalize_lookup_text(query)
     preferred_categories = set(_preferred_document_categories_for_query(query, state))
     mentioned_models = _mentioned_specific_models(query, state)
+    preferred_tags = set(_preferred_document_tags_for_query(query, state))
     catalog_query = _is_general_catalog_query(query)
     need_based_query = _is_need_based_query(query, state)
     overview_query = _is_overview_query(query)
@@ -757,15 +882,22 @@ def _rerank_retrieved_docs(
         )
         text = f"{source}\n{doc.get('content') or ''}".lower()
         score = float(doc.get("score") or 0)
+        doc_tags = set(_metadata_values(doc, "document_tags"))
+        doc_models = set(_metadata_values(doc, "mentioned_models"))
 
         if document_category in preferred_categories:
             score += 0.35
         elif preferred_categories and document_category in VEHICLE_DOCUMENT_CATEGORIES:
             score -= 0.05
 
+        matching_tags = preferred_tags & doc_tags
+        if matching_tags:
+            score += min(0.3, 0.12 * len(matching_tags))
+
         if mentioned_models:
             matched_specific_model = any(
                 _contains_lookup_keyword(normalized_doc, model)
+                or model in doc_models
                 for model in mentioned_models
             )
             if matched_specific_model:
@@ -779,6 +911,8 @@ def _rerank_retrieved_docs(
 
         if doc.get("lexical_match"):
             score += 0.25
+        if doc.get("metadata_match"):
+            score += 0.18
 
         if catalog_query and document_category == DOCUMENT_CATEGORY_SUMMARY:
             score += 0.45
@@ -786,8 +920,9 @@ def _rerank_retrieved_docs(
             score += 0.08
 
         for keyword in TOYOTA_MODEL_KEYWORDS:
-            if _contains_lookup_keyword(normalized_query, keyword) and _contains_lookup_keyword(
-                normalized_doc, keyword
+            if _contains_lookup_keyword(normalized_query, keyword) and (
+                _contains_lookup_keyword(normalized_doc, keyword)
+                or keyword in doc_models
             ):
                 score += 0.12
 
@@ -853,12 +988,13 @@ def _expand_with_neighbor_context(
     *,
     max_chunks: int = MAX_CONTEXT_CHUNKS,
     max_chars: int = MAX_CONTEXT_CHARS,
+    seed_limit: int = RAG_NEIGHBOR_TOP_N,
 ) -> List[Dict[str, Any]]:
     """Mở rộng context bằng chunk liền kề quanh các kết quả retrieve chính."""
     expanded = []
     seen = set()
 
-    for doc in retrieved:
+    for doc in retrieved[: max(seed_limit, 0)]:
         if len(expanded) >= max_chunks:
             break
 
@@ -918,15 +1054,19 @@ def answer(
     """Chạy toàn bộ pipeline intent, rule, slot, retrieval và generation cho một query."""
 
     # ── Lấy / tạo conversation state ─────────────────────────────────────────
-    state: ConversationState = state_manager.get_or_create(session_id, user_id=user_id)
+    timer = StageTimer(RAG_TIMING_ENABLED)
+    with timer.track("state_load"):
+        state: ConversationState = state_manager.get_or_create(session_id, user_id=user_id)
 
     # ── Bước 1: Classify intent ───────────────────────────────────────────────
-    intent_result = classify_intent(query)
+    with timer.track("intent"):
+        intent_result = classify_intent(query)
     intent = intent_result["intent"]
     print(f"🔍 Intent: {intent} | confidence: {intent_result.get('confidence', '?')}")
 
     # ── Bước 2: Business rules ────────────────────────────────────────────────
-    blocked, rule_name, rule_response = rules_engine.check(query, intent_result)
+    with timer.track("business_rules"):
+        blocked, rule_name, rule_response = rules_engine.check(query, intent_result)
 
     if blocked:
         print(f"🚫 Blocked: {rule_name}")
@@ -941,6 +1081,7 @@ def answer(
             session_id=session_id,
             user_id=user_id,
             question=query,
+            timer=timer,
         )
 
     warning_prefix = f"{rule_response}\n\n---\n\n" if rule_response else ""
@@ -948,7 +1089,8 @@ def answer(
     # ── Bước 3: Slot extraction ───────────────────────────────────────────────
     use_slot_context = should_extract_slots(intent)
     if use_slot_context:
-        state.update_slots(extract_slots(query))
+        with timer.track("slot"):
+            state.update_slots(extract_slots(query))
     else:
         print(f"Slot extraction skipped for intent: {intent}")
     state.update_stage(intent)
@@ -956,7 +1098,8 @@ def answer(
     print(f"📋 Stage: {state.stage}")
 
     # ── Bước 4: Smart consultant (sơ bộ, chưa có RAG context) ────────────────
-    prelim_decision = smart_consultant.decide(query, state, rag_context="")
+    with timer.track("consultant_pre"):
+        prelim_decision = smart_consultant.decide(query, state, rag_context="")
 
     # ── Bước 5: RAG retrieve ──────────────────────────────────────────────────
     sources = []
@@ -987,38 +1130,50 @@ def answer(
         print(
             f"Document scope: {document_scope} | categories: {', '.join(document_categories)}"
         )
-        query_vec = embed_query(retrieval_query)
-        retrieved = search(
-            query_vec,
-            top_k=retrieval_top_k,
-            score_threshold=0.35,
-            source_names=legacy_source_names,
-            document_categories=document_categories,
-        )
-        if not retrieved:
+        with timer.track("embed"):
+            query_vec = embed_query(retrieval_query)
+        with timer.track("qdrant_search"):
             retrieved = search(
                 query_vec,
                 top_k=retrieval_top_k,
-                score_threshold=0.2,
+                score_threshold=0.35,
                 source_names=legacy_source_names,
                 document_categories=document_categories,
             )
-        lexical_docs = _lexical_support_docs(
-            query,
-            state,
-            document_categories,
-            legacy_source_names,
-        )
-        retrieved = _merge_retrieval_candidates(retrieved, lexical_docs)
-        retrieved = _rerank_retrieved_docs(
-            retrieved,
-            query=query,
-            state=state,
-            document_scope=document_scope,
-            offroad_need=offroad_need,
-            limit=dynamic_top_k,
-        )
-        retrieved = _expand_with_neighbor_context(retrieved)
+        if not retrieved:
+            with timer.track("qdrant_search"):
+                retrieved = search(
+                    query_vec,
+                    top_k=retrieval_top_k,
+                    score_threshold=0.2,
+                    source_names=legacy_source_names,
+                    document_categories=document_categories,
+                )
+        with timer.track("support_docs"):
+            lexical_docs = _lexical_support_docs(
+                query,
+                state,
+                document_categories,
+                legacy_source_names,
+            )
+            metadata_docs = _metadata_support_docs(
+                query,
+                state,
+                document_categories,
+                legacy_source_names,
+            )
+        retrieved = _merge_retrieval_candidates(retrieved, [*lexical_docs, *metadata_docs])
+        with timer.track("rerank"):
+            retrieved = _rerank_retrieved_docs(
+                retrieved,
+                query=query,
+                state=state,
+                document_scope=document_scope,
+                offroad_need=offroad_need,
+                limit=dynamic_top_k,
+            )
+        with timer.track("neighbor"):
+            retrieved = _expand_with_neighbor_context(retrieved)
 
         if retrieved:
             rag_context = _build_context(retrieved)
@@ -1032,6 +1187,10 @@ def answer(
                     "chunk_index": r.get("chunk_index"),
                     "document_id": r.get("document_id"),
                     "gridfs_file_id": r.get("gridfs_file_id"),
+                    "document_tags": r.get("document_tags") or [],
+                    "mentioned_models": r.get("mentioned_models") or [],
+                    "label_source": r.get("label_source"),
+                    "label_confidence": r.get("label_confidence"),
                 }
                 for r in retrieved
             ]
@@ -1052,6 +1211,7 @@ def answer(
                 session_id=session_id,
                 user_id=user_id,
                 question=query,
+                timer=timer,
             )
 
     # ── Bước 6: Build prompt cuối với RAG context đầy đủ ─────────────────────
@@ -1060,7 +1220,7 @@ def answer(
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        *state.get_recent_history(n_turns=3),
+        *_history_messages_for_generation(query, state),
         {
             "role": "user",
             "content": (
@@ -1074,7 +1234,8 @@ def answer(
     ]
 
     # ── Bước 7: Generate ──────────────────────────────────────────────────────
-    llm_response, model_used = _generate(messages)
+    with timer.track("generate"):
+        llm_response, model_used = _generate(messages)
 
     final_answer = warning_prefix + smart_consultant.compose_final_response(
         llm_response, final_decision
@@ -1092,6 +1253,7 @@ def answer(
         session_id=session_id,
         user_id=user_id,
         question=query,
+        timer=timer,
     )
 
 
@@ -1105,21 +1267,28 @@ def _make_result(
     session_id: str,
     user_id: str | None = None,
     question: str = "",
+    timer: StageTimer | None = None,
 ) -> Dict[str, Any]:
     """Lưu state/chat log và đóng gói response chuẩn cho API."""
-    state_manager.save(state)
-    state_manager.log_chat_message(
-        session_id=session_id,
-        user_id=user_id or state.user_id,
-        question=question,
-        answer=answer,
-        intent=intent,
-        stage=state.stage,
-        slots_snapshot=state.get_filled_slots(),
-        sources=sources,
-        model_used=model_used,
-        rule_triggered=rule_name,
-    )
+    if timer is None:
+        timer = StageTimer(False)
+    with timer.track("state_save"):
+        state_manager.save(state)
+    if CHAT_LOG_SYNC:
+        with timer.track("chat_log"):
+            state_manager.log_chat_message(
+                session_id=session_id,
+                user_id=user_id or state.user_id,
+                question=question,
+                answer=answer,
+                intent=intent,
+                stage=state.stage,
+                slots_snapshot=state.get_filled_slots(),
+                sources=sources,
+                model_used=model_used,
+                rule_triggered=rule_name,
+            )
+    timer.log(session_id=session_id, intent=intent)
     return {
         "answer": answer,
         "sources": sources,

@@ -2382,10 +2382,12 @@ footer.footer a:not(.brand):hover {
   position: fixed;
   right: 22px;
   bottom: 22px;
-  z-index: 60;
+  z-index: 1000;
+  width: max-content;
   display: grid;
   justify-items: end;
   gap: 12px;
+  overflow: visible;
 }
 
 .chat-greeting {
@@ -14646,7 +14648,6 @@ footer.footer .footer-grid {
   .chat-widget {
     right: auto;
     bottom: auto;
-    left: auto;
     padding: 0;
   }
 

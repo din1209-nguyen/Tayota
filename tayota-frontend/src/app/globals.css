@@ -14573,3 +14573,86 @@ footer.footer .footer-grid {
     min-height: 190px;
   }
 }
+
+/* Draggable and wider chat launcher */
+.chat-widget {
+  user-select: none;
+  padding: 0;
+  justify-items: end;
+}
+
+.chat-widget.is-dragging {
+  cursor: grabbing;
+}
+
+.chat-launch {
+  cursor: grab;
+  touch-action: none;
+}
+
+.chat-launch:active {
+  cursor: grabbing;
+  transform: none;
+}
+
+.chat-widget.is-dragging .chat-launch {
+  cursor: grabbing;
+  filter: drop-shadow(0 24px 34px rgba(0, 0, 0, 0.28));
+  transform: none;
+}
+
+.chat-widget.is-dragging .chat-launch img {
+  animation-play-state: paused;
+}
+
+.chat-drag-handle {
+  cursor: grab;
+  touch-action: none;
+}
+
+.chat-drag-handle:active,
+.chat-widget.is-dragging .chat-drag-handle {
+  cursor: grabbing;
+}
+
+.chat-drag-handle .icon-button,
+.chat-drag-handle .status-pill {
+  cursor: auto;
+}
+
+.chat-panel {
+  width: min(600px, calc(100vw - 32px));
+  height: min(740px, calc(100dvh - 136px));
+  max-height: min(740px, calc(100dvh - 136px));
+}
+
+.chat-panel-live {
+  width: min(680px, calc(100vw - 32px));
+  height: min(760px, calc(100dvh - 136px));
+  max-height: min(760px, calc(100dvh - 136px));
+}
+
+.chat-choice-panel a.choice-card {
+  display: grid;
+  gap: 5px;
+  color: inherit;
+}
+
+.chat-login-card {
+  background: #fff7f7;
+}
+
+@media (max-width: 620px) {
+  .chat-widget {
+    right: auto;
+    bottom: auto;
+    left: auto;
+    padding: 0;
+  }
+
+  .chat-panel,
+  .chat-panel-live {
+    width: calc(100vw - 24px);
+    height: min(680px, calc(100dvh - 120px));
+  }
+}

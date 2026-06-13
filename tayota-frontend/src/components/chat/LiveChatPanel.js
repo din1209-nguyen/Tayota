@@ -71,8 +71,10 @@ export default function LiveChatPanel({
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
+  const [sessionEpoch, setSessionEpoch] = useState(0);
   const clientRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const previousUserRef = useRef(null);
   const liveChatAllowed = isAssistant || canUseCustomerLiveChat(currentUser);
 
   useEffect(() => {
@@ -80,9 +82,40 @@ export default function LiveChatPanel({
   }, [onStatusChange, status]);
 
   useEffect(() => {
-    setCurrentUser(getCurrentUser());
-    return onSessionChange(() => setCurrentUser(getCurrentUser()));
-  }, []);
+    function handleSessionChange() {
+      const nextUser = getCurrentUser();
+      const previousUser = previousUserRef.current;
+
+      if (!isAssistant && previousUser && !nextUser) {
+        clientRef.current?.deactivate?.();
+        clientRef.current = null;
+        setMessages([]);
+        setSessionId("");
+        setContent("");
+        setError("");
+        setSending(false);
+        setStatus("idle");
+        setSessionEpoch((current) => current + 1);
+      }
+
+      previousUserRef.current = nextUser;
+      setCurrentUser(nextUser);
+    }
+
+    handleSessionChange();
+    return onSessionChange(handleSessionChange);
+  }, [isAssistant]);
+
+  useEffect(() => {
+    if (isAssistant || liveChatAllowed) return;
+    setMessages([]);
+    setSessionId("");
+    setContent("");
+    setStatus("idle");
+    setSending(false);
+    clientRef.current?.deactivate?.();
+    clientRef.current = null;
+  }, [isAssistant, liveChatAllowed]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ block: "end" });
@@ -163,7 +196,7 @@ export default function LiveChatPanel({
       clientRef.current = null;
       if (client) client.deactivate();
     };
-  }, [isAssistant, liveChatAllowed, onMessageReceived, onSessionUpdate, providedSessionId]);
+  }, [isAssistant, liveChatAllowed, onMessageReceived, onSessionUpdate, providedSessionId, sessionEpoch]);
 
   async function send(event) {
     event.preventDefault();
@@ -202,7 +235,7 @@ export default function LiveChatPanel({
 
       <div className="live-chat-feedback" aria-live="polite">
         {readOnly ? <div className="status-box">{readOnlyMessage}</div> : null}
-        {!liveChatAllowed ? <div className="status-box">Tư vấn trực tiếp chỉ dành cho khách hàng và khách vãng lai.</div> : null}
+        {!liveChatAllowed ? <div className="status-box">Chức năng tư vấn trực tiếp trong widget chỉ dành cho khách hàng.</div> : null}
         {error ? <div className="status-box">{error}</div> : null}
       </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { sendAiChatMessage } from "@/lib/services/chat";
 import LiveChatPanel from "@/components/chat/LiveChatPanel";
 import { getCurrentUser, onSessionChange } from "@/lib/session";
@@ -10,6 +10,7 @@ import { statusLabel } from "@/lib/format";
 const UNAVAILABLE_TEXT =
   "AI tạm gián đoạn. Vui lòng thử lại sau hoặc chuyển sang live chat để nhân viên Tayota hỗ trợ trực tiếp.";
 const CUSTOMER_LIVE_CHAT_ROLES = new Set(["USER", "CUSTOMER"]);
+const CHAT_POSITION_STORAGE_KEY = "tayota_chat_widget_position_v2";
 
 function splitMessageText(text = "") {
   const normalized = String(text).replace(/\r\n/g, "\n").trim();
@@ -119,6 +120,52 @@ function liveStatusClass(status) {
   return `status-${String(status || "idle").toLowerCase()}`;
 }
 
+function getChatWidgetSize(isOpen, mode) {
+  if (typeof window === "undefined") return { width: 104, height: 104 };
+  const mobile = window.matchMedia("(max-width: 620px)").matches;
+  const launchSize = mobile ? 86 : 104;
+  if (!isOpen) return { width: launchSize, height: launchSize };
+  const panelGap = mobile ? 24 : 32;
+  const panelHeightGap = mobile ? 120 : 136;
+  const panelWidth = mode === "live" ? 680 : 600;
+  const panelHeight = mode === "live" ? 760 : 740;
+  return {
+    width: Math.min(panelWidth, window.innerWidth - panelGap),
+    height: Math.min(panelHeight, window.innerHeight - panelHeightGap) + launchSize + 12,
+  };
+}
+
+function clampChatPosition(nextLeft, nextTop, isOpen, mode) {
+  if (typeof window === "undefined") return { left: nextLeft, top: nextTop };
+  const margin = 12;
+  const size = getChatWidgetSize(isOpen, mode);
+  const maxLeft = Math.max(margin, window.innerWidth - size.width - margin);
+  const maxTop = Math.max(margin, window.innerHeight - size.height - margin);
+  return {
+    left: Math.min(Math.max(margin, nextLeft), maxLeft),
+    top: Math.min(Math.max(margin, nextTop), maxTop),
+  };
+}
+
+function getDefaultChatPosition(isOpen, mode) {
+  if (typeof window === "undefined") return { left: 22, top: 22 };
+  const size = getChatWidgetSize(isOpen, mode);
+  if (!isOpen) {
+    return clampChatPosition(
+      window.innerWidth * 0.62,
+      window.matchMedia("(max-width: 620px)").matches ? 86 : 48,
+      isOpen,
+      mode
+    );
+  }
+  return clampChatPosition(window.innerWidth - size.width - 22, window.innerHeight - size.height - 22, isOpen, mode);
+}
+
+function isInteractiveDragTarget(target) {
+  if (target?.closest?.(".chat-launch")) return false;
+  return Boolean(target?.closest?.("button, a, input, textarea, select, label, [data-no-drag='true']"));
+}
+
 export default function ChatLauncher() {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState("");
@@ -127,6 +174,20 @@ export default function ChatLauncher() {
   const [connectionState, setConnectionState] = useState("ready");
   const [liveStatus, setLiveStatus] = useState("idle");
   const [currentUser, setCurrentUser] = useState(null);
+  const [position, setPosition] = useState({ left: 22, top: 22 });
+  const [dragging, setDragging] = useState(false);
+  const dragRef = useRef({
+    active: false,
+    moved: false,
+    pointerId: null,
+    offsetX: 0,
+    offsetY: 0,
+    nextLeft: 22,
+    nextTop: 22,
+    frame: 0,
+    captureTarget: null,
+  });
+  const latestPositionRef = useRef(position);
   const [messages, setMessages] = useState([
     { role: "assistant", text: "Xin chào, tôi có thể tư vấn dòng xe, lịch lái thử và dịch vụ Tayota." },
   ]);
@@ -139,6 +200,44 @@ export default function ChatLauncher() {
   useEffect(() => {
     if (mode === "live" && !canUseCustomerLiveChat(currentUser)) setMode("");
   }, [currentUser, mode]);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(CHAT_POSITION_STORAGE_KEY);
+      if (!stored) {
+        setPosition(getDefaultChatPosition(false, ""));
+        return;
+      }
+      const parsed = JSON.parse(stored);
+      if (Number.isFinite(parsed?.left) && Number.isFinite(parsed?.top)) {
+        setPosition(clampChatPosition(parsed.left, parsed.top, false, ""));
+      } else if (Number.isFinite(parsed?.right) && Number.isFinite(parsed?.bottom)) {
+        const size = getChatWidgetSize(false, "");
+        setPosition(clampChatPosition(window.innerWidth - parsed.right - size.width, window.innerHeight - parsed.bottom - size.height, false, ""));
+      } else {
+        setPosition(getDefaultChatPosition(false, ""));
+      }
+    } catch {
+      setPosition(getDefaultChatPosition(false, ""));
+    }
+  }, []);
+
+  useEffect(() => {
+    latestPositionRef.current = position;
+  }, [position]);
+
+  useEffect(() => {
+    setPosition((current) => clampChatPosition(current.left, current.top, open, mode));
+  }, [open, mode]);
+
+  useEffect(() => {
+    function handleResize() {
+      setPosition((current) => clampChatPosition(current.left, current.top, open, mode));
+    }
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [open, mode]);
 
   useEffect(() => {
     function handleOpen() {
@@ -190,11 +289,94 @@ export default function ChatLauncher() {
 
   const liveChatAllowed = canUseCustomerLiveChat(currentUser);
 
+  function commitDragPosition(left, top) {
+    const nextPosition = clampChatPosition(left, top, open, mode);
+    latestPositionRef.current = nextPosition;
+    setPosition(nextPosition);
+  }
+
+  function beginDrag(event) {
+    if (event.button !== 0 || isInteractiveDragTarget(event.target)) return;
+    event.preventDefault();
+    const widget = event.currentTarget.closest(".chat-widget");
+    const rect = widget?.getBoundingClientRect();
+    if (!rect) return;
+    const current = dragRef.current;
+    current.active = true;
+    current.moved = false;
+    current.pointerId = event.pointerId;
+    current.offsetX = event.clientX - rect.left;
+    current.offsetY = event.clientY - rect.top;
+    current.nextLeft = latestPositionRef.current.left;
+    current.nextTop = latestPositionRef.current.top;
+    current.captureTarget = event.currentTarget;
+    setDragging(true);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    window.addEventListener("pointermove", moveDrag);
+    window.addEventListener("pointerup", endDrag, { once: true });
+    window.addEventListener("pointercancel", endDrag, { once: true });
+  }
+
+  function moveDrag(event) {
+    const current = dragRef.current;
+    if (!current.active || current.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    const nextLeft = event.clientX - current.offsetX;
+    const nextTop = event.clientY - current.offsetY;
+    if (Math.abs(nextLeft - latestPositionRef.current.left) > 4 || Math.abs(nextTop - latestPositionRef.current.top) > 4) {
+      current.moved = true;
+    }
+    current.nextLeft = nextLeft;
+    current.nextTop = nextTop;
+    if (current.frame) return;
+    current.frame = window.requestAnimationFrame(() => {
+      current.frame = 0;
+      commitDragPosition(current.nextLeft, current.nextTop);
+    });
+  }
+
+  function endDrag(event) {
+    const current = dragRef.current;
+    if (!current.active || current.pointerId !== event.pointerId) return;
+    current.active = false;
+    window.removeEventListener("pointermove", moveDrag);
+    window.removeEventListener("pointerup", endDrag);
+    window.removeEventListener("pointercancel", endDrag);
+    if (current.frame) {
+      window.cancelAnimationFrame(current.frame);
+      current.frame = 0;
+    }
+    commitDragPosition(current.nextLeft, current.nextTop);
+    current.captureTarget?.releasePointerCapture?.(event.pointerId);
+    current.captureTarget = null;
+    setDragging(false);
+    const nextPosition = clampChatPosition(current.nextLeft, current.nextTop, open, mode);
+    try {
+      window.localStorage.setItem(CHAT_POSITION_STORAGE_KEY, JSON.stringify(nextPosition));
+    } catch {}
+  }
+
+  function openLauncher() {
+    if (dragRef.current.moved) {
+      dragRef.current.moved = false;
+      return;
+    }
+    setOpen(true);
+    setMode("");
+  }
+
   return (
-    <div className="chat-widget" id="ai-chat">
+    <div
+      className={`chat-widget ${dragging ? "is-dragging" : ""}`}
+      id="ai-chat"
+      style={{ left: position.left, top: position.top, right: "auto", bottom: "auto" }}
+    >
       {open ? (
         <section className={`chat-panel ${mode === "live" ? "chat-panel-live" : ""}`} aria-label="Tư vấn Tayota">
-          <div className="chat-head">
+          <div
+            className="chat-head chat-drag-handle"
+            onPointerDown={beginDrag}
+          >
             <div>
               <span className="eyebrow">Tayota concierge</span>
               <strong>{mode === "live" ? "Tư vấn trực tiếp" : mode === "ai" ? "Tư vấn AI" : "Chọn kênh hỗ trợ"}</strong>
@@ -264,11 +446,14 @@ export default function ChatLauncher() {
         </section>
       ) : null}
       {!open ? <div className="chat-greeting">Xin chào</div> : null}
-      <button className="chat-launch" type="button" aria-label="Mở chat Tayota" onClick={() => {
-        setOpen(true);
-        setMode("");
-      }}>
-        <Image src="/images/chatbot-floating.png" alt="" width={104} height={104} aria-hidden="true" priority />
+      <button
+        className="chat-launch"
+        type="button"
+        aria-label="Mở chat Tayota"
+        onClick={openLauncher}
+        onPointerDown={beginDrag}
+      >
+        <Image src="/images/chatbot-floating.png" alt="" width={104} height={104} aria-hidden="true" priority draggable={false} />
       </button>
     </div>
   );

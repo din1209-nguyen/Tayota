@@ -1,6 +1,8 @@
 import argparse
 import os
+import re
 import sys
+import unicodedata
 import uuid
 from collections.abc import Callable
 from typing import Any, Dict, List, TypeVar
@@ -39,16 +41,32 @@ DOCUMENT_CATEGORY_WIGO = "wigo"
 DOCUMENT_CATEGORY_MPV = "mpv"
 
 
+def _normalize_lookup_text(text: str | None) -> str:
+    text = (text or "").casefold().replace("đ", "d")
+    normalized = unicodedata.normalize("NFD", text)
+    normalized = "".join(
+        char for char in normalized if unicodedata.category(char) != "Mn"
+    )
+    return re.sub(r"[^a-z0-9]+", " ", normalized).strip()
+
+
 def infer_document_category(source: str | None) -> str | None:
     """Suy ra category ổn định từ tên/source tài liệu khi chưa có metadata rõ ràng."""
     if not source:
         return None
-    normalized = source.casefold()
+    normalized = _normalize_lookup_text(source)
     if normalized == DOCUMENT_CATEGORY_SUMMARY or "summary" in normalized:
         return DOCUMENT_CATEGORY_SUMMARY
-    if "tu van co ban" in normalized or "tư vấn cơ bản" in normalized:
+    if any(
+        marker in normalized
+        for marker in (
+            "tu van co ban",
+            "file tu van",
+            "basic advice",
+        )
+    ):
         return DOCUMENT_CATEGORY_BASIC_ADVICE
-    if "hilux" in normalized or "ban tai" in normalized or "bán tải" in normalized:
+    if "hilux" in normalized or "ban tai" in normalized:
         return DOCUMENT_CATEGORY_HILUX
     if "sedan" in normalized or any(model in normalized for model in ("vios", "camry", "altis")):
         return DOCUMENT_CATEGORY_SEDAN
@@ -59,7 +77,7 @@ def infer_document_category(source: str | None) -> str | None:
         return DOCUMENT_CATEGORY_SUV
     if "wigo" in normalized or "hatchback" in normalized:
         return DOCUMENT_CATEGORY_WIGO
-    if "da dung" in normalized or "đa dụng" in normalized or any(
+    if "da dung" in normalized or any(
         model in normalized for model in ("mpv", "avanza", "veloz", "innova", "alphard")
     ):
         return DOCUMENT_CATEGORY_MPV
@@ -241,22 +259,22 @@ def search_neighbor_chunks(
     if not source_id or page is None or chunk_index is None or chunk_index < 0:
         return []
 
-    neighbor_indices = [
-        idx
-        for idx in range(chunk_index - window, chunk_index + window + 1)
-        if idx >= 0 and idx != chunk_index
-    ]
-    if not neighbor_indices:
+    window = max(window, 0)
+    if window == 0:
         return []
 
     client = get_client()
+    candidate_pages = [
+        candidate
+        for candidate in range(page - window, page + window + 1)
+        if candidate >= 0
+    ]
     query_filter = Filter(
         must=[
             FieldCondition(key="source_id", match=MatchValue(value=source_id)),
-            FieldCondition(key="page", match=MatchValue(value=page)),
             FieldCondition(
-                key="chunk_index",
-                match=MatchAny(any=neighbor_indices),
+                key="page",
+                match=MatchAny(any=candidate_pages),
             ),
         ]
     )
@@ -265,14 +283,36 @@ def search_neighbor_chunks(
         lambda: client.scroll(
             collection_name=COLLECTION,
             scroll_filter=query_filter,
-            limit=len(neighbor_indices) + 2,
+            limit=max(50, (window * 2 + 1) * 10),
             with_payload=True,
             with_vectors=False,
         ),
     )
-    neighbors = [_point_payload_result(p.payload, score=0.0) for p in points]
-    neighbors.sort(key=lambda item: item.get("chunk_index") or 0)
-    return neighbors
+    candidates = [_point_payload_result(p.payload, score=0.0) for p in points]
+    candidates.sort(
+        key=lambda item: (item.get("page") or 0, item.get("chunk_index") or 0)
+    )
+
+    seed_position = None
+    for index, item in enumerate(candidates):
+        if item.get("page") == page and item.get("chunk_index") == chunk_index:
+            seed_position = index
+            break
+
+    if seed_position is None:
+        return [
+            item
+            for item in candidates
+            if not (item.get("page") == page and item.get("chunk_index") == chunk_index)
+        ][: window * 2]
+
+    start = max(0, seed_position - window)
+    end = seed_position + window + 1
+    return [
+        item
+        for item in candidates[start:end]
+        if not (item.get("page") == page and item.get("chunk_index") == chunk_index)
+    ]
 
 
 def scroll_chunks(

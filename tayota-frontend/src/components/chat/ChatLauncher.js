@@ -10,6 +10,7 @@ import { statusLabel } from "@/lib/format";
 const UNAVAILABLE_TEXT =
   "AI tạm gián đoạn. Vui lòng thử lại sau hoặc chuyển sang live chat để nhân viên Tayota hỗ trợ trực tiếp.";
 const CUSTOMER_LIVE_CHAT_ROLES = new Set(["USER", "CUSTOMER"]);
+const URL_PATTERN = /https?:\/\/[^\s<>()]+[^\s<>().,;:!?]/g;
 
 function splitMessageText(text = "") {
   const normalized = String(text).replace(/\r\n/g, "\n").trim();
@@ -23,7 +24,7 @@ function splitMessageText(text = "") {
   if (existingParagraphs.length > 1) return existingParagraphs;
   if (normalized.length <= 180) return [normalized];
 
-  const sentences = normalized.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) || [normalized];
+  const sentences = normalized.split(/(?<=[.!?])\s+/);
   const paragraphs = [];
   let current = "";
 
@@ -63,12 +64,6 @@ function splitQuestionParagraph(paragraph) {
   return parts;
 }
 
-function splitSentenceParagraph(paragraph) {
-  return (paragraph.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) || [paragraph])
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
 function isFollowUpPrompt(paragraph) {
   const normalized = paragraph.toLowerCase();
   return (
@@ -90,7 +85,7 @@ function splitAssistantReplies(text = "") {
     .map((item) => item.trim())
     .filter(Boolean);
 
-  paragraphs.flatMap(splitSentenceParagraph).flatMap(splitQuestionParagraph).forEach((paragraph) => {
+  paragraphs.flatMap(splitQuestionParagraph).forEach((paragraph) => {
     if (isFollowUpPrompt(paragraph)) {
       if (mainParagraphs.length) {
         replies.push(mainParagraphs.join("\n"));
@@ -108,7 +103,25 @@ function splitAssistantReplies(text = "") {
 
 function MessageText({ text }) {
   const paragraphs = splitMessageText(text);
-  return paragraphs.length ? paragraphs.map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 12)}`}>{paragraph}</p>) : <p />;
+  return paragraphs.length ? paragraphs.map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 12)}`}>{renderTextWithLinks(paragraph)}</p>) : <p />;
+}
+
+function renderTextWithLinks(text) {
+  const nodes = [];
+  let lastIndex = 0;
+  for (const match of text.matchAll(URL_PATTERN)) {
+    const url = match[0];
+    const index = match.index || 0;
+    if (index > lastIndex) nodes.push(text.slice(lastIndex, index));
+    nodes.push(
+      <a href={url} key={`${url}-${index}`} target="_blank" rel="noreferrer">
+        {url}
+      </a>
+    );
+    lastIndex = index + url.length;
+  }
+  if (lastIndex < text.length) nodes.push(text.slice(lastIndex));
+  return nodes.length ? nodes : text;
 }
 
 function canUseCustomerLiveChat(user) {

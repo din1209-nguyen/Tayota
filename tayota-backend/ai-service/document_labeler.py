@@ -70,19 +70,68 @@ TAG_RULES = {
         "mo men",
         "hop so",
         "nhien lieu",
+        "tieu thu",
+        "muc tieu thu",
+        "tiet kiem xang",
+        "tiet kiem nhien lieu",
+        "xang",
         "l/100km",
+        "lit/100km",
         "mm",
         "kw",
         "hp",
         "nm",
     ],
-    "bao_duong": ["bao duong", "bao tri", "lich bao duong", "phu tung"],
-    "lai_thu": ["lai thu", "dang ky lai thu", "dat lich lai thu"],
+    "bao_duong": [
+        "bao duong",
+        "bao tri",
+        "lich bao duong",
+        "phu tung",
+        "sua chua",
+        "dich vu",
+        "xuong dich vu",
+        "xuong sua chua",
+        "ky thuat vien",
+        "hu hong",
+        "bi hong",
+        "xe hong",
+        "xe bi hong",
+        "hong xe",
+        "hong",
+        "su co",
+        "cuu ho",
+        "hotline",
+    ],
+    "lai_thu": ["lai thu", "dang ky lai thu", "dat lich lai thu", "test drive"],
     "tra_gop": ["tra gop", "vay mua xe", "tai chinh", "ngan hang"],
     "an_toan": ["an toan", "tui khi", "abs", "vsc", "phanh", "canh bao", "camera"],
     "khuyen_mai": ["khuyen mai", "uu dai", "qua tang"],
-    "bao_hanh": ["bao hanh", "thoi han bao hanh"],
-    "thu_tuc": ["thu tuc", "ho so", "dang ky", "dang ki", "giay to"],
+    "bao_hanh": [
+        "bao hanh",
+        "thoi han bao hanh",
+        "sua chua",
+        "hu hong",
+        "bi hong",
+        "xe hong",
+        "xe bi hong",
+        "hong xe",
+        "hong",
+        "su co",
+        "cuu ho",
+        "hotline",
+    ],
+    "thu_tuc": [
+        "thu tuc",
+        "ho so",
+        "dang ky",
+        "dang ki",
+        "giay to",
+        "quy trinh",
+        "cac buoc",
+        "tung buoc",
+        "huong dan",
+        "dat lich",
+    ],
     "so_sanh": ["so sanh", "khac nhau", "hon", "kem"],
     "tu_van_chon_xe": ["tu van", "chon xe", "phu hop", "nhu cau", "gia dinh"],
 }
@@ -112,6 +161,7 @@ def normalize_text(text: str | None) -> str:
     normalized = "".join(
         char for char in normalized if unicodedata.category(char) != "Mn"
     )
+    normalized = re.sub(r"[^a-z0-9]+", " ", normalized)
     return re.sub(r"\s+", " ", normalized).strip()
 
 
@@ -136,7 +186,14 @@ def _unique(values: Iterable[str]) -> List[str]:
 def _rule_category(text: str) -> tuple[str | None, float]:
     if "summary" in text:
         return "summary", 0.95
-    if any(marker in text for marker in ("tu van co ban", "basic advice")):
+    if any(
+        marker in text
+        for marker in (
+            "tu van co ban",
+            "file tu van",
+            "basic advice",
+        )
+    ):
         return "basic_advice", 0.9
     if any(marker in text for marker in ("hilux", "ban tai", "pickup")):
         return "hilux", 0.9
@@ -300,6 +357,31 @@ def label_document(
         return rule_labels
 
 
+def _sample_pages_for_labeling(pages: List[Dict[str, Any]]) -> str:
+    """Build a representative source sample from the beginning, middle, and end."""
+    if not pages:
+        return ""
+
+    if len(pages) <= 12:
+        selected_indices = range(len(pages))
+    else:
+        middle = len(pages) // 2
+        selected_indices = [
+            *range(0, 4),
+            *range(max(4, middle - 2), min(len(pages), middle + 2)),
+            *range(max(0, len(pages) - 4), len(pages)),
+        ]
+
+    selected_pages = []
+    seen = set()
+    for index in selected_indices:
+        if index in seen:
+            continue
+        seen.add(index)
+        selected_pages.append(pages[index].get("content", ""))
+    return "\n\n".join(selected_pages)
+
+
 def apply_document_labels(documents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Attach one stable label set per source to every extracted page."""
     grouped: Dict[str, List[Dict[str, Any]]] = {}
@@ -317,7 +399,7 @@ def apply_document_labels(documents: List[Dict[str, Any]]) -> List[Dict[str, Any
         first_metadata = pages[0].get("metadata", {})
         source = first_metadata.get("source") or first_metadata.get("source_path")
         existing_category = first_metadata.get("document_category")
-        sample = "\n\n".join(page.get("content", "") for page in pages[:6])
+        sample = _sample_pages_for_labeling(pages)
         labels = label_document(
             source=source,
             text=sample,

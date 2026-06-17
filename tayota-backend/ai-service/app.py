@@ -171,17 +171,34 @@ DOCUMENT_CATEGORIES = {
     DOCUMENT_CATEGORY_WIGO,
     DOCUMENT_CATEGORY_MPV,
 }
-EMBED_WARMUP_ON_START = env_flag("EMBED_WARMUP_ON_START", "false")
+RAG_WARMUP_ON_START = env_flag(
+    "RAG_WARMUP_ON_START",
+    os.getenv("EMBED_WARMUP_ON_START", "false"),
+)
+RAG_WARMUP_QUERY = os.getenv("RAG_WARMUP_QUERY", "Toyota warmup")
 
 
 @app.on_event("startup")
-def warmup_embedding_model() -> None:
-    """Optionally preload the local embedding model before the first chat request."""
-    if not EMBED_WARMUP_ON_START:
+def warmup_rag_dependencies() -> None:
+    """Optionally preload RAG dependencies before the first chat request."""
+    if not RAG_WARMUP_ON_START:
         return
-    from embed import get_model
 
-    get_model()
+    print("[INFO] Warming up RAG dependencies...")
+
+    try:
+        from embed import embed_query
+
+        embed_query(RAG_WARMUP_QUERY)
+        print("[INFO] Embedding model warm-up completed.")
+    except Exception as exc:
+        print(f"[WARN] Embedding warm-up failed: {exc}")
+
+    try:
+        get_collection_info()
+        print("[INFO] Qdrant warm-up completed.")
+    except Exception as exc:
+        print(f"[WARN] Qdrant warm-up failed: {exc}")
 
 
 @app.middleware("http")

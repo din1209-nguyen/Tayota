@@ -23,24 +23,24 @@ BLOCKED_INTENTS = {"out_of_scope", "sensitive"}
 # Câu trả lời cố định cho từng trường hợp
 RULE_RESPONSES = {
     "out_of_scope": (
-        "Xin lỗi, tôi chỉ có thể tư vấn về xe Tayota. "
-        "Bạn có muốn tìm hiểu dòng xe nào của Tayota không? 🚗"
+        "Xin lỗi, tôi chỉ có thể tư vấn về xe Toyota. "
+        "Bạn có muốn tìm hiểu dòng xe nào của Toyota không? "
     ),
     "sensitive": (
         "Xin lỗi, tôi không thể hỗ trợ nội dung này. "
-        "Hãy đặt câu hỏi liên quan đến xe Tayota nhé!"
+        "Hãy đặt câu hỏi liên quan đến xe Toyota nhé!"
     ),
     "budget_too_low": (
-        "Ngân sách bạn nhập có vẻ thấp hơn mức tối thiểu của xe Tayota "
+        "Ngân sách bạn nhập có vẻ thấp hơn mức tối thiểu của xe Toyota "
         f"(khoảng {BUDGET_MIN_MILLION} triệu đồng). "
         "Bạn có muốn xem các dòng xe entry-level như Vios hay Wigo không?"
     ),
     "budget_too_high": (
         "Ngân sách bạn nhập vượt quá dải giá hiện tại trong dữ liệu của tôi. "
-        "Tôi sẽ tư vấn các dòng xe cao cấp nhất Tayota hiện có."
+        "Tôi sẽ tư vấn các dòng xe cao cấp nhất Toyota hiện có."
     ),
     "seat_invalid": (
-        "Số chỗ ngồi bạn yêu cầu không phổ biến trong dòng xe Tayota. "
+        "Số chỗ ngồi bạn yêu cầu không phổ biến trong dòng xe Toyota. "
         f"Các lựa chọn thông thường là: {sorted(SEAT_VALID)} chỗ. "
         "Bạn muốn chọn loại nào?"
     ),
@@ -144,5 +144,6 @@ class BusinessRules:
 
 # Singleton
 rules_engine = BusinessRules()
+
 
 

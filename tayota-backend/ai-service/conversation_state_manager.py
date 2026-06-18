@@ -91,9 +91,14 @@ class ConversationState:
 
         if intent == "greeting" and self.turn_count == 0:
             self.stage = STAGE_GREETING
-        elif intent in ("car_advice", "budget_filter", "seat_filter", "usage_filter"):
+        elif intent in (
+            "car_advice",
+            "budget_filter",
+            "seat_filter",
+            "usage_filter",
+        ):
             self.stage = STAGE_ADVISING if self.has_enough_info() else STAGE_COLLECTING
-        elif intent == "car_info":
+        elif intent in ("car_info", "compare_vehicle"):
             self.stage = STAGE_ADVISING
 
     def is_expired(self) -> bool:

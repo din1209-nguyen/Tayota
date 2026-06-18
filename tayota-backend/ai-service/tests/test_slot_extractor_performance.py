@@ -53,3 +53,43 @@ def test_complex_slot_update_can_use_groq(monkeypatch):
     assert FakeGroq.called is True
     assert slots["budget"] == 1000
     assert slots["overrides"] == ["budget"]
+
+
+def test_merge_slots_implicitly_overrides_multiple_existing_slots(monkeypatch):
+    monkeypatch.setattr(slot_extractor, "IMPLICIT_SLOT_OVERRIDE_ENABLED", True)
+    existing = {
+        **slot_extractor.empty_slots(),
+        "seats": 7,
+        "fuel": "hybrid",
+        "budget": 1000,
+    }
+    new = {
+        **slot_extractor.empty_slots(),
+        "seats": 5,
+        "fuel": "xang",
+        "overrides": [],
+        "clears": [],
+    }
+
+    merged = slot_extractor.merge_slots(existing, new)
+
+    assert merged["seats"] == 5
+    assert merged["fuel"] == "xang"
+    assert merged["budget"] == 1000
+
+
+def test_merge_slots_fills_empty_slots_when_multiple_values_present(monkeypatch):
+    monkeypatch.setattr(slot_extractor, "IMPLICIT_SLOT_OVERRIDE_ENABLED", True)
+    existing = slot_extractor.empty_slots()
+    new = {
+        **slot_extractor.empty_slots(),
+        "seats": 7,
+        "fuel": "hybrid",
+        "overrides": [],
+        "clears": [],
+    }
+
+    merged = slot_extractor.merge_slots(existing, new)
+
+    assert merged["seats"] == 7
+    assert merged["fuel"] == "hybrid"

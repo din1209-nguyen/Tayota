@@ -1,37 +1,13 @@
 package com.tayota.operationservice.service.auth;
 
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.json.gson.GsonFactory;
-import com.tayota.operationservice.dto.common.ErrorCode;
-import com.tayota.operationservice.dto.request.admin.AdminResetPasswordRequest;
-import com.tayota.operationservice.enums.user.RoleType;
-import com.tayota.operationservice.util.OtpUtil;
-import com.tayota.operationservice.util.SecurityContextUtil;
-import com.tayota.operationservice.dto.request.auth.*;
-import com.tayota.operationservice.dto.response.auth.DeviceResponseDTO;
-import com.tayota.operationservice.dto.request.auth.ForgotPasswordResetRequestDTO;
-import com.tayota.operationservice.entity.user.ServiceAdvisor;
-import com.tayota.operationservice.entity.user.UserProfile;
-import com.tayota.operationservice.entity.workorder.Mechanic;
-import com.tayota.operationservice.enums.user.ProviderType;
-import com.tayota.operationservice.enums.user.StatusType;
-import com.tayota.operationservice.object.auth.RegisterCacheData;
-import com.tayota.operationservice.object.auth.TokenPair;
-import com.tayota.operationservice.object.auth.CustomUserDetails;
-import com.tayota.operationservice.entity.user.User;
-import com.tayota.operationservice.repository.user.ServiceAdvisorRepository;
-import com.tayota.operationservice.repository.user.UserProfileRepository;
-import com.tayota.operationservice.repository.user.UserRepository;
-import com.tayota.operationservice.exception.CustomException;
-import com.tayota.operationservice.service.notification.EmailService;
-import com.tayota.operationservice.repository.workorder.MechanicRepository;
-import com.tayota.operationservice.service.cache.SystemCacheService;
-import com.tayota.operationservice.util.*;
-import io.jsonwebtoken.Claims;
-import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -42,15 +18,50 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import tools.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
+import com.tayota.operationservice.dto.common.ErrorCode;
+import com.tayota.operationservice.dto.request.admin.AdminResetPasswordRequest;
+import com.tayota.operationservice.dto.request.auth.ChangePasswordDirectRequestDTO;
+import com.tayota.operationservice.dto.request.auth.ChangePasswordResetRequestDTO;
+import com.tayota.operationservice.dto.request.auth.CreateAccountRequestDTO;
+import com.tayota.operationservice.dto.request.auth.ForgotPasswordResetRequestDTO;
+import com.tayota.operationservice.dto.request.auth.GoogleLoginRequestDTO;
+import com.tayota.operationservice.dto.request.auth.LoginRequestDTO;
+import com.tayota.operationservice.dto.request.auth.RegisterRequestDTO;
+import com.tayota.operationservice.dto.request.auth.VerifyAccountRequestDTO;
+import com.tayota.operationservice.dto.request.auth.VerifyChangePasswordOTPRequestDTO;
+import com.tayota.operationservice.dto.request.auth.VerifyForgotPasswordOTPRequestDTO;
+import com.tayota.operationservice.dto.response.auth.DeviceResponseDTO;
+import com.tayota.operationservice.entity.user.ServiceAdvisor;
+import com.tayota.operationservice.entity.user.User;
+import com.tayota.operationservice.entity.user.UserProfile;
+import com.tayota.operationservice.entity.workorder.Mechanic;
+import com.tayota.operationservice.enums.user.ProviderType;
+import com.tayota.operationservice.enums.user.RoleType;
+import com.tayota.operationservice.enums.user.StatusType;
+import com.tayota.operationservice.exception.CustomException;
+import com.tayota.operationservice.object.auth.CustomUserDetails;
+import com.tayota.operationservice.object.auth.RegisterCacheData;
+import com.tayota.operationservice.object.auth.TokenPair;
+import com.tayota.operationservice.repository.user.ServiceAdvisorRepository;
+import com.tayota.operationservice.repository.user.UserProfileRepository;
+import com.tayota.operationservice.repository.user.UserRepository;
+import com.tayota.operationservice.repository.workorder.MechanicRepository;
+import com.tayota.operationservice.service.cache.SystemCacheService;
+import com.tayota.operationservice.service.notification.EmailService;
+import com.tayota.operationservice.util.JwtUtil;
+import com.tayota.operationservice.util.OtpUtil;
+import com.tayota.operationservice.util.SecurityContextUtil;
+import com.tayota.operationservice.util.SessionUtil;
+
+import io.jsonwebtoken.Claims;
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 @RequiredArgsConstructor
@@ -476,7 +487,7 @@ public class AuthService {
         // Lấy số lượng thiết bị đã đăng nhập và xoá các lần đăng nhập hết hạn của user đó từ cache hệ thống.
         // Kiểm tra nếu số thiết bị đã đăng nhập vượt quá 5 thì từ chối đăng nhập trên thiết bị mới
         // !!! Khi truy cập đồng thời có thể vượt qua điều kiện, nên dùng lock nếu cần siết chặt giới hạn.
-        if (sessionUtil.countActiveDevices(userId) >= 5) {
+        if (sessionUtil.countActiveDevices(userId) >= 100) {
             throw new CustomException(403, "Bạn đã đăng nhập quá nhiều thiết bị");
         }
 

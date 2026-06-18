@@ -403,9 +403,9 @@ def merge_slots(existing: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]
 
     In a consulting conversation, a short follow-up such as "xe 5 cho thi sao"
     usually means "change the seat filter to 5", even if the extractor did not
-    explicitly mark it as an override. We only apply that implicit override when
-    exactly one slot is present in the new turn to avoid clobbering broader
-    preferences by accident.
+    explicitly mark it as an override. When a turn contains multiple extracted
+    slots, values for already-filled slots are implicit overrides too, so a
+    message such as "doi sang 5 cho xang" can update both seats and fuel.
     """
     merged    = dict(existing)
     overrides = [
@@ -423,15 +423,23 @@ def merge_slots(existing: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]
         if key in SLOT_SCHEMA:
             merged[key] = None
 
-    # Bước 2: nếu chỉ có đúng 1 slot được extract và không có slot nào khác
-    # → coi như user đang chỉnh slot đó (implicit override)
+    # Bước 2: coi slot user nhắc lại là đang chỉnh slot đó (implicit override)
     filled_new = [k for k in SLOT_SCHEMA if new.get(k) is not None]
-    if (
-        IMPLICIT_SLOT_OVERRIDE_ENABLED
-        and len(filled_new) == 1
-        and filled_new[0] not in overrides
-    ):
-        overrides = overrides + filled_new  # ← tự động override slot duy nhất
+    if IMPLICIT_SLOT_OVERRIDE_ENABLED:
+        if len(filled_new) == 1:
+            implicit_overrides = filled_new
+        else:
+            implicit_overrides = [
+                key for key in filled_new
+                if merged.get(key) is not None
+            ]
+        overrides = [
+            *overrides,
+            *(
+                key for key in implicit_overrides
+                if key not in overrides and key not in clears
+            ),
+        ]
 
     # Bước 3: merge slot mới
     for key in SLOT_SCHEMA:

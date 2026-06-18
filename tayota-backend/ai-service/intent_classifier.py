@@ -12,7 +12,8 @@ groq_client = Groq(api_key=GROQ_API_KEY)
 # ── Danh sách intent ──────────────────────────────────────────────────────────
 INTENTS = {
     "greeting":         "Chào hỏi, cảm ơn, tạm biệt, hỏi bot là ai",
-    "car_advice":       "Hỏi tư vấn mua xe, so sánh xe, hỏi giá, thông số kỹ thuật Toyota",
+    "car_advice":       "Hỏi tư vấn mua xe, hỏi giá, thông số kỹ thuật Toyota",
+    "compare_vehicle":  "Hỏi so sánh hai mẫu xe cụ thể, ví dụ 'So sánh Mazda CX-5 và Hyundai Tucson'",
     "car_info":         "Hỏi thông tin chung về một dòng xe Toyota cụ thể",
     "budget_filter":    "Hỏi xe theo ngân sách / tầm giá",
     "seat_filter":      "Hỏi xe theo số chỗ ngồi",
@@ -91,5 +92,4 @@ def classify_intent(query: str) -> Dict:
             "confidence": 0.5,
             "reason": "fallback do lỗi classifier",
         }
-
 

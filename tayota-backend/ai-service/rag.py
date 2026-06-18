@@ -54,10 +54,11 @@ LLM_PROVIDER = "groq"
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 TOP_K = 5
-RETRIEVAL_CANDIDATES_TOP_K = 30
-LIST_CONTEXT_TOP_K = 15
-MAX_CONTEXT_CHUNKS = 12
-MAX_CONTEXT_CHARS = 10000
+RETRIEVAL_CANDIDATES_TOP_K = 20
+LIST_CONTEXT_TOP_K = 10
+COMPARE_CONTEXT_TOP_K_PER_VEHICLE = 4
+MAX_CONTEXT_CHUNKS = 8
+MAX_CONTEXT_CHARS = 8000
 
 GENERAL_DOCUMENT_CATEGORIES = [
     DOCUMENT_CATEGORY_BASIC_ADVICE,
@@ -251,6 +252,8 @@ Nguyên tắc chung:
 - Không đề cập đến bất kì xe nào khác ngoài dữ liệu tham khảo.
 - Nếu dữ liệu không đủ, nói rõ phần nào chưa có thông tin thay vì suy đoán.
 - Không tự đặt câu hỏi follow-up ở cuối câu trả lời; hệ thống sẽ xử lý việc hỏi thêm.
+- Không nhắc các nhãn nội bộ như "nguồn", "nguồn 1", "nguồn 2", "dữ liệu tham khảo", "tài liệu tham khảo" hoặc "context" trong câu trả lời cho khách hàng.
+- Không mở đầu bằng các cụm như "Theo nguồn...", "Dựa trên dữ liệu tham khảo..." hay "Theo thông tin được cung cấp..."; hãy trả lời trực tiếp, tự nhiên.
 Phạm vi dữ liệu tham khảo:
 - Hệ thống đã tự lọc nguồn trước khi gửi dữ liệu cho bạn.
 - Nếu người dùng hỏi thông tin chung, danh mục xe, hãng có những xe/dòng xe nào, quy trình mua xe, đặt lịch lái thử, bảo dưỡng hoặc kinh nghiệm lựa chọn xe mà không nhắc một mẫu xe/dòng xe cụ thể, dữ liệu tham khảo sẽ đến từ tài liệu tư vấn cơ bản.
@@ -302,12 +305,67 @@ def _build_context(retrieved: List[Dict[str, Any]]) -> str:
     parts = []
     for i, r in enumerate(retrieved, 1):
         parts.append(
-            f"Nguồn {i}:\n"
+            f"Đoạn tư liệu {i}:\n"
             f"Tài liệu: {r.get('source') or 'không rõ'} | "
             f"Trang: {r['page']} | Độ tin cậy: {r['score']:.2f}\n\n"
             f"{r['content']}"
         )
     return "\n\n==========\n\n".join(parts)
+
+
+REFERENCE_PHRASE_PATTERNS = [
+    re.compile(
+        r"^\s*(?:theo|dựa\s+trên|dua\s+tren)\s+"
+        r"(?:các\s+)?(?:nguồn|nguon)\s*\d+"
+        r"(?:\s*(?:,|và|va)?\s*(?:nguồn|nguon)?\s*\d+)*\s*[:,\-]?\s*",
+        flags=re.IGNORECASE,
+    ),
+    re.compile(
+        r"^\s*(?:theo|dựa\s+trên|dua\s+tren)\s+"
+        r"(?:các\s+)?(?:nguồn|nguon|dữ\s+liệu\s+tham\s+khảo|du\s+lieu\s+tham\s+khao|"
+        r"tài\s+liệu\s+tham\s+khảo|tai\s+lieu\s+tham\s+khao|thông\s+tin\s+được\s+cung\s+cấp|"
+        r"thong\s+tin\s+duoc\s+cung\s+cap)"
+        r"(?:\s+\d+(?:\s*(?:,|và|va)\s*\d+)*)?\s*[:,\-]?\s*",
+        flags=re.IGNORECASE,
+    ),
+    re.compile(
+        r"\s*\((?:theo|dựa\s+trên|dua\s+tren)\s+"
+        r"(?:nguồn|nguon|dữ\s+liệu\s+tham\s+khảo|du\s+lieu\s+tham\s+khao)"
+        r"(?:\s+\d+(?:\s*(?:,|và|va)\s*\d+)*)?\)",
+        flags=re.IGNORECASE,
+    ),
+]
+
+
+def _clean_reference_phrasing(answer: str) -> str:
+    """Ẩn các nhãn RAG nội bộ nếu LLM lỡ đưa vào câu trả lời."""
+    cleaned = answer or ""
+    for pattern in REFERENCE_PHRASE_PATTERNS:
+        cleaned = pattern.sub("", cleaned)
+    cleaned = re.sub(
+        r"\s*(?:theo|dựa\s+trên|dua\s+tren)\s+"
+        r"(?:nguồn|nguon)\s+\d+(?:\s*(?:,|và|va)\s*\d+)+\s*[:,\-]?\s*",
+        " ",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    return re.sub(r"[ \t]{2,}", " ", cleaned).strip()
+
+
+def _source_payload(doc: Dict[str, Any]) -> Dict[str, Any]:
+    """Chuẩn hóa metadata source trả về API."""
+    return {
+        "source": doc.get("source"),
+        "document_category": doc.get("document_category"),
+        "page": doc["page"],
+        "score": round(doc["score"], 3),
+        "chunk_id": doc.get("chunk_id"),
+        "chunk_index": doc.get("chunk_index"),
+        "document_id": doc.get("document_id"),
+        "gridfs_file_id": doc.get("gridfs_file_id"),
+        "document_tags": doc.get("document_tags") or [],
+        "mentioned_models": doc.get("mentioned_models") or [],
+    }
 
 
 def _needs_history_for_retrieval(query: str) -> bool:
@@ -442,6 +500,75 @@ def _contains_vehicle_keyword(normalized_text: str) -> bool:
         re.search(pattern, normalized_text) is not None
         for pattern in contextual_category_patterns
     )
+
+
+def _clean_compare_vehicle_name(value: str) -> str:
+    """Làm sạch một tên xe trích từ câu hỏi so sánh."""
+    cleaned = re.sub(r"\s+", " ", value or "").strip(" .,!?:;\"'")
+    cleaned = re.sub(r"^(?:xe|mau xe|dong xe|oto|o to)\s+", "", cleaned, flags=re.I)
+    cleaned = re.split(
+        r"\s+(?:ve|về|theo|ở|o|khác nhau|khac nhau|nên chọn|nen chon)\b",
+        cleaned,
+        maxsplit=1,
+        flags=re.I,
+    )[0]
+    return cleaned.strip(" .,!?:;\"'")
+
+
+def _looks_like_vehicle_name(value: str) -> bool:
+    """Heuristic nhẹ để tránh nhận các mảnh câu quá chung là tên xe."""
+    normalized = _normalize_lookup_text(value)
+    if not normalized or len(normalized) < 2:
+        return False
+    blocked = {
+        "xe",
+        "mau xe",
+        "dong xe",
+        "gia",
+        "thong so",
+        "phien ban",
+        "nen chon",
+    }
+    if normalized in blocked:
+        return False
+    return bool(re.search(r"[a-zA-Z0-9]", value))
+
+
+def _extract_compare_vehicles(query: str) -> List[str]:
+    """Trích đúng 2 tên xe từ câu hỏi so sánh nếu có thể."""
+    patterns = [
+        r"(?:so\s+s[aáàảãạăắằẳẵặâấầẩẫậ]nh|compare)\s+(.+?)\s+(?:v[aà]|v[ớơ]i|vs\.?|versus)\s+(.+)",
+        r"(.+?)\s+(?:v[aà]|v[ớơ]i|vs\.?|versus)\s+(.+?)\s+(?:kh[aáàảãạ]c\s+nhau|n[eê]n\s+ch[oọ]n|so\s+s[aáàảãạăắằẳẵặâấầẩẫậ]nh)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, query, flags=re.I)
+        if not match:
+            continue
+        vehicles = [
+            _clean_compare_vehicle_name(match.group(1)),
+            _clean_compare_vehicle_name(match.group(2)),
+        ]
+        if all(_looks_like_vehicle_name(vehicle) for vehicle in vehicles):
+            return _unique_values(vehicles)[:2]
+
+    mentioned_models = _mentioned_specific_models(query, ConversationState(session_id="compare-detect"))
+    if len(mentioned_models) >= 2 and _is_compare_query(query):
+        return mentioned_models[:2]
+    return []
+
+
+def _is_compare_query(query: str) -> bool:
+    """Nhận diện câu hỏi có ý định so sánh xe."""
+    normalized = _normalize_lookup_text(query)
+    markers = [
+        "so sanh",
+        "khac nhau",
+        "nen chon",
+        "chon xe nao",
+        "vs",
+        "versus",
+    ]
+    return any(marker in normalized for marker in markers)
 
 
 def _unique_values(values: List[str]) -> List[str]:
@@ -761,6 +888,146 @@ def _merge_retrieval_candidates(
         if float(doc.get("score") or 0) > float(existing.get("score") or 0):
             existing.update(doc)
     return merged
+
+
+def _lexical_vehicle_docs(vehicle_name: str, *, limit: int = 20) -> List[Dict[str, Any]]:
+    """Tìm chunk có nhắc trực tiếp tên xe, không giới hạn theo Toyota category."""
+    normalized_vehicle = _normalize_lookup_text(vehicle_name)
+    tokens = [
+        token
+        for token in re.split(r"[^a-z0-9]+", normalized_vehicle)
+        if len(token) >= 2
+    ]
+    if not tokens:
+        return []
+
+    all_docs = scroll_chunks(limit=1000)
+    scored_docs = []
+    for doc in all_docs:
+        normalized_doc = _normalize_lookup_text(
+            f"{doc.get('source') or ''}\n{doc.get('content') or ''}"
+        )
+        doc_models = {
+            _normalize_lookup_text(model)
+            for model in _metadata_values(doc, "mentioned_models")
+        }
+        full_match = normalized_vehicle in normalized_doc or normalized_vehicle in doc_models
+        token_match_count = sum(1 for token in tokens if token in normalized_doc)
+        if not full_match and token_match_count < len(tokens):
+            continue
+
+        lexical_score = 0.55 + (0.35 if full_match else 0.0)
+        lexical_score += min(0.2, 0.05 * token_match_count)
+        adjusted = dict(doc)
+        adjusted["score"] = max(float(doc.get("score") or 0), lexical_score)
+        adjusted["lexical_match"] = True
+        adjusted["matched_vehicle"] = vehicle_name
+        scored_docs.append(adjusted)
+
+    scored_docs.sort(key=lambda item: item.get("score", 0), reverse=True)
+    return scored_docs[:limit]
+
+
+def _rank_vehicle_compare_docs(
+    docs: List[Dict[str, Any]],
+    *,
+    vehicle_name: str,
+    query: str,
+    limit: int,
+) -> List[Dict[str, Any]]:
+    """Rerank kết quả riêng cho một xe trong câu hỏi so sánh."""
+    normalized_vehicle = _normalize_lookup_text(vehicle_name)
+    tokens = [
+        token
+        for token in re.split(r"[^a-z0-9]+", normalized_vehicle)
+        if len(token) >= 2
+    ]
+    preferred_tags = set(_preferred_document_tags_for_query(query, ConversationState(session_id="compare-rank")))
+    ranked = []
+
+    for doc in docs:
+        normalized_doc = _normalize_lookup_text(
+            f"{doc.get('source') or ''}\n{doc.get('content') or ''}"
+        )
+        doc_models = {
+            _normalize_lookup_text(model)
+            for model in _metadata_values(doc, "mentioned_models")
+        }
+        score = float(doc.get("score") or 0)
+        if normalized_vehicle in normalized_doc or normalized_vehicle in doc_models:
+            score += 0.8
+        elif tokens and all(token in normalized_doc for token in tokens):
+            score += 0.35
+        else:
+            score -= 0.3
+
+        matching_tags = preferred_tags & set(_metadata_values(doc, "document_tags"))
+        if matching_tags:
+            score += min(0.25, 0.08 * len(matching_tags))
+
+        adjusted = dict(doc)
+        adjusted["score"] = max(float(doc.get("score") or 0), 0.0)
+        adjusted["rerank_score"] = score
+        adjusted["compared_vehicle"] = vehicle_name
+        ranked.append(adjusted)
+
+    ranked.sort(key=lambda item: item.get("rerank_score", item.get("score", 0)), reverse=True)
+    return ranked[:limit]
+
+
+def _retrieve_compare_vehicle_docs(
+    vehicle_name: str,
+    *,
+    query: str,
+) -> List[Dict[str, Any]]:
+    """Retrieve 3-5 chunk cho một xe trong intent compare_vehicle."""
+    retrieval_query = (
+        f"{vehicle_name}\n"
+        f"Cau hoi so sanh: {query}\n"
+        "Thong tin can lay: tong quan, gia, phien ban, thong so, trang bi, an toan."
+    )
+    query_vec = embed_query(retrieval_query)
+    semantic_docs = search(
+        query_vec,
+        top_k=RETRIEVAL_CANDIDATES_TOP_K,
+        score_threshold=0.35,
+    )
+    if not semantic_docs:
+        semantic_docs = search(
+            query_vec,
+            top_k=RETRIEVAL_CANDIDATES_TOP_K,
+            score_threshold=0.2,
+        )
+
+    lexical_docs = _lexical_vehicle_docs(vehicle_name)
+    retrieved = _merge_retrieval_candidates(semantic_docs, lexical_docs)
+    ranked = _rank_vehicle_compare_docs(
+        retrieved,
+        vehicle_name=vehicle_name,
+        query=query,
+        limit=COMPARE_CONTEXT_TOP_K_PER_VEHICLE,
+    )
+    return _expand_with_neighbor_context(
+        ranked,
+        max_chunks=COMPARE_CONTEXT_TOP_K_PER_VEHICLE,
+        max_chars=MAX_CONTEXT_CHARS // 2,
+    )
+
+
+def _build_compare_context(vehicle_docs: Dict[str, List[Dict[str, Any]]]) -> str:
+    """Ghép context so sánh, chia rõ nguồn theo từng xe."""
+    sections = []
+    for vehicle_name, docs in vehicle_docs.items():
+        if not docs:
+            sections.append(
+                f"Xe so sánh: {vehicle_name}\n"
+                "Chưa tìm thấy chunk phù hợp trong dữ liệu hiện tại."
+            )
+            continue
+        sections.append(
+            f"Xe so sánh: {vehicle_name}\n\n{_build_context(docs)}"
+        )
+    return "\n\n====================\n\n".join(sections)
 
 
 def _is_need_based_query(query: str, state: ConversationState) -> bool:
@@ -1094,6 +1361,11 @@ def answer(
 
     # ── Bước 1: Classify intent ───────────────────────────────────────────────
     intent_result = classify_intent(query)
+    compare_vehicles = _extract_compare_vehicles(query)
+    if compare_vehicles:
+        intent_result["intent"] = "compare_vehicle"
+        intent_result["confidence"] = max(float(intent_result.get("confidence") or 0), 0.9)
+        intent_result["reason"] = "Detected a two-vehicle comparison query."
     intent = intent_result["intent"]
     print(f"🔍 Intent: {intent} | confidence: {intent_result.get('confidence', '?')}")
 
@@ -1138,105 +1410,139 @@ def answer(
     legacy_source_names = _legacy_sources_for_categories(document_categories)
 
     if not prelim_decision.skip_rag:
-        # Tăng top_k khi hỏi liệt kê
-        list_keywords = ["tat ca", "nhung xe", "co nhung", "danh sach", "cac xe", "neu"]
-        normalized_query = _normalize_lookup_text(query)
-        list_query = _is_general_catalog_query(query) or any(
-            kw in normalized_query for kw in list_keywords
-        )
-        dynamic_top_k = LIST_CONTEXT_TOP_K if list_query else TOP_K
-        retrieval_top_k = RETRIEVAL_CANDIDATES_TOP_K
+        if intent == "compare_vehicle" and compare_vehicles:
+            vehicle_docs = {
+                vehicle: _retrieve_compare_vehicle_docs(vehicle, query=query)
+                for vehicle in compare_vehicles
+            }
+            retrieved = []
+            for vehicle, docs in vehicle_docs.items():
+                for index, doc in enumerate(docs):
+                    if not doc.get("compared_vehicle"):
+                        doc = {**doc, "compared_vehicle": vehicle}
+                        docs[index] = doc
+                    retrieved.append(doc)
+            if retrieved:
+                rag_context = _build_compare_context(vehicle_docs)
+                sources = [
+                    {
+                        **_source_payload(r),
+                        "compared_vehicle": r.get("compared_vehicle"),
+                    }
+                    for r in retrieved
+                ]
+            else:
+                no_data = "Tôi chưa có thông tin chính xác về hai xe này trong dữ liệu hiện tại."
+                final_msg = smart_consultant.compose_final_response(
+                    no_data, prelim_decision
+                )
+                final_msg = warning_prefix + final_msg
+                state.add_turn(query, final_msg)
+                return _make_result(
+                    answer=final_msg,
+                    sources=[],
+                    model_used="none",
+                    intent=intent,
+                    rule_name=rule_name,
+                    state=state,
+                    session_id=session_id,
+                    user_id=user_id,
+                    question=query,
+                )
+        else:
+            # Tăng top_k khi hỏi liệt kê
+            list_keywords = ["tat ca", "nhung xe", "co nhung", "danh sach", "cac xe", "neu"]
+            normalized_query = _normalize_lookup_text(query)
+            list_query = _is_general_catalog_query(query) or any(
+                kw in normalized_query for kw in list_keywords
+            )
+            dynamic_top_k = LIST_CONTEXT_TOP_K if list_query else TOP_K
+            retrieval_top_k = RETRIEVAL_CANDIDATES_TOP_K
 
-        retrieval_query = _build_retrieval_query(
-            query,
-            state,
-            include_slots=use_slot_context,
-        )
-        retrieval_query = _expand_retrieval_query_for_domain(
-            retrieval_query,
-            offroad_need=offroad_need,
-        )
-        print(
-            f"Document scope: {document_scope} | categories: {', '.join(document_categories)}"
-        )
-        query_vec = embed_query(retrieval_query)
-        retrieved = search(
-            query_vec,
-            top_k=retrieval_top_k,
-            score_threshold=0.35,
-            source_names=legacy_source_names,
-            document_categories=document_categories,
-        )
-        if not retrieved:
+            retrieval_query = _build_retrieval_query(
+                query,
+                state,
+                include_slots=use_slot_context,
+            )
+            retrieval_query = _expand_retrieval_query_for_domain(
+                retrieval_query,
+                offroad_need=offroad_need,
+            )
+            print(
+                f"Document scope: {document_scope} | categories: {', '.join(document_categories)}"
+            )
+            query_vec = embed_query(retrieval_query)
             retrieved = search(
                 query_vec,
                 top_k=retrieval_top_k,
-                score_threshold=0.2,
+                score_threshold=0.35,
                 source_names=legacy_source_names,
                 document_categories=document_categories,
             )
-        lexical_docs = _lexical_support_docs(
-            query,
-            state,
-            document_categories,
-            legacy_source_names,
-        )
-        metadata_docs = _metadata_support_docs(
-            query,
-            state,
-            document_categories,
-            legacy_source_names,
-        )
-        retrieved = _merge_retrieval_candidates(retrieved, [*lexical_docs, *metadata_docs])
-        retrieved = _rerank_retrieved_docs(
-            retrieved,
-            query=query,
-            state=state,
-            document_scope=document_scope,
-            offroad_need=offroad_need,
-            limit=dynamic_top_k,
-        )
-        retrieved = _expand_with_neighbor_context(retrieved)
-
-        if retrieved:
-            rag_context = _build_context(retrieved)
-            sources = [
-                {
-                    "source": r.get("source"),
-                    "document_category": r.get("document_category"),
-                    "page": r["page"],
-                    "score": round(r["score"], 3),
-                    "chunk_id": r.get("chunk_id"),
-                    "chunk_index": r.get("chunk_index"),
-                    "document_id": r.get("document_id"),
-                    "gridfs_file_id": r.get("gridfs_file_id"),
-                    "document_tags": r.get("document_tags") or [],
-                    "mentioned_models": r.get("mentioned_models") or [],
-                }
-                for r in retrieved
-            ]
-        else:
-            no_data = "Tôi chưa có thông tin chính xác về nội dung này trong dữ liệu hiện tại."
-            final_msg = smart_consultant.compose_final_response(
-                no_data, prelim_decision
+            if not retrieved:
+                retrieved = search(
+                    query_vec,
+                    top_k=retrieval_top_k,
+                    score_threshold=0.2,
+                    source_names=legacy_source_names,
+                    document_categories=document_categories,
+                )
+            lexical_docs = _lexical_support_docs(
+                query,
+                state,
+                document_categories,
+                legacy_source_names,
             )
-            final_msg = warning_prefix + final_msg
-            state.add_turn(query, final_msg)
-            return _make_result(
-                answer=final_msg,
-                sources=[],
-                model_used="none",
-                intent=intent,
-                rule_name=rule_name,
+            metadata_docs = _metadata_support_docs(
+                query,
+                state,
+                document_categories,
+                legacy_source_names,
+            )
+            retrieved = _merge_retrieval_candidates(retrieved, [*lexical_docs, *metadata_docs])
+            retrieved = _rerank_retrieved_docs(
+                retrieved,
+                query=query,
                 state=state,
-                session_id=session_id,
-                user_id=user_id,
-                question=query,
+                document_scope=document_scope,
+                offroad_need=offroad_need,
+                limit=dynamic_top_k,
             )
+            retrieved = _expand_with_neighbor_context(retrieved)
+
+            if retrieved:
+                rag_context = _build_context(retrieved)
+                sources = [_source_payload(r) for r in retrieved]
+            else:
+                no_data = "Tôi chưa có thông tin chính xác về nội dung này trong dữ liệu hiện tại."
+                final_msg = smart_consultant.compose_final_response(
+                    no_data, prelim_decision
+                )
+                final_msg = warning_prefix + final_msg
+                state.add_turn(query, final_msg)
+                return _make_result(
+                    answer=final_msg,
+                    sources=[],
+                    model_used="none",
+                    intent=intent,
+                    rule_name=rule_name,
+                    state=state,
+                    session_id=session_id,
+                    user_id=user_id,
+                    question=query,
+                )
 
     # ── Bước 6: Build prompt cuối với RAG context đầy đủ ─────────────────────
     final_decision = smart_consultant.decide(query, state, rag_context=rag_context)
     domain_instruction = _domain_answer_instruction(offroad_need)
+    compare_instruction = ""
+    if intent == "compare_vehicle" and compare_vehicles:
+        compare_instruction = (
+            "Yêu cầu so sánh: hãy so sánh đúng hai xe "
+            f"{compare_vehicles[0]} và {compare_vehicles[1]}. "
+            "Chỉ dùng dữ liệu trong từng nhóm context đã gắn nhãn xe; "
+            "nếu thiếu dữ liệu của xe nào hoặc tiêu chí nào, nói rõ là chưa có dữ liệu."
+        )
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -1244,9 +1550,11 @@ def answer(
         {
             "role": "user",
             "content": (
-                f"Dữ liệu tham khảo:\n{rag_context}\n\n"
+                f"Thông tin nội bộ để trả lời, không nhắc tên phần này trong câu trả lời:\n{rag_context}\n\n"
                 f"---\n\n"
                 f"{domain_instruction}\n\n"
+                f"---\n\n"
+                f"{compare_instruction}\n\n"
                 f"---\n\n"
                 f"Câu hỏi người dùng:\n{final_decision.prompt}"
             ),
@@ -1255,9 +1563,12 @@ def answer(
 
     # ── Bước 7: Generate ──────────────────────────────────────────────────────
     llm_response, model_used = _generate(messages)
+    llm_response = _clean_reference_phrasing(llm_response)
 
-    final_answer = warning_prefix + smart_consultant.compose_final_response(
-        llm_response, final_decision
+    final_answer = _clean_reference_phrasing(
+        warning_prefix + smart_consultant.compose_final_response(
+            llm_response, final_decision
+        )
     )
 
     state.add_turn(query, final_answer)

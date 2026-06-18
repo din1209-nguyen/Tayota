@@ -14657,3 +14657,170 @@ footer.footer .footer-grid {
     height: min(680px, calc(100dvh - 120px));
   }
 }
+
+/* Focused fixes for verify-account and compare picker layout */
+.auth-page:has(.auth-shell) {
+  min-height: calc(100dvh - 72px);
+  display: grid;
+  align-items: center;
+  padding: clamp(42px, 8dvh, 86px) 16px;
+}
+
+.auth-page .auth-shell {
+  width: min(1120px, 100%);
+  margin-inline: auto;
+  grid-template-columns: minmax(0, 0.86fr) minmax(360px, 1fr);
+  align-items: center;
+  gap: clamp(28px, 5vw, 64px);
+}
+
+.auth-page .auth-copy {
+  max-width: 520px;
+}
+
+.auth-page .auth-copy h1 {
+  margin: 10px 0 14px;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+}
+
+.auth-page .auth-copy p:not(.eyebrow) {
+  max-width: 46ch;
+  color: var(--ink-soft);
+  line-height: 1.65;
+}
+
+.auth-page .verify-card {
+  width: min(100%, 560px);
+  justify-self: end;
+  gap: 18px;
+  border: 1px solid #dfe5ec;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: clamp(22px, 3vw, 34px);
+  box-shadow: 0 22px 54px rgba(15, 23, 42, 0.1);
+}
+
+.auth-page .verify-indicator {
+  width: 46px;
+  height: 46px;
+  border: 0;
+  background: #111827;
+  box-shadow: inset 0 0 0 12px #ffffff, 0 0 0 1px #111827;
+}
+
+.auth-page .verify-card-success .verify-indicator {
+  background: var(--tayota-red);
+  box-shadow: inset 0 0 0 12px #ffffff, 0 0 0 1px var(--tayota-red);
+}
+
+.auth-page .verify-card h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.auth-page .verify-card p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.65;
+}
+
+.auth-page .verify-card .auth-actions {
+  justify-content: flex-start;
+  margin-top: 6px;
+}
+
+.compare-selector .compare-option-grid {
+  align-items: start;
+  grid-auto-rows: max-content;
+}
+
+.compare-selector .compare-choice-card {
+  align-self: start;
+  min-height: 142px;
+  grid-template-rows: 84px minmax(58px, auto);
+  overflow: hidden;
+}
+
+.compare-selector .compare-choice-image {
+  min-height: 84px;
+}
+
+.compare-selector .compare-choice-copy {
+  min-height: 58px;
+  gap: 4px;
+  padding: 8px 12px 28px;
+}
+
+.compare-selector .compare-choice-copy strong,
+.compare-selector .compare-choice-copy span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.compare-selector .compare-choice-copy span {
+  font-size: 0.88rem;
+  line-height: 1.2;
+}
+
+.compare-selector .compare-choice-copy strong {
+  font-size: 0.94rem;
+  line-height: 1.2;
+}
+
+.compare-selector .compare-choice-state {
+  right: 10px;
+  bottom: 8px;
+  min-height: 24px;
+  padding: 0 9px;
+  font-size: 0.7rem;
+}
+
+@media (max-width: 980px) {
+  .auth-page .auth-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-page .verify-card {
+    justify-self: stretch;
+    width: 100%;
+  }
+}
+
+@media (max-width: 620px) {
+  .auth-page:has(.auth-shell) {
+    align-items: start;
+    padding: 28px 14px 48px;
+  }
+
+  .auth-page .auth-shell {
+    gap: 22px;
+  }
+
+  .auth-page .verify-card .auth-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .auth-page .verify-card .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .compare-selector .compare-choice-card {
+    min-height: 0;
+    grid-template-rows: auto auto;
+    overflow: hidden;
+  }
+
+  .compare-selector .compare-choice-copy {
+    padding-bottom: 12px;
+  }
+
+  .compare-selector .compare-choice-state {
+    position: static;
+    width: fit-content;
+    margin: 0 14px 14px;
+  }
+}

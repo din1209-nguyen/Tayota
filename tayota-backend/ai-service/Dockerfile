@@ -15,6 +15,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-EXPOSE 8094
+EXPOSE 9094
 
-CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${AI_SERVICE_PORT:-8094}"]
+CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${AI_SERVICE_PORT:-9094}"]

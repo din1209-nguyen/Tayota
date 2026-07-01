@@ -23,34 +23,34 @@ spring:
         webflux:
           routes:
             - id: operation-user-ws-route
-              uri: ws://${OPERATION_SERVICE_HOST:operation-service}:${OPERATION_SERVICE_PORT:8091}
+              uri: ws://${OPERATION_SERVICE_HOST:operation-service}:${OPERATION_SERVICE_PORT:9091}
               predicates:
                 - Path=/user/chat/ws,/user/chat/ws/**
               filters:
                 - StripPrefix=1
             - id: operation-user-route
-              uri: http://${OPERATION_SERVICE_HOST:operation-service}:${OPERATION_SERVICE_PORT:8091}
+              uri: http://${OPERATION_SERVICE_HOST:operation-service}:${OPERATION_SERVICE_PORT:9091}
               predicates:
                 - Path=/user/**
               filters:
                 - StripPrefix=1
 
             - id: car-route
-              uri: http://${OPERATION_SERVICE_HOST:operation-service}:${OPERATION_SERVICE_PORT:8091}
+              uri: http://${OPERATION_SERVICE_HOST:operation-service}:${OPERATION_SERVICE_PORT:9091}
               predicates:
                 - Path=/car/**
               filters:
                 - StripPrefix=1
 
             - id: operation-service-route
-              uri: http://${OPERATION_SERVICE_HOST:operation-service}:${OPERATION_SERVICE_PORT:8091}
+              uri: http://${OPERATION_SERVICE_HOST:operation-service}:${OPERATION_SERVICE_PORT:9091}
               predicates:
                 - Path=/operation/**
               filters:
                 - StripPrefix=1
 
             - id: ai-service-route
-              uri: http://${AI_SERVICE_HOST:ai-service}:${AI_SERVICE_PORT:8094}
+              uri: http://${AI_SERVICE_HOST:ai-service}:${AI_SERVICE_PORT:9094}
               predicates:
                 - Path=/ai/**
               filters:

@@ -1,6 +1,6 @@
-# Tayota — Toyota Service Management & Consulting Platform
+# Tayota — Nền tảng quản lý dịch vụ và tư vấn Toyota
 
-> Language: **English** | [Tiếng Việt](README.vi.md)
+> Ngôn ngữ: [English](README.md) | **Tiếng Việt**
 
 <div align="center">
 
@@ -18,97 +18,97 @@
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
-**Tayota** is a microservices-based Toyota service management and consulting platform, featuring a Next.js frontend, Spring Boot backend, and a FastAPI AI service powered by RAG for PDF-based vehicle consultation.
+**Tayota** là nền tảng microservices phục vụ quản lý dịch vụ và tư vấn Toyota, gồm frontend Next.js, backend Spring Boot và service AI FastAPI dùng RAG để tư vấn xe từ tài liệu PDF.
 
-[Features](#features) · [Architecture](#architecture) · [Installation](#installation) · [Demo Accounts](#demo-accounts) · [API Docs](#api-documentation) · [Testing](#testing) · [Deployment](#deployment)
+[Tính năng](#tính-năng) · [Kiến trúc](#kiến-trúc) · [Cài đặt](#cài-đặt) · [Tài khoản demo](#tài-khoản-demo) · [Tài liệu API](#tài-liệu-api) · [Kiểm thử](#kiểm-thử) · [Triển khai](#triển-khai)
 
 </div>
 
 ---
 
-## Table of Contents
+## Mục lục
 
-- [Features](#features)
-- [Architecture](#architecture)
-  - [System Overview](#system-overview)
-  - [Main Processing Flow](#main-processing-flow)
+- [Tính năng](#tính-năng)
+- [Kiến trúc](#kiến-trúc)
+  - [Tổng quan hệ thống](#tổng-quan-hệ-thống)
+  - [Luồng xử lý chính](#luồng-xử-lý-chính)
   - [Database Schema](#database-schema)
-  - [Frontend Rendering Strategy](#frontend-rendering-strategy)
-  - [Project Structure](#project-structure)
+  - [Chiến lược render Frontend](#chiến-lược-render-frontend)
+  - [Cấu trúc dự án](#cấu-trúc-dự-án)
 - [Tech Stack](#tech-stack)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Demo Accounts](#demo-accounts)
-- [API Documentation](#api-documentation)
-- [Testing](#testing)
-- [Deployment](#deployment)
+- [Yêu cầu](#yêu-cầu)
+- [Cài đặt](#cài-đặt)
+- [Tài khoản demo](#tài-khoản-demo)
+- [Tài liệu API](#tài-liệu-api)
+- [Kiểm thử](#kiểm-thử)
+- [Triển khai](#triển-khai)
 - [License](#license)
 
 ---
 
-## Features
+## Tính năng
 
-### Customer (USER)
-- Email/password registration & login (JWT + Refresh Token via HTTP-only cookie)
-- Google OAuth 2.0 login
-- Email verification, forgot/change password, session management
-- Browse Toyota vehicle catalog by series, version, specs, and pricing
-- Book test drives and maintenance appointments (with daily limits and minimum lead time)
-- Live chat with advisors via WebSocket (STOMP)
-- AI vehicle consultant powered by RAG (from internal PDF documents)
-- Email notifications on appointment updates
-- Submit reviews after service completion (token-based, auto-expiring)
-- View account info and service history
+### Khách hàng (USER)
+- Đăng ký và đăng nhập bằng email/mật khẩu (JWT + Refresh Token qua HTTP-only cookie).
+- Đăng nhập Google OAuth 2.0.
+- Xác minh email, quên/đổi mật khẩu và quản lý phiên đăng nhập.
+- Xem catalog xe Toyota theo dòng xe, phiên bản, thông số và giá.
+- Đặt lịch lái thử và lịch bảo dưỡng với giới hạn theo ngày và thời gian báo trước tối thiểu.
+- Chat trực tiếp với advisor qua WebSocket (STOMP).
+- Tư vấn xe bằng AI RAG từ tài liệu PDF nội bộ.
+- Nhận email thông báo khi lịch hẹn thay đổi.
+- Gửi đánh giá sau khi hoàn tất dịch vụ qua token tự hết hạn.
+- Xem thông tin tài khoản và lịch sử dịch vụ.
 
 ### Service Advisor
-- Accept and manage test drive / maintenance appointments
-- Create work orders and assign mechanics
-- Update work order status and send customer notifications
-- Real-time live chat support for customers
-- Personal dashboard (appointments, work orders, statistics)
+- Tiếp nhận và quản lý lịch lái thử/bảo dưỡng.
+- Tạo work order và phân công mechanic.
+- Cập nhật trạng thái work order và gửi thông báo cho khách hàng.
+- Hỗ trợ khách hàng qua live chat realtime.
+- Dashboard cá nhân cho lịch hẹn, work order và thống kê.
 
 ### Assistant
-- Manage vehicle catalog and model information
-- Manage specs, pricing, and vehicle images
-- Support advisors in handling customer requests
+- Quản lý catalog xe và thông tin model.
+- Quản lý thông số, giá và hình ảnh xe.
+- Hỗ trợ advisor xử lý yêu cầu của khách hàng.
 
 ### Mechanic
-- Receive and update assigned work order status
-- Report repair progress via dashboard
-- Notify on job completion
+- Nhận và cập nhật trạng thái work order được phân công.
+- Báo cáo tiến độ sửa chữa qua dashboard.
+- Gửi thông báo khi hoàn tất công việc.
 
 ### Manager
-- System overview dashboard (appointments, work orders, revenue)
-- Staff management and role assignment
-- Full vehicle catalog management
-- Detailed time-based statistics and reports
+- Dashboard tổng quan hệ thống: lịch hẹn, work order, doanh thu.
+- Quản lý nhân sự và phân quyền.
+- Quản lý toàn bộ catalog xe.
+- Thống kê và báo cáo chi tiết theo thời gian.
 
 ### Admin
-- Account management (view, ban/unban, change roles)
-- System overview dashboard
-- AI document management (upload PDFs, rebuild vector index)
-- View AI usage history (sessions, token usage)
+- Quản lý tài khoản: xem, khóa/mở khóa, đổi vai trò.
+- Dashboard tổng quan hệ thống.
+- Quản lý tài liệu AI: upload PDF, rebuild vector index.
+- Xem lịch sử sử dụng AI: phiên chat, token usage.
 
-### System
-- JWT + Refresh Token with per-session revocation
-- RBAC with 6 roles: `ADMIN`, `MANAGER`, `SERVICE_ADVISOR`, `ASSISTANT`, `MECHANIC`, `USER`
-- Smart API Gateway routing: `/user/**`, `/car/**`, `/operation/**` -> operation-service; `/ai/**` -> ai-service
-- Docker Compose for full infrastructure (PostgreSQL, MongoDB, Qdrant, Gateway, Services)
-- Caffeine in-memory caching for operation-service
-- Realtime via STOMP WebSocket (live chat) and Server-Sent Events
-- Gateway-to-service communication over HTTP and WebSocket according to `application.yml`
-- Email notifications via Spring Mail + SMTP
-- Media upload to Cloudinary
-- RAG chatbot with Qdrant vector search + Groq LLM (Llama 3.3)
-- Unit + integration tests for operation-service and ai-service
+### Hệ thống
+- JWT + Refresh Token với khả năng thu hồi theo từng phiên.
+- RBAC với 6 vai trò: `ADMIN`, `MANAGER`, `SERVICE_ADVISOR`, `ASSISTANT`, `MECHANIC`, `USER`.
+- API Gateway định tuyến thông minh: `/user/**`, `/car/**`, `/operation/**` -> operation-service; `/ai/**` -> ai-service.
+- Docker Compose cho toàn bộ hạ tầng: PostgreSQL, MongoDB, Qdrant, Gateway và các service.
+- Cache in-memory bằng Caffeine cho operation-service.
+- Realtime qua STOMP WebSocket (live chat) và Server-Sent Events.
+- Gateway giao tiếp với service bằng HTTP và WebSocket theo `application.yml`.
+- Gửi email qua Spring Mail + SMTP.
+- Upload media lên Cloudinary.
+- Chatbot RAG với Qdrant vector search + Groq LLM (Llama 3.3).
+- Unit test và integration test cho operation-service và ai-service.
 
 ---
 
-## Architecture
+## Kiến trúc
 
-### System Overview
+### Tổng quan hệ thống
 
-The project is split into four independent processes — `tayota-frontend` (Next.js), `api-gateway` (Spring Cloud Gateway WebFlux), `operation-service` (Spring Boot 4), and `ai-service` (FastAPI + RAG). All frontend API calls are routed through the Gateway on port `:9090`.
+Dự án được tách thành bốn tiến trình độc lập: `tayota-frontend` (Next.js), `api-gateway` (Spring Cloud Gateway WebFlux), `operation-service` (Spring Boot 4) và `ai-service` (FastAPI + RAG). Tất cả API từ frontend đi qua Gateway ở port `:9090`.
 
 ```mermaid
 flowchart TB
@@ -162,9 +162,9 @@ flowchart TB
     AIS -->|"LLM API"| GROQ
 ```
 
-**Communication summary:**
+**Tóm tắt giao tiếp:**
 
-| From | To | Protocol |
+| Từ | Đến | Giao thức |
 |------|----|----------|
 | Browser / Mobile | Frontend | HTTPS |
 | Frontend | API Gateway | HTTPS / WSS (STOMP) |
@@ -180,12 +180,12 @@ flowchart TB
 
 ---
 
-### Main Processing Flow
+### Luồng xử lý chính
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant User as User
+    participant User as Người dùng
     participant FE as tayota-frontend
     participant GW as api-gateway
     participant OPS as operation-service
@@ -195,32 +195,32 @@ sequenceDiagram
     participant MG as MongoDB/GridFS
     participant LLM as Groq
 
-    User->>FE: Login / browse catalog / book appointment / manage work order
+    User->>FE: Đăng nhập / xem catalog / đặt lịch / quản lý work order
     FE->>GW: REST /user/**, /car/**, /operation/**
     GW->>OPS: StripPrefix + JWT/CORS filtering
-    OPS->>PG: Read/write business data
-    PG-->>OPS: Query result
+    OPS->>PG: Đọc/ghi dữ liệu nghiệp vụ
+    PG-->>OPS: Kết quả truy vấn
     OPS-->>GW: API response
     GW-->>FE: JSON response
-    FE-->>User: Render updated UI
+    FE-->>User: Render giao diện mới
 
-    User->>FE: Start live chat
+    User->>FE: Bắt đầu live chat
     FE->>GW: STOMP /user/chat/ws
-    GW->>OPS: WebSocket route to operation-service
-    OPS-->>FE: Realtime chat messages
-    FE-->>User: Show advisor/customer messages
+    GW->>OPS: WebSocket route đến operation-service
+    OPS-->>FE: Tin nhắn realtime
+    FE-->>User: Hiển thị tin nhắn advisor/customer
 
-    User->>FE: Ask AI vehicle consultant
+    User->>FE: Hỏi AI tư vấn xe
     FE->>GW: REST /ai/**
     GW->>AIS: Forward AI request
-    AIS->>QD: Retrieve vector context
-    AIS->>MG: Read documents/session data
-    AIS->>OPS: Fetch catalog context when needed
-    AIS->>LLM: Generate answer with retrieved context
+    AIS->>QD: Truy xuất vector context
+    AIS->>MG: Đọc tài liệu/session data
+    AIS->>OPS: Lấy catalog context khi cần
+    AIS->>LLM: Sinh câu trả lời với context đã truy xuất
     LLM-->>AIS: LLM response
     AIS-->>GW: Chat response
     GW-->>FE: JSON response
-    FE-->>User: Show AI answer
+    FE-->>User: Hiển thị câu trả lời AI
 ```
 
 ---
@@ -229,7 +229,7 @@ sequenceDiagram
 
 #### PostgreSQL — operation-service
 
-Full relational schema covering authentication, vehicle catalog, appointments, work orders, reviews, live chat, and notifications.
+Schema quan hệ đầy đủ cho authentication, catalog xe, lịch hẹn, work order, review, live chat và notification.
 
 ```mermaid
 erDiagram
@@ -508,7 +508,7 @@ erDiagram
 
 #### MongoDB — ai-service
 
-Collections for AI document management, RAG chat sessions, and processing jobs.
+Các collection phục vụ quản lý tài liệu AI, phiên chat RAG và job xử lý.
 
 ```mermaid
 erDiagram
@@ -577,27 +577,27 @@ erDiagram
     ai_sessions ||--o{ ai_chat_messages : "contains"
 ```
 
-> **Vector storage (Qdrant):** PDF chunks are embedded with `sentence-transformers` and stored in Qdrant. Each vector point links back to its source `document_id` in MongoDB to enable citation tracing during RAG retrieval.
+> **Vector storage (Qdrant):** Các chunk PDF được embedding bằng `sentence-transformers` và lưu trong Qdrant. Mỗi vector point liên kết về `document_id` trong MongoDB để truy vết citation khi RAG retrieval.
 
 ---
 
-### Frontend Rendering Strategy
+### Chiến lược render Frontend
 
-| Route | Strategy | Reason |
-|-------|----------|--------|
-| `/` (Landing) | SSR + short cache | SEO & first paint |
-| `/vehicles` | SSR / dynamic fetch | Vehicle catalog with filtering data |
-| `/vehicles/[id]` | SSR | Dynamic vehicle details, specs, gallery, and accessories |
-| `/appointments/*` | SSR + client forms | Test-drive and service appointment booking |
-| `/support/live-chat` | Client-side | Realtime WebSocket live chat |
-| `#ai-chat` widget | Client-side | Floating AI consultant in the app layout |
-| `/dashboard/*` | SSR `force-dynamic` + client panels | Role-based personal dashboards |
+| Route | Chiến lược | Lý do |
+|-------|------------|-------|
+| `/` (Landing) | SSR + cache ngắn | SEO và first paint |
+| `/vehicles` | SSR / dynamic fetch | Catalog xe với dữ liệu lọc động |
+| `/vehicles/[id]` | SSR | Chi tiết xe, thông số, thư viện ảnh và phụ kiện |
+| `/appointments/*` | SSR + client forms | Đặt lịch lái thử và lịch dịch vụ |
+| `/support/live-chat` | Client-side | Live chat realtime qua WebSocket |
+| `#ai-chat` widget | Client-side | Trợ lý AI nổi trong layout ứng dụng |
+| `/dashboard/*` | SSR `force-dynamic` + client panels | Dashboard cá nhân theo vai trò |
 
 ---
 
-### Project Structure
+### Cấu trúc dự án
 
-```
+```text
 Tayota/
 ├── tayota-frontend/                  # Next.js 16.2.6 (App Router)
 │   ├── src/
@@ -615,7 +615,7 @@ Tayota/
 │   │   │   └── verify-account/
 │   │   ├── components/
 │   │   │   ├── layout/              # Header, Footer
-│   │   │   ├── vehicles/            # Vehicle cards, specs, gallery
+│   │   │   ├── vehicles/            # Card xe, thông số, thư viện ảnh
 │   │   │   ├── appointments/
 │   │   │   ├── chat/
 │   │   │   ├── dashboard/
@@ -694,29 +694,29 @@ Tayota/
 | **Email** | Spring Mail + SMTP |
 | **Containerization** | Docker Compose |
 | **Testing** | JUnit 5, Mockito, H2 (in-memory), pytest |
-| **Service Routing** | Spring Cloud Gateway HTTP/WebSocket routes |
+| **Service Routing** | Spring Cloud Gateway routes HTTP/WebSocket |
 
 ---
 
-## Prerequisites
+## Yêu cầu
 
-- **Docker Desktop** or Docker Engine + Docker Compose
-- **Node.js** 20+ and **npm** 10+ (if running frontend on host)
-- **Java** 21 and **Maven** (if running Spring services standalone)
-- **Python** 3.11 (if running AI service standalone)
+- **Docker Desktop** hoặc Docker Engine + Docker Compose.
+- **Node.js** 20+ và **npm** 10+ nếu chạy frontend trên host.
+- **Java** 21 và **Maven** nếu chạy Spring services độc lập.
+- **Python** 3.11 nếu chạy AI service độc lập.
 
 ---
 
-## Installation
+## Cài đặt
 
-### 1. Clone the repository
+### 1. Clone repository
 
 ```bash
 git clone <repo-url>
 cd Tayota
 ```
 
-### 2. Configure environment variables
+### 2. Cấu hình biến môi trường
 
 ```bash
 cd tayota-backend
@@ -724,7 +724,7 @@ cp .env.example .env   # Linux/macOS
 # Windows PowerShell: Copy-Item .env.example .env
 ```
 
-Edit `.env` with your values:
+Chỉnh `.env` với giá trị của bạn:
 
 ```env
 # ─── Ports ───
@@ -768,20 +768,20 @@ CLOUDINARY_FOLDER_PREFIX=tayota
 QDRANT_API_KEY=
 ```
 
-> **Note:** Docker Compose automatically provisions PostgreSQL, MongoDB, and Qdrant in an internal network. AI/Groq/Cloudinary/SMTP variables can be left empty during local development — AI falls back to mock mode and emails are logged to the console.
+> **Ghi chú:** Docker Compose tự provision PostgreSQL, MongoDB và Qdrant trong internal network. Các biến AI/Groq/Cloudinary/SMTP có thể để trống khi phát triển local nếu chưa dùng các tích hợp đó.
 
-### 3. Run the application
+### 3. Chạy ứng dụng
 
-**Option A — Backend via Docker, frontend on host** *(recommended for development)*
+**Option A — Backend bằng Docker, frontend trên host** *(khuyến nghị cho development)*
 
 ```bash
 cd tayota-backend
 docker compose up --build -d
 
-# Optional: load AI documents into the vector index
+# Tùy chọn: nạp tài liệu AI vào vector index
 docker compose exec ai-service python vector_database.py --rebuild --pdf-path /app/documents
 
-# In a new terminal
+# Terminal mới
 cd tayota-frontend
 npm ci
 npm run dev
@@ -796,7 +796,7 @@ npm run dev
 | PostgreSQL | localhost:5432 |
 | MongoDB | localhost:27017 |
 
-**Option B — Fully Dockerized**
+**Option B — Docker hóa toàn bộ**
 
 ```bash
 cd tayota-frontend
@@ -805,13 +805,13 @@ docker build -t tayota-frontend .
 cd ../tayota-backend
 docker compose up -d
 
-# Follow logs
+# Theo dõi logs
 docker compose logs -f api-gateway operation-service ai-service
 ```
 
-> The frontend `Dockerfile` runs independently of Compose. To integrate it, add a `frontend` service to `docker-compose.yml` and update `FRONTEND_ORIGINS`.
+> `Dockerfile` của frontend chạy độc lập với Compose. Nếu muốn tích hợp, thêm service `frontend` vào `docker-compose.yml` và cập nhật `FRONTEND_ORIGINS`.
 
-**Option C — Fully local (no Docker)**
+**Option C — Chạy local hoàn toàn không dùng Docker**
 
 ```bash
 # Terminal 1 — API Gateway
@@ -831,82 +831,82 @@ uvicorn app:app --reload --port 9094
 cd tayota-frontend && npm ci && npm run dev
 ```
 
-Requires PostgreSQL 17, MongoDB 8, and Qdrant 1.7.4 running locally.
+Cần PostgreSQL 17, MongoDB 8 và Qdrant 1.7.4 đang chạy local.
 
 ---
 
-## Demo Accounts
+## Tài khoản demo
 
-`operation-service` automatically seeds demo accounts on startup via `data.sql`.
+`operation-service` tự seed tài khoản demo khi khởi động qua `data.sql`.
 
-> **Default password:** `Tayota@123`
+> **Mật khẩu mặc định:** `Tayota@123`
 
-| Role | Email | Description |
-|------|-------|-------------|
-| Admin | `admin.demo@tayota.com` | Full system access |
-| Manager | `manager.demo@tayota.com` | Dashboard, staff, vehicle catalog |
-| Service Advisor | `advisor.demo@tayota.com` | Accept appointments, create work orders |
-| Assistant | `assistant.demo@tayota.com` | Manage catalog, support advisors |
-| Mechanic | `mechanic.demo@tayota.com` | Receive and update work orders |
-| Customer | `customer.demo@tayota.com` | Book appointments, chat, reviews |
+| Vai trò | Email | Mô tả |
+|------|-------|-------|
+| Admin | `admin.demo@tayota.com` | Toàn quyền hệ thống |
+| Manager | `manager.demo@tayota.com` | Dashboard, nhân sự, catalog xe |
+| Service Advisor | `advisor.demo@tayota.com` | Tiếp nhận lịch hẹn, tạo work order |
+| Assistant | `assistant.demo@tayota.com` | Quản lý catalog, hỗ trợ advisor |
+| Mechanic | `mechanic.demo@tayota.com` | Nhận và cập nhật work order |
+| Customer | `customer.demo@tayota.com` | Đặt lịch, chat, đánh giá |
 
 ---
 
-## API Documentation
+## Tài liệu API
 
 ### Gateway Routes
 
-| Method | Endpoint | Service | Description | Auth |
-|--------|----------|---------|-------------|------|
-| POST | `/user/register` | operation-service | Register account | — |
-| POST | `/user/login` | operation-service | Login | — |
+| Method | Endpoint | Service | Mô tả | Auth |
+|--------|----------|---------|-------|------|
+| POST | `/user/register` | operation-service | Đăng ký tài khoản | — |
+| POST | `/user/login` | operation-service | Đăng nhập | — |
 | POST | `/user/refresh-token` | operation-service | Refresh token | — |
-| GET | `/user/me` | operation-service | Current user info | User |
-| POST | `/user/oauth/google` | operation-service | Google OAuth login | — |
-| GET | `/user/profile/{userId}` | operation-service | User profile | User/Staff |
-| GET | `/car/catalog/car-styles-with-versions` | operation-service | Vehicle styles and versions | — |
-| GET | `/car/catalog/car-versions` | operation-service | Search/list vehicle versions | — |
-| GET | `/car/catalog/car-versions/{id}` | operation-service | Vehicle detail | — |
-| GET | `/car/catalog/car-versions/{id}/specification` | operation-service | Vehicle specifications | — |
-| POST | `/operation/appointments/test-drive` | operation-service | Create test-drive appointment | User |
-| POST | `/operation/appointments/service` | operation-service | Create service appointment | User |
-| GET | `/operation/appointments/my` | operation-service | Customer appointments | User |
-| GET | `/operation/appointments/advisor` | operation-service | Advisor appointment queue | Staff |
-| GET | `/operation/workorders/advisor` | operation-service | Advisor work orders | Staff |
-| GET | `/operation/workorders/mechanic/my` | operation-service | Mechanic work orders | Mechanic |
-| GET | `/ai/health` | ai-service | AI health check | — |
+| GET | `/user/me` | operation-service | Thông tin user hiện tại | User |
+| POST | `/user/oauth/google` | operation-service | Đăng nhập Google OAuth | — |
+| GET | `/user/profile/{userId}` | operation-service | Hồ sơ user | User/Staff |
+| GET | `/car/catalog/car-styles-with-versions` | operation-service | Kiểu xe và phiên bản | — |
+| GET | `/car/catalog/car-versions` | operation-service | Tìm kiếm/danh sách phiên bản xe | — |
+| GET | `/car/catalog/car-versions/{id}` | operation-service | Chi tiết xe | — |
+| GET | `/car/catalog/car-versions/{id}/specification` | operation-service | Thông số xe | — |
+| POST | `/operation/appointments/test-drive` | operation-service | Tạo lịch lái thử | User |
+| POST | `/operation/appointments/service` | operation-service | Tạo lịch dịch vụ | User |
+| GET | `/operation/appointments/my` | operation-service | Lịch hẹn của khách hàng | User |
+| GET | `/operation/appointments/advisor` | operation-service | Hàng đợi lịch hẹn của advisor | Staff |
+| GET | `/operation/workorders/advisor` | operation-service | Work order của advisor | Staff |
+| GET | `/operation/workorders/mechanic/my` | operation-service | Work order của mechanic | Mechanic |
+| GET | `/ai/health` | ai-service | Health check AI | — |
 | POST | `/ai/api/v1/chat` | ai-service | RAG chat | User/Guest |
-| GET | `/ai/api/v1/documents` | ai-service | List documents | Admin |
-| POST | `/ai/api/v1/documents` | ai-service | Upload PDF and create indexing job | Admin |
-| GET | `/ai/api/v1/documents/jobs/{jobId}` | ai-service | Document indexing status | Admin |
+| GET | `/ai/api/v1/documents` | ai-service | Danh sách tài liệu | Admin |
+| POST | `/ai/api/v1/documents` | ai-service | Upload PDF và tạo job indexing | Admin |
+| GET | `/ai/api/v1/documents/jobs/{jobId}` | ai-service | Trạng thái indexing tài liệu | Admin |
 
 ### WebSocket
 
-| Path | Description | Auth |
-|------|-------------|------|
+| Path | Mô tả | Auth |
+|------|------|------|
 | `/user/chat/ws` | Live chat — customer ↔ advisor (STOMP) | User/Staff |
 
 ### AI Chat Endpoints
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/ai/api/v1/chat` | Send RAG chat message | User/Guest |
-| GET | `/ai/api/v1/users/{userId}/sessions` | Session history | User |
-| GET | `/ai/api/v1/sessions/{sessionId}/messages` | Messages in session | User |
+| Method | Endpoint | Mô tả | Auth |
+|--------|----------|-------|------|
+| POST | `/ai/api/v1/chat` | Gửi tin nhắn RAG chat | User/Guest |
+| GET | `/ai/api/v1/users/{userId}/sessions` | Lịch sử session | User |
+| GET | `/ai/api/v1/sessions/{sessionId}/messages` | Tin nhắn trong session | User |
 
 ### Admin Endpoints
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/user/create-account` | Create staff/customer account | Admin |
-| GET | `/user/admin/users` | List users | Admin |
-| GET | `/user/admin/users/stats` | User statistics | Admin |
-| GET | `/user/admin/users/{userId}` | User detail | Admin |
-| GET | `/ai/api/v1/documents` | AI document library | Admin |
+| Method | Endpoint | Mô tả | Auth |
+|--------|----------|-------|------|
+| POST | `/user/create-account` | Tạo tài khoản nhân sự/khách hàng | Admin |
+| GET | `/user/admin/users` | Danh sách user | Admin |
+| GET | `/user/admin/users/stats` | Thống kê user | Admin |
+| GET | `/user/admin/users/{userId}` | Chi tiết user | Admin |
+| GET | `/ai/api/v1/documents` | Thư viện tài liệu AI | Admin |
 
 ---
 
-## Testing
+## Kiểm thử
 
 ### Operation Service
 
@@ -914,11 +914,11 @@ Requires PostgreSQL 17, MongoDB 8, and Qdrant 1.7.4 running locally.
 cd tayota-backend/operation-service
 ./mvnw test
 
-# With coverage report
+# Báo cáo coverage
 ./mvnw test jacoco:report
 ```
 
-Or via Docker Compose test profile:
+Hoặc qua Docker Compose test profile:
 
 ```bash
 cd tayota-backend
@@ -952,10 +952,10 @@ npm run build
 
 ---
 
-## Deployment
+## Triển khai
 
-| Component | Provider | Notes |
-|-----------|----------|-------|
+| Component | Provider | Ghi chú |
+|-----------|----------|---------|
 | **Frontend** | Vercel / Render | Next.js static/SSR |
 | **API Gateway** | Render | Spring Boot JAR, port `9090` |
 | **Operation Service** | Render | Spring Boot JAR, port `9091` |
@@ -964,16 +964,16 @@ npm run build
 | **Vector DB** | Qdrant Cloud | v1.7.4+ |
 | **Document Store** | MongoDB Atlas | M0 Free tier |
 | **LLM** | Groq API | Llama 3.3 70B |
-| **Media** | Cloudinary | Image/video upload |
+| **Media** | Cloudinary | Upload ảnh/video |
 | **Email** | Gmail SMTP / Brevo | App Password |
 
-### Render Deployment Checklist
+### Checklist triển khai Render
 
 1. **API Gateway** → New Web Service → JAR upload → Port `9090` → Health check `/actuator/health`
 2. **Operation Service** → New Web Service → JAR upload → Port `9091` → Health check `/actuator/health`
 3. **AI Service** → New Background Service → Start command: `uvicorn app:app --host 0.0.0.0 --port $PORT`
 
-### Required Production Environment Variables
+### Biến môi trường production bắt buộc
 
 ```env
 # ─── Security ───
@@ -997,13 +997,13 @@ MONGO_URI=mongodb+srv://<user>:<pass>@<cluster>.mongodb.net/tayota_ai_db
 FRONTEND_ORIGINS=https://your-frontend.vercel.app
 ```
 
-> The backend validates configuration at startup and will warn if `JWT_SECRET` is weak or `COOKIE_SECURE=false` in production.
+> Backend validate cấu hình khi startup và sẽ cảnh báo nếu `JWT_SECRET` yếu hoặc `COOKIE_SECURE=false` trong production.
 
 ---
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT License — xem [LICENSE](LICENSE) để biết chi tiết.
 
 ---
 

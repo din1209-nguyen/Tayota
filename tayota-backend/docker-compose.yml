@@ -7,9 +7,9 @@ services:
       - API_GATEWAY_PORT=${API_GATEWAY_PORT:-9090}
       - FRONTEND_ORIGINS=${FRONTEND_ORIGINS:-http://localhost:3000}
       - OPERATION_SERVICE_HOST=${OPERATION_SERVICE_HOST:-operation-service}
-      - OPERATION_SERVICE_PORT=${OPERATION_SERVICE_PORT:-8091}
+      - OPERATION_SERVICE_PORT=${OPERATION_SERVICE_PORT:-9091}
       - AI_SERVICE_HOST=${AI_SERVICE_HOST:-ai-service}
-      - AI_SERVICE_PORT=${AI_SERVICE_PORT:-8094}
+      - AI_SERVICE_PORT=${AI_SERVICE_PORT:-9094}
       - JWT_SECRET=${JWT_SECRET:-change-me-to-a-long-random-secret}
       - GATEWAY_INTERNAL_SECRET=${GATEWAY_INTERNAL_SECRET:-change-me-gateway-internal-secret}
       - AI_CHAT_COOKIE_SECURE=${COOKIE_SECURE:-false}
@@ -76,7 +76,7 @@ services:
       context: .
       dockerfile: operation-service/Dockerfile
     environment:
-      - SERVER_PORT=${OPERATION_SERVICE_PORT:-8091}
+      - SERVER_PORT=${OPERATION_SERVICE_PORT:-9091}
       - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update # Tự động đồng bộ database với Entity
       - SPRING_SQL_INIT_MODE=always # Chạy schema.sql và data.sql khi khởi động dự án
@@ -133,11 +133,11 @@ services:
   ai-service:
     build: ai-service
     ports:
-      - "${AI_SERVICE_PORT:-8094}:${AI_SERVICE_PORT:-8094}"
+      - "${AI_SERVICE_PORT:-9094}:${AI_SERVICE_PORT:-9094}"
     environment:
-      - AI_SERVICE_PORT=${AI_SERVICE_PORT:-8094}
+      - AI_SERVICE_PORT=${AI_SERVICE_PORT:-9094}
       - FRONTEND_BASE_URL=${FRONTEND_BASE_URL:-http://localhost:3000}
-      - CATALOG_API_BASE_URL=http://${OPERATION_SERVICE_HOST:-operation-service}:${OPERATION_SERVICE_PORT:-8091}
+      - CATALOG_API_BASE_URL=http://${OPERATION_SERVICE_HOST:-operation-service}:${OPERATION_SERVICE_PORT:-9091}
       - GATEWAY_INTERNAL_SECRET=${GATEWAY_INTERNAL_SECRET:-change-me-gateway-internal-secret}
       - LLM_PROVIDER=${LLM_PROVIDER:-groq}
       - GROQ_API_KEY=${GROQ_API_KEY:-}

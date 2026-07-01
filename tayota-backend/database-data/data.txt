@@ -1,0 +1,565 @@
+
+ENUM status_type {
+  UNVERIFIED
+  ACTIVE
+  BANNED
+}
+
+Enum role_type {
+  ADMIN
+  MANAGER
+  ASSISTANT
+  MECHANIC
+  USER
+}
+
+Enum provider_type {
+  LOCAL
+  GOOGLE
+}
+
+Table "USER" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'Mã định danh người dùng (UUID)']
+  "email" VARCHAR(255) [unique, not null, note: 'Email']
+  "password_hash" VARCHAR(255) [note: 'Mật khẩu mã hóa']
+  "login_provider" provider_type [not null, default: 'LOCAL', note: 'Kiểu đăng nhập']
+  "provider_user_id" VARCHAR(120) [unique, note: 'ID từ external provider']
+  "role" role_type [not null, default: 'USER', note: 'Vai trò của người dùng']
+  "status" status_type [not null, default: 'UNVERIFIED', note: 'Trạng thái hoạt động']
+  "created_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`]
+  Note: 'Bảng người dùng gốc'
+}
+
+Table "USER_PROFILE" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`]
+  "fullname" VARCHAR(40) [note: 'Tên hiển thị']
+  "phone" VARCHAR(10) [note: 'Số điện thoại']
+  "gender" TINYINT(1) [note: 'Giới tính (0 = Nam, 1 = Nữ)']
+  "birth_date" DATE [note: 'Ngày sinh']
+  "address" VARCHAR(255) [note: 'Địa chỉ liên hệ']
+  "avatar_url" VARCHAR(255) [default: '/default-avatar.png']
+}
+
+Ref: "USER"."id" - "USER_PROFILE"."id" [delete: cascade]
+
+Table "USER_LOGIN_HISTORY" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`]
+  "user_id" BINARY(16) [not null, note: 'Liên kết tới USER']
+  "login_date" DATE [not null, note: 'Ngày đăng nhập (Dùng để vẽ ô vuông xanh trên UI)']
+  
+  Indexes {
+    (user_id, login_date) [unique, note: 'Đảm bảo mỗi user chỉ có 1 dòng tổng hợp cho mỗi ngày']
+  }
+  Note: 'Lưu vết lịch sử đăng nhập theo ngày (Phục vụ tính năng Activity/Contribution Graph)'
+}
+
+Ref: "USER"."id" < "USER_LOGIN_HISTORY"."user_id" [delete: cascade]
+
+Table "USER_VIEW_HISTORY" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`]
+  "user_id" BINARY(16) [not null]
+  "car_version_id" BINARY(16) [not null]
+  "viewed_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`, note: 'Thời điểm xem']
+  Note: 'Lịch sử xem xe để phân tích hành vi và Gợi ý xe'
+}
+
+Table "USER_BEHAVIOR" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`]
+  "user_id" BINARY(16) [note: 'Người dùng (Có thể NULL nếu là khách vãng lai/Guest)']
+  "action_type" VARCHAR(50) [not null, note: 'Loại hành vi (VD: search_car, filter_price, read_article, compare_car, config_color)']
+  "description" VARCHAR(250) [not null, note: 'Mô tả chi tiết']
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`, note: 'Thời điểm xảy ra hành vi']
+  
+  Indexes {
+    (user_id, action_type) [note: 'Index để query nhanh lịch sử hành vi của user']
+  }
+  Note: 'Theo dõi sự kiện và hành vi chi tiết để phục vụ Data Analytics và Recommendation System'
+}
+
+Ref: "USER"."id" < "USER_BEHAVIOR"."user_id" [delete: cascade]
+
+Enum appointment_type {
+  TEST_DRIVE  // Lái thử
+  REPAIR  // Sửa chữa
+  MAINTENANCE  // Bảo dưỡng
+  PERIODIC_MAINTENANCE // Bảo dưỡng định kỳ
+  INSTALLATION  // Lắp đặt phụ kiện
+}
+
+Table "APPOINTMENT" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`]
+  "user_id" BINARY(16) [not null]
+  "car_version_id" BINARY(16) [not null]
+  "dealership_id" BINARY(16) [not null]
+  "guest_information_id" BINARY(16) [not null]
+  "type" appointment_type [not null, note: 'Dạng dịch vụ đặt lịch']
+  "status" VARCHAR(20) [default: 'pending', note: 'pending, confirmed, completed, canceled']
+  "scheduled_date" DATETIME [not null, note: 'Ngày giờ hẹn lái thử']
+  "notes" TEXT [note: 'Ghi chú yêu cầu riêng của khách']
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+  Note: 'Hành vi đặt lịch lái thử tại Dealership'
+}
+
+Table "DEALERSHIP" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'Mã định danh Dealership (UUID)']
+  "name" VARCHAR(150) [not null, note: 'Tên cửa hàng/Dealership']
+  "address" VARCHAR(255) [not null, note: 'Địa chỉ hiển thị cho người dùng đọc']
+  "car_quantity" INT [default: 0, note: 'Số lượng xe tồn kho']
+  "accessory_quantity" INT [default: 0, note: 'Số phụ kiện xe tồn kho']
+
+  // Dữ liệu cốt lõi cho Google Maps
+  "latitude" DECIMAL(10,8) [not null, note: 'Vĩ độ (Google Maps lat)']
+  "longitude" DECIMAL(11,8) [not null, note: 'Kinh độ (Google Maps lng)']
+  "place_id" VARCHAR(255) [unique, note: 'Google Place ID (Dùng để fetch đánh giá, hình ảnh từ GG API)']
+  
+  // Thông tin vận hành
+  "phone" VARCHAR(20) [note: 'Số điện thoại hotline dealership']
+  "operating_hours" VARCHAR(100) [note: 'Giờ mở cửa (VD: 08:00 - 20:00)']
+  "is_active" TINYINT(1) [default: 1, note: 'Trạng thái hoạt động (1 = Đang mở, 0 = Đóng cửa)']
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+  
+  Note: 'Quản lý danh sách hệ thống cửa hàng hiển thị trên Bản đồ'
+}
+
+Ref: "CAR"."dealership_id" - "DEALERSHIP"."id" [delete: set null]
+
+Table "ACCESSORY_INVENTORY" {
+  "dealership_id" BINARY(16) [not null]
+  "accessory_id" BINARY(16) [not null]
+  "quantity" INT [not null, default: 0, check: `quantity >= 0`, note: 'Số lượng tồn kho hiện tại']
+  "last_updated" TIMESTAMP [default: `CURRENT_TIMESTAMP`, note: 'Thời gian cập nhật kho gần nhất']
+
+  Indexes {
+    (dealership_id, accessory_id) [pk]
+  }
+  Note: 'Quản lý số lượng phụ kiện trong cửa hàng cụ thể'
+}
+
+Ref: "ACCESSORY_INVENTORY"."accessory_id" - "ACCESSORY"."id" [delete: set null]
+
+Ref: "ACCESSORY_INVENTORY"."dealership_id" - "DEALERSHIP"."id" [delete: cascade]
+
+Table "GUEST_INFORMATION" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`]
+  "full_name" VARCHAR(100) [not null, note: 'Tên khách hàng']
+  "email" VARCHAR(250) [not null, note: 'Email khách hàng']
+  "phone" VARCHAR(10) [not null, note: 'SĐT khách hàng']
+}
+
+Ref: "APPOINTMENT"."guest_information_id" - "GUEST_INFORMATION"."id" [delete: cascade]
+Ref: "APPOINTMENT"."dealership_id" - "DEALERSHIP"."id" [delete: cascade]
+
+Enum notification_type {
+  SYSTEM
+  APPOINTMENT
+  SERVICE
+  MAINTENANCE_DUE
+  PROMOTION
+  DOCUMENT
+  CHAT
+  MANUAL_ALERT
+}
+
+Table "NOTIFICATION" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`]
+  "user_id" BINARY(16) [not null, note: 'Người dùng nhận thông báo']
+  "sender_id" BINARY(16) [note: 'Người dùng gửi thông thông báo']
+  "type" notification_type [not null, default: 'system', note: 'Phân loại thông báo']
+  "title" VARCHAR(250) [not null, note: 'Tiêu đề thông báo']
+  "content" TEXT [not null, note: 'Nội dung thông báo']
+  "is_read" TINYINT [default: 0, note: 'Trạng thái chưa đọc']
+  "read_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`, note: 'Thời gian tạo thông báo']
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`, note: 'Thời gian tạo thông báo']
+}
+
+Table "CAR_STYLE" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'Mã định danh kiểu dáng (UUID)']
+  "name" VARCHAR(100) [unique, not null, note: 'Tên kiểu dáng (VD: Sedan, SUV, Hatchback)']
+  "description" VARCHAR(250) [not null, note: 'Mô tả chi tiết']
+  Note: 'Lưu trữ danh mục kiểu dáng xe'
+}
+
+Table "CAR_SERIES" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'Mã định danh dòng xe (UUID)']
+  "car_style_id" BINARY(16) [not null, note: 'Khóa ngoại tham chiếu đến STYLE']
+  "name" VARCHAR(100) [not null, note: 'Tên dòng xe (VD: 3 Series, C-Class)']
+  "description" VARCHAR(250) [not null, note: 'Mô tả chi tiết']
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`, note: 'Thời gian tạo bản ghi']
+  Note: 'Lưu trữ các dòng xe thuộc các kiểu dáng khác nhau'
+}
+
+Table "CAR_VERSION" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'Mã định danh phiên bản xe (UUID)']
+  "car_series_id" BINARY(16) [not null, note: 'Khóa ngoại tham chiếu đến SERIES']
+  "name" VARCHAR(50) [not null, note: 'Phiên bản xe (VD: 2.0 AT, Luxury)']
+  "sale_percent" DECIMAL(5,2) [check: `sale_percent >= 0 AND sale_percent <= 100`, default: 0.00, note: 'Phần trăm giảm giá (0-100)']
+  "model_year" INT [not null, note: 'Đời xe / Năm mẫu mã (VD: Xe sản xuất 2025 nhưng thuộc đời 2026)']
+  "video_url" VARCHAR(255) [note: 'Đường dẫn video giới thiệu xe']
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`, note: 'Thời gian tạo bản ghi']
+  Note: 'Lưu trữ thông tin định danh và cấu hình chung của từng phiên bản xe'
+}
+
+Ref: "USER"."id" < "USER_VIEW_HISTORY"."user_id" [delete: cascade]
+Ref: "CAR_VERSION"."id" < "USER_VIEW_HISTORY"."car_version_id" [delete: cascade]
+Ref: "USER"."id" < "APPOINTMENT"."user_id" [delete: cascade]
+Ref: "CAR_VERSION"."id" < "APPOINTMENT"."car_version_id" [delete: cascade]
+
+Enum car_status {
+  IN_STOCK
+  SOLD
+  MAINTENANCE
+}
+
+Table "CAR" {
+  "vin_id" VARCHAR(17) [pk, note: 'Số khung xe (Vehicle Identification Number)']
+  "car_version_id" BINARY(16) [not null, note: 'Khóa ngoại tham chiếu đến bảng CAR (Phiên bản xe)']
+  "dealership_id" BINARY(16) [not null, note: 'Khóa ngoại - Xe đang nằm ở Dealership nào']
+  "engine_number" VARCHAR(50) [unique, not null, note: 'Số máy (Động cơ)']
+  "status" car_status [not null, default: 'IN_STOCK', note: 'Trạng thái vòng đời của xe vật lý']
+  "producted_year" TIMESTAMP [not null, note: 'Thời gian sản xuất']
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+  
+  Indexes {
+    (dealership_id, status) [note: 'Tối ưu query: Tìm xe đang có sẵn tại dealership cụ thể']
+  }
+}
+
+Enum contract_status {
+  DEPOSIT_PAID // Đã cọc
+  FULL_PAID    // Đã thanh toán đủ
+  DELIVERED    // Đã giao xe - Hoàn tất
+  CANCELED     // Hủy hợp đồng, hoàn cọc
+}
+
+Enum customer_type_enum {
+  INDIVIDUAL
+  COMPANY
+}
+
+Enum payment_method_enum {
+  CASH
+  BANK_LOAN
+}
+
+Table "SALES_CONTRACT" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`]
+  "contract_code" VARCHAR(50) [unique, not null, note: 'Mã hợp đồng in trên giấy']
+  "user_id" BINARY(16) [not null, note: 'Tài khoản hệ thống của khách']
+  
+  // Pháp lý Bên Mua
+  "customer_type" customer_type_enum [not null, default: 'INDIVIDUAL']
+  "buyer_name" VARCHAR(100) [not null, note: 'Tên người mua hoặc Tên công ty']
+  "identity_number" VARCHAR(20) [note: 'CCCD (cá nhân)']
+  
+  // Thông tin xe & Nhân sự
+  "vin_id" VARCHAR(17) [not null, note: 'Chiếc xe vật lý được bán']
+  "dealership_id" BINARY(16) [not null, note: 'Dealership thực hiện giao dịch']
+  "assistant_id" BINARY(16) [not null, note: 'Tài khoản Sale/Trợ lý phụ trách chốt hợp đồng này'] // <-- TRƯỜNG THÊM MỚI
+  
+  // Tài chính
+  "base_price" DECIMAL(15,2) [not null, note: 'Giá niêm yết']
+  "service_fee" DECIMAL(15,2) [default: 0, note: 'Phí dịch vụ như đăng ký, biển số...']
+  "vat_rate" DECIMAL(5,2) [default: 10, note: 'Thuế VAT (%)']
+  "total_accessory_amount" DECIMAL(15,2) [default: 0, note: 'Tổng iền phụ kiện bán thêm']
+  "total_amount" DECIMAL(15,2) [not null, note: 'Tổng tiền phải thu']
+
+  // Thanh toán
+  "payment_method" payment_method_enum [not null, default: 'CASH']
+  "deposit_amount" DECIMAL(15,2) [default: 0, note: 'Tiền cọc đã thu']
+
+  // Giao nhận
+  "status" contract_status [not null]
+  "actual_delivery_date" DATE [note: 'Ngày thực tế giao xe (Chuyển status sang DELIVERED)']
+  "warranty_end_date" DATE [note: 'Ngày hết hạn bảo hành']
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+Table "SALES_CONTRACT_ACCESSORY" {
+  "contract_id" BINARY(16) [not null, note: 'Thuộc hợp đồng bán xe nào']
+  "accessory_id" BINARY(16) [not null, note: 'Mã phụ kiện được mua']
+  "quantity" INT [not null, default: 1, note: 'Số lượng mua']
+  "price" DECIMAL(15,2) [not null, note: 'Giá bán thực tế tại thời điểm chốt (Có thể khác giá niêm yết)']
+  "is_gift" TINYINT(1) [default: 0, note: 'Đánh dấu nếu đây là phụ kiện tặng kèm (unit_price = 0)']
+
+  Indexes {
+    (contract_id, accessory_id) [pk]
+  }
+  Note: 'Lưu danh sách phụ kiện khách hàng mua kèm (hoặc được tặng) khi ký hợp đồng mua xe'
+}
+
+Ref: "USER"."id" < "SALES_CONTRACT"."assistant_id" [delete: restrict]
+Ref: "SALES_CONTRACT"."id" < "SALES_CONTRACT_ACCESSORY"."contract_id" [delete: cascade]
+Ref: "ACCESSORY"."id" < "SALES_CONTRACT_ACCESSORY"."accessory_id" [delete: restrict]
+
+Ref: "CAR"."vin_id" < "SALES_CONTRACT"."vin_id" [delete: restrict]
+Ref: "USER"."id" < "SALES_CONTRACT"."user_id" [delete: restrict]
+Ref: "DEALERSHIP"."id" < "SALES_CONTRACT"."dealership_id" [delete: restrict]
+
+Table "EXTERIOR_COLOR" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'Mã định danh màu ngoại thất (UUID)']
+  "color_name" VARCHAR(50) [unique, not null, note: 'Tên màu ngoại thất (VD: Đỏ, Đen, Trắng)']
+  Note: 'Danh mục màu sơn ngoại thất'
+}
+
+Table "INTERIOR_COLOR" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'Mã định danh màu nội thất (UUID)']
+  "color_name" VARCHAR(50) [unique, not null, note: 'Tên màu nội thất (VD: Kem, Đen)']
+  Note: 'Danh mục màu chất liệu nội thất'
+}
+
+Table "CAR_PRICE" {
+  "car_version_id" BINARY(16) [not null, note: 'Khóa ngoại tham chiếu đến CAR']
+  "exterior_color_id" BINARY(16) [not null, note: 'Khóa ngoại tham chiếu màu ngoại thất']
+  "interior_color_id" BINARY(16) [not null, note: 'Khóa ngoại tham chiếu màu nội thất']
+  "price" DECIMAL(15,2) [not null, check: `price >= 0`, note: 'Giá bán niêm yết']
+  "ex_image_url" VARCHAR(255) [note: 'Ảnh minh họa màu ngoại thất']
+  "in_image_url" VARCHAR(255) [note: 'Ảnh minh họa màu nội thất']
+
+  Indexes {
+    (car_version_id, exterior_color_id, interior_color_id) [pk]
+  }
+  Note: 'Quản lý giá và hình ảnh xe chi tiết theo từng tổ hợp màu sắc'
+}
+
+Table "CAR_GALLERY" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'Mã định danh hình ảnh (UUID)']
+  "car_version_id" BINARY(16) [not null, note: 'Khóa ngoại tham chiếu đến CAR']
+  "image_url" VARCHAR(255) [not null, note: 'Đường dẫn tới hình ảnh']
+  Note: 'Lưu trữ bộ sưu tập hình ảnh chi tiết của xe'
+}
+
+Table "CAR_ARTICLE" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'Mã định danh bài viết/thông tin (UUID)']
+  "car_version_id" BINARY(16) [not null, note: 'Khóa ngoại tham chiếu đến CAR']
+  "type" VARCHAR(50) [not null, note: 'Loại thông tin (VD: Khuyến mãi, Tính năng nổi bật)']
+  "title" VARCHAR(255) [not null, note: 'Tiêu đề thông tin']
+  "content" TEXT [not null, note: 'Nội dung chi tiết']
+  "image_url" VARCHAR(255) [note: 'Hình ảnh minh họa cho bài viết']
+  Note: 'Lưu trữ các bài viết giới thiệu, tính năng hoặc tin tức liên quan đến xe'
+}
+
+Table "ACCESSORY" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'Mã định danh phụ kiện (UUID)']
+  "model" VARCHAR(100) [not null, note: 'Mã/Tên model phụ kiện']
+  "brand" VARCHAR(100) [not null, note: 'Thương hiệu sản xuất']
+  "price" DECIMAL(15,2) [not null, check: `price >= 0`, note: 'Giá bán phụ kiện']
+  "description" TEXT [note: 'Mô tả chung về phụ kiện']
+  "use_content" TEXT [note: 'Hướng dẫn sử dụng']
+  "reminder_content" TEXT [note: 'Lưu ý khi bảo quản/sử dụng']
+  "type" VARCHAR(100) [not null, note: 'Loại phụ kiện']
+  Note: 'Danh mục các phụ kiện lắp thêm cho xe'
+}
+
+Table "CAR_SPECIFICATION" {
+  "car_version_id" BINARY(16) [pk, note: 'Khóa chính, đồng thời là khóa ngoại tham chiếu đến CAR']
+  "origin" VARCHAR(100) [not null, note: 'Nguồn gốc xuất xứ (VD: Nhập khẩu, Lắp ráp)']
+  "fuel" VARCHAR(50) [not null, note: 'Loại nhiên liệu (VD: Xăng, Dầu, Điện)']
+  "number_of_seats" INT [not null, check: `number_of_seats > 0`, note: 'Số chỗ ngồi']
+  "length" INT [not null, note: 'Chiều dài tổng thể (mm)']
+  "width" INT [not null, note: 'Chiều rộng tổng thể (mm)']
+  "height" INT [not null, note: 'Chiều cao tổng thể (mm)']
+  "capacity" INT [note: 'Dung tích bình nhiên liệu hoặc pin']
+  "cylinder_capacity" VARCHAR(50) [note: 'Dung tích xi lanh (VD: 1998 cc)']
+  "cylinder" INT [note: 'Số xi lanh động cơ']
+  "gearbox" VARCHAR(50) [note: 'Loại hộp số (VD: 6 AT, CVT)']
+  "maximum_speed" INT [note: 'Tốc độ tối đa (km/h)']
+  "acceleration" VARCHAR(50) [note: 'Khả năng tăng tốc 0-100km/h (giây)']
+  "torque" VARCHAR(100) [note: 'Mô men xoắn cực đại']
+  "gross_weight_allowance" INT [note: 'Trọng lượng toàn tải cho phép (kg)']
+  "trademarks" VARCHAR(100) [note: 'Thông tin nhãn hiệu thương mại']
+  Note: 'Lưu trữ chi tiết thông số kỹ thuật của từng chiếc xe'
+}
+
+Table "CAR_ACCESSORY" {
+  "car_version_id" BINARY(16) [not null, note: 'Khóa ngoại tham chiếu đến CAR']
+  "accessory_id" BINARY(16) [not null, note: 'Khóa ngoại tham chiếu đến ACCESSORY']
+
+  Indexes {
+    (car_version_id, accessory_id) [pk]
+  }
+  Note: 'Bảng trung gian (Pivot table) nối giữa xe và các phụ kiện tương thích'
+}
+
+Table "MECHANIC" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'Mã Kỹ thuật viên (UUID)']
+  "dealership_id" BINARY(16) [not null, note: 'Trực thuộc Dealership/Xưởng nào']
+  "average_rating" DECIMAL(3,2) [default: 0, note: 'Điểm đánh giá trung bình']
+  "is_active" TINYINT(1) [default: 1, note: 'Trạng thái làm việc']
+  Note: 'Thông tin đội ngũ kỹ thuật viên'
+}
+
+Ref: "MECHANIC"."id" - "USER"."id"
+
+ENUM service_status_type {
+  CONFIRMED
+  RECEIVING
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+  EXPIRED
+}
+
+Table "SERVICE" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`, note: 'Mã phiếu dịch vụ']
+  "user_id" BINARY(16) [note: 'Khách hàng có tài khoản, có thể NULL nếu là khách vãng lai']
+  "guest_information_id" BINARY(16) [note: 'Thông tin khách vãng lai hoặc khách walk-in nếu không có tài khoản']
+  "vin_id" VARCHAR(17) [not null, note: 'Xe cụ thể (Số khung)']
+  "mechanic_id" BINARY(16) [note: 'Thợ chính phụ trách']
+  "dealership_id" BINARY(16) [not null, note: 'Địa điểm sửa chữa']
+  "appointment_id" BINARY(16) [note: 'Địa điểm sửa chữa, nếu vãng lai không đặt trước']
+  "mileage_at_service" INT [not null, note: 'Số KM của xe khi vào xưởng']
+  "status" service_status_type
+  "total_amount" DECIMAL(15,2) [default: 0, note: 'Tổng tiền hóa đơn (Sum của các item)']
+  "notes" TEXT [note: 'Ghi chú tình trạng xe lúc nhận']
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`, note: 'Ngày tạo dịch vụ']
+  "completed_at" TIMESTAMP [note: 'Ngày hoàn thành']
+  Note: 'Lưu trữ các phiên làm việc/sửa chữa xe'
+}
+
+Ref: "SERVICE"."id" - "APPOINTMENT"."id"
+Ref: "GUEST_INFORMATION"."id" < "SERVICE"."guest_information_id"
+
+Enum item_type_enum {
+  LABOR     // Tiền công thợ (VD: Công thay nhớt, Công đánh bóng)
+  PART      // Phụ tùng / Phụ kiện (VD: Lọc gió, Camera hành trình)
+}
+
+Enum billing_type_enum {
+  NORMAL    // Khách hàng tự thanh toán (Tính tiền bình thường)
+  WARRANTY  // Bảo hành (Khách không trả, hãng sản xuất đền bù)
+  GIFT      // Quà tặng/Khuyến mãi (Khách không trả, dealership chịu chi phí)
+}
+
+Table "SERVICE_ITEM" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`]
+  "service_id" BINARY(16) [not null, note: 'Thuộc lệnh sửa chữa nào']
+  "item_type" item_type_enum [not null, default: 'PART']
+  "accessory_id" BINARY(16) [note: 'Mã phụ tùng/phụ kiện (Nếu item_type là LABOR thì để NULL)']
+  "item_name" VARCHAR(255) [not null, note: 'Tên hiển thị trên Bill (VD: Nhớt động cơ, Công thay nhớt)']
+  "quantity" INT [not null, default: 1, note: 'Số lượng hoặc số giờ công']
+  "unit_price" DECIMAL(15,2) [not null, note: 'Đơn giá niêm yết trên hệ thống']
+  "billing_type" billing_type_enum [not null, default: 'NORMAL', note: 'Hình thức tính tiền']
+  "final_price" DECIMAL(15,2) [not null, note: 'Thành tiền thực tế thu của khách. Nếu billing_type là WARRANTY hoặc GIFT thì = 0']
+}
+
+Table "CUSTOMER_REVIEW" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`]
+  "review_type" VARCHAR(30) [not null, note: 'TEST_DRIVE hoặc SERVICE']
+  "status" VARCHAR(30) [not null, note: 'PENDING, SUBMITTED hoặc EXPIRED']
+  "review_token" VARCHAR(80) [unique, not null, note: 'Token gửi trong email để khách đánh giá']
+  "token_expires_at" TIMESTAMP [not null]
+  "submitted_at" TIMESTAMP
+  "appointment_id" BINARY(16) [unique, note: 'Lịch hẹn được đánh giá nếu có']
+  "service_id" BINARY(16) [unique, note: 'Phiếu dịch vụ được đánh giá nếu có']
+  "user_id" BINARY(16) [note: 'Người đánh giá nếu có tài khoản']
+  "guest_full_name" VARCHAR(100)
+  "guest_email" VARCHAR(120)
+  "guest_phone" VARCHAR(20)
+  "dealership_id" BINARY(16) [not null]
+  "service_rating" TINYINT [note: 'Số sao đánh giá dịch vụ chung']
+  "service_comment" TEXT
+  "mechanic_id" BINARY(16) [note: 'Thợ được đánh giá nếu là dịch vụ sửa chữa']
+  "mechanic_rating" TINYINT
+  "mechanic_comment" TEXT
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+  Note: 'Lưu đánh giá của khách hàng sau lịch lái thử hoặc dịch vụ sửa chữa'
+}
+
+Table "SUPPORT" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`]
+  "customer_id" BINARY(16) [not null, note: 'Khách hàng cần hỗ trợ']
+  "content" TEXT [note: 'Nội dung hỗ trợ mà khách hàng gửi']
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+  Note: 'Đơn hỗ trợ của người dùng gửi đến'
+}
+
+Ref: "USER"."id" < "SUPPORT"."customer_id"
+
+Table "AI_CHAT_SESSION" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`]
+  "user_id" BINARY(16) [note: 'ID khách hàng (NULL nếu là khách vãng lai chưa đăng nhập)']
+  "title" VARCHAR(255) [note: 'Tiêu đề phiên chat (AI tự động tóm tắt, VD: Hỏi giá lăn bánh KIA K3)']
+  "context_data" JSON [note: 'Bối cảnh: Khách đang đứng ở URL nào, xem xe nào để AI hiểu ngữ cảnh']
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+  Note: 'Quản lý phiên trò chuyện với Trợ lý AI'
+}
+
+Table "AI_CHAT_MESSAGE" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`]
+  "session_id" BINARY(16) [not null]
+  "user_message" TEXT [not null, note: 'Nội dung chat của user']
+  "ai_message" TEXT [not null, note: 'Nội dung chat của AI']
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+  Note: 'Chi tiết tin nhắn trong phiên chat với AI'
+}
+
+Ref: "USER"."id" < "AI_CHAT_SESSION"."user_id" [delete: set null]
+Ref: "AI_CHAT_SESSION"."id" < "AI_CHAT_MESSAGE"."session_id" [delete: cascade]
+
+Enum consultant_chat_status {
+  waiting    // Đang chờ hệ thống phân bổ chuyên viên
+  active     // Chuyên viên đang chat với khách
+  resolved   // Đã tư vấn xong / Chốt sale thành công
+  closed     // Phiên bị đóng (Khách thoát)
+}
+
+Table "CONSULTANT_CHAT_SESSION" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`]
+  "user_id" BINARY(16) [not null, note: 'Khách hàng (Bắt buộc phải đăng nhập hoặc để lại SĐT để có ng thật hỗ trợ)']
+  "consultant_id" BINARY(16) [note: 'ID của Chuyên viên phụ trách ca này']  
+  "topic" VARCHAR(100) [note: 'Chủ đề: Báo giá, Kỹ thuật, Bảo hành...'] 
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+  Note: 'Quản lý phiên hỗ trợ 1-1 giữa Khách hàng và Chuyên viên'
+}
+
+Table "CONSULTANT_CHAT_MESSAGE" {
+  "id" BINARY(16) [pk, default: `UUID_TO_BIN(UUID())`]
+  "session_id" BINARY(16) [not null]
+  "sender_id" BINARY(16) [not null, note: 'ID người gửi (Tham chiếu đến USER bảng gốc, có thể là khách hoặc tư vấn viên)']
+  "content" TEXT [not null, note: 'Nội dung tin nhắn']
+  "created_at" TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+  Note: 'Lưu trữ tin nhắn người thật'
+}
+
+Ref: "USER"."id" < "CONSULTANT_CHAT_SESSION"."user_id" [delete: cascade]
+Ref: "USER"."id" < "CONSULTANT_CHAT_SESSION"."consultant_id" [delete: set null]
+Ref: "CONSULTANT_CHAT_SESSION"."id" < "CONSULTANT_CHAT_MESSAGE"."session_id" [delete: cascade]
+Ref: "USER"."id" < "CONSULTANT_CHAT_MESSAGE"."sender_id"
+Ref: "DEALERSHIP"."id" < "MECHANIC"."dealership_id"
+Ref: "USER"."id" < "SERVICE"."user_id"
+Ref: "CAR"."vin_id" < "SERVICE"."vin_id"
+Ref: "MECHANIC"."id" < "SERVICE"."mechanic_id"
+Ref: "DEALERSHIP"."id" < "SERVICE"."dealership_id"
+Ref: "SERVICE"."id" < "SERVICE_ITEM"."service_id" [delete: cascade]
+Ref: "APPOINTMENT"."id" - "CUSTOMER_REVIEW"."appointment_id" [delete: cascade]
+Ref: "SERVICE"."id" - "CUSTOMER_REVIEW"."service_id" [delete: cascade]
+Ref: "USER"."id" < "CUSTOMER_REVIEW"."user_id"
+Ref: "DEALERSHIP"."id" < "CUSTOMER_REVIEW"."dealership_id"
+Ref: "MECHANIC"."id" < "CUSTOMER_REVIEW"."mechanic_id"
+
+
+Ref:"CAR_STYLE"."id" < "CAR_SERIES"."car_style_id" [delete: cascade]
+
+Ref:"CAR_SERIES"."id" < "CAR_VERSION"."car_series_id" [delete: cascade]
+
+Ref:"CAR_VERSION"."id" < "CAR"."car_version_id" [delete: cascade]
+
+Ref:"CAR_VERSION"."id" < "CAR_PRICE"."car_version_id" [delete: cascade]
+
+Ref:"EXTERIOR_COLOR"."id" < "CAR_PRICE"."exterior_color_id" [delete: restrict]
+
+Ref:"INTERIOR_COLOR"."id" < "CAR_PRICE"."interior_color_id" [delete: restrict]
+
+Ref:"CAR_VERSION"."id" < "CAR_GALLERY"."car_version_id" [delete: cascade]
+
+Ref:"CAR_VERSION"."id" < "CAR_ARTICLE"."car_version_id" [delete: cascade]
+
+Ref:"CAR_VERSION"."id" < "CAR_SPECIFICATION"."car_version_id" [delete: cascade]
+
+Ref:"CAR_VERSION"."id" < "CAR_ACCESSORY"."car_version_id" [delete: cascade]
+
+Ref:"ACCESSORY"."id" < "CAR_ACCESSORY"."accessory_id" [delete: cascade]
+
+Ref: "USER"."id" < "NOTIFICATION"."user_id"
+
+Ref: "USER"."id" < "NOTIFICATION"."sender_id"

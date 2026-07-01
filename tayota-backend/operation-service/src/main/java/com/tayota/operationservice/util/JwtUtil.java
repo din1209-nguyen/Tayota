@@ -1,0 +1,179 @@
+package com.tayota.operationservice.util;
+
+import com.tayota.operationservice.object.auth.TokenPair;
+import com.tayota.operationservice.object.auth.UserSession;
+import com.tayota.operationservice.service.cache.SystemCacheService;
+import io.jsonwebtoken.*;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import tools.jackson.databind.ObjectMapper;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import io.jsonwebtoken.security.SignatureException;
+import java.util.*;
+
+@Component
+public class JwtUtil {
+    // Khai báo khoá bí mật SecretKey
+    private final SecretKey secretKey;
+    // Khai báo biến JwtParser để tái sử dụng
+    private final JwtParser jwtParser;
+
+    // Thời gian hết hạn của access-token
+    @Value("${jwt.access-token-expiration}")
+    private long jwtAccessTokenExpirationMs;
+    // Thời gian hết hạn của refresh-token
+    @Value("${jwt.refresh-token-expiration}")
+    private long jwtRefreshTokenExpirationMs;
+
+    // Cache hệ thống để lưu trữ và truy xuất session người dùng.
+    private final SystemCacheService systemCacheService;
+    // ObjectMapper để chuyển đổi giữa Object Java và JSON khi cần đọc dữ liệu cũ từ cache hệ thống.
+    private final ObjectMapper objectMapper;
+
+    public JwtUtil(@Value("${jwt.secret}") String secret, SystemCacheService systemCacheService, ObjectMapper objectMapper) {
+        this.systemCacheService = systemCacheService;
+        // Khởi tạo ObjectMapper
+        this.objectMapper = objectMapper;
+
+        // Khoá bí mật được tạo từ chuỗi secret
+        secretKey = Keys.hmacShaKeyFor(secret.getBytes());
+
+        // Build JwtParser một lần duy nhất khi khởi động ứng dụng
+        this.jwtParser = Jwts.parser()
+                .verifyWith(secretKey)
+                .build();
+    }
+
+    // Tạo access-token và refresh-token
+//    public TokenPair generateTokenPair(String userId, List<String> roles, String deviceId) {
+//        // Đặt thông tin vào access-token
+//        Map<String, Object> accessClaims = new HashMap<>();
+//        accessClaims.put("role", roles);
+//
+//        // Tạo access-token
+//        String accessToken = generateToken(userId, jwtAccessTokenExpirationMs, accessClaims, "access");
+//
+//        // Đặt thông tin vào refresh-token
+//        Map<String, Object> refreshClaims = new HashMap<>();
+//        refreshClaims.put("role", roles);
+//        refreshClaims.put("deviceId", deviceId);
+//
+//        // Tạo refresh-token
+//        String refreshToken = generateToken(userId, jwtRefreshTokenExpirationMs, refreshClaims, "refresh");
+//
+//        return new TokenPair(accessToken, refreshToken);
+//    }
+
+    // Overloaded: thêm email vào claim của cả access-token và refresh-token
+    public TokenPair generateTokenPair(String userId, String email, List<String> roles, String deviceId) {
+        // Đặt thông tin vào access-token (kèm email)
+        Map<String, Object> accessClaims = new HashMap<>();
+        accessClaims.put("role", roles);
+        accessClaims.put("email", email);
+
+        // Tạo access-token
+        String accessToken = generateToken(userId, jwtAccessTokenExpirationMs, accessClaims, "access");
+
+        // Đặt thông tin vào refresh-token (kèm email)
+        Map<String, Object> refreshClaims = new HashMap<>();
+        refreshClaims.put("role", roles);
+        refreshClaims.put("deviceId", deviceId);
+        refreshClaims.put("email", email);
+
+        // Tạo refresh-token
+        String refreshToken = generateToken(userId, jwtRefreshTokenExpirationMs, refreshClaims, "refresh");
+
+        return new TokenPair(accessToken, refreshToken);
+    }
+
+    // Tạo chi tiết token
+    public String generateToken(String userId, long expirationMs, Map<String, Object> claims, String tokenType) {
+        // Thêm kiểu token để phân loại
+        claims.put("type", tokenType);
+
+        // Xác định thời gian hiện tại
+        Date now = new Date();
+        // Xác định thời gian hết hạn
+        Date expiryDate = new Date(now.getTime() + expirationMs);
+
+        // Tạo token với thông tin người dùng, claims, thời gian tạo và hết hạn, sau đó ký bằng secretKey
+        return Jwts.builder()
+                .subject(userId)
+                .claims(claims)
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .signWith(secretKey)
+                .compact();
+    }
+
+    // Xác thực Token và lấy dữ liệu từ Payload
+    public Claims getClaims(String token) {
+        try {
+            return jwtParser
+                    // Thực hiện băm lại và đối chiếu chữ ký, kiểm tra thời gian hết hạn (exp) của token
+                    .parseSignedClaims(token)
+                    // Trích xuất các thông tin người dùng (Claims) đã được mã hóa trong phần thân của token
+                    .getPayload();
+        }
+        catch (ExpiredJwtException e) {
+            throw new RuntimeException("Token đã hết hạn: " + e.getMessage());
+
+        } catch (SignatureException e) {
+            throw new RuntimeException("Chữ ký Token không hợp lệ: " + e.getMessage());
+
+        } catch (MalformedJwtException e) {
+            throw new RuntimeException("Cấu trúc Token không đúng định dạng: " + e.getMessage());
+
+        } catch (UnsupportedJwtException e) {
+            throw new RuntimeException("Token không được hỗ trợ: " + e.getMessage());
+
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Chuỗi Claims trống hoặc không hợp lệ: " + e.getMessage());
+
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi xác thực Token không xác định: " + e.getMessage());
+        }
+    }
+
+    // Băm refresh-token bằng SHA-256 để lưu vào cache hệ thống.
+    public String hashRefreshToken(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(hash);
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Lỗi khi băm refresh token", e);
+        }
+    }
+
+    // So sánh refresh-token người dùng gửi lên với refresh-token hash đã lưu trong cache hệ thống.
+    // Sử dụng kỹ thuật so sánh thời gian cố định (Constant-time comparison) để chống tấn công Timing Attack
+    public boolean compareToRefreshTokenHash(String refreshToken, String sessionKey) {
+        // Truy xuất session của người dùng trong cache hệ thống.
+        UserSession savedSession = objectMapper.convertValue(systemCacheService.get(sessionKey), UserSession.class);
+
+        // Trường hợp session tồn tại và chưa hết hạn (TTL) thì mới so sánh hash
+        if (savedSession != null) {
+            // Lấy refresh-token hash từ session
+            String refreshTokenHash = savedSession.getRefreshHash();
+
+            // Băm token người dùng gửi lên bằng cùng thuật toán (SHA-256) để có cùng định dạng với cache hệ thống.
+            String hashedInput = hashRefreshToken(refreshToken);
+
+            // Sử dụng MessageDigest.isEqual để so sánh mảng byte
+            // - Không dùng String.equals() vì nó sẽ dừng ngay khi gặp ký tự sai (lộ tốc độ xử lý)
+            // - MessageDigest.isEqual() sẽ duyệt qua toàn bộ độ dài của chuỗi bất kể đúng hay sai
+            // - Điều này ngăn kẻ tấn công đo thời gian phản hồi của server để đoán mã hash (Timing Attack)
+            return MessageDigest.isEqual(
+                    hashedInput.getBytes(StandardCharsets.UTF_8),
+                    refreshTokenHash.getBytes(StandardCharsets.UTF_8)
+            );
+        }
+        return false;
+    }
+}

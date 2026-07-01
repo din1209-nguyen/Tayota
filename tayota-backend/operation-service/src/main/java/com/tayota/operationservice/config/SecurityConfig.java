@@ -1,0 +1,76 @@
+package com.tayota.operationservice.config;
+
+import com.tayota.operationservice.filter.HeaderAuthenticationFilter;
+import com.tayota.operationservice.service.auth.CustomUserDetailsService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+@Configuration
+@EnableMethodSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+    private final CustomUserDetailsService customUserDetailsService;
+
+    // Khai báo Filter dưới dạng Bean thay vì dùng @Component ở class kia
+    // Cách này giúp thư viện quản lý vòng đời (lifecycle) của đối tượng sạch sẽ hơn
+    @Bean
+    public HeaderAuthenticationFilter headerAuthenticationFilter() {
+        return new HeaderAuthenticationFilter();
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   HeaderAuthenticationFilter headerAuthenticationFilter) throws Exception {
+        http
+                // Cross-Site Request Forgery: mặc định mọi request POST, PUT, DELETE phải có CSRF token, vì dùng JWT nên không cần
+                .csrf(AbstractHttpConfigurer::disable)
+                // Không dùng session để lưu trạng thái vì ta dùng JWT tự quản lý trạng thái nêu mỗi request sẽ độc lập với nhau
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // Phân quyền các đường dẫn, vì đã lọc từ API-Gateway nên trong các Services sẽ cho phép tất cả
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                // Cấu hình đường dẫn logout,
+                .logout(logout -> logout
+                        .logoutUrl("/user/logout"))
+                // Spring sẽ chạy HeaderAuthenticationFilter trước để lấy thông tin từ Header
+                .addFilterBefore(headerAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+    
+    @Bean // AuthenticationProvider dùng để xác thực email và password
+    public AuthenticationProvider authenticationProvider() {
+        // DaoAuthenticationProvider sẽ:
+        // 1. Gọi CustomUserDetailsService để lấy user từ DB
+        // 2. So sánh password đã mã hóa
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(customUserDetailsService);
+        // Thiết lập thuật toán mã hóa mật khẩu (BCrypt)
+        authProvider.setPasswordEncoder(passwordEncoder());
+
+        return authProvider;
+    }
+
+    @Bean
+    // AuthenticationManager chịu trách nhiệm điều phối quá trình xác thực khi nhận email và password
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) {
+        // Lấy AuthenticationManager mặc định do Spring tạo sẵn
+        return authConfig.getAuthenticationManager();
+    }
+
+    @Bean // Thuật toán băm mật khẩu đảm bảo không lưu mật khẩu dạng text thuần
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}

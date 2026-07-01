@@ -1,0 +1,12 @@
+services:
+  operation-service-test:
+    image: maven:3.9.9-eclipse-temurin-21
+    profiles: ["test"]
+    working_dir: /workspace/operation-service
+    volumes:
+      - .:/workspace
+      - operation-service-maven-cache:/root/.m2
+    command: mvn -B test
+
+volumes:
+  operation-service-maven-cache:

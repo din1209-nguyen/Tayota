@@ -1,0 +1,391 @@
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 17.10 (Debian 17.10-1.pgdg13+1)
+-- Dumped by pg_dump version 17.10 (Debian 17.10-1.pgdg13+1)
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SET search_path = public;
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Data for Name: ACCESSORY; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."ACCESSORY" (id, brand, description, model, price, reminder_content, type, use_content, is_visible) VALUES ('30000000-0000-0000-0000-000000000001', 'Tayota', 'Front dash camera package', 'Dash Camera Basic', 2500000.00, 'Check recording status monthly.', 'ELECTRONIC', 'Install on windshield and connect to vehicle power.', true) ON CONFLICT DO NOTHING;
+INSERT INTO public."ACCESSORY" (id, brand, description, model, price, reminder_content, type, use_content, is_visible) VALUES ('30000000-0000-0000-0000-000000000002', 'Tayota', 'Durable all-weather floor mat', 'Floor Mat Standard', 1200000.00, 'Clean with water and dry before reuse.', 'INTERIOR', 'Place mats in correct seating position.', true) ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: GUEST_INFORMATION; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."GUEST_INFORMATION" VALUES ('50000000-0000-0000-0000-000000000001', 'guest.customer@example.com', 'Nguyen Van Guest', '0911000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."GUEST_INFORMATION" VALUES ('50000000-0000-0000-0000-000000000002', 'guest.service@example.com', 'Tran Mai Guest', '0911000002') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: APPOINTMENT; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."APPOINTMENT" VALUES ('51000000-0000-0000-0000-000000000001', NULL, NULL, '22000000-0000-0000-0000-000000000006', '2026-05-10 03:00:00+00', '2026-05-08 03:00:00+00', '2026-05-07 03:00:00+00', '10000000-0000-0000-0000-000000000001', NULL, NULL, 'Customer compared hybrid models.', '2026-05-10 03:00:00+00', '2026-05-10 02:00:00+00', 'COMPLETED', 'TEST_DRIVE', '2026-05-10 03:00:00+00', '00000000-0000-0000-0000-000000000015', NULL, NULL) ON CONFLICT DO NOTHING;
+INSERT INTO public."APPOINTMENT" VALUES ('51000000-0000-0000-0000-000000000002', NULL, NULL, NULL, '2026-05-18 05:00:00+00', '2026-05-17 02:00:00+00', '2026-05-16 02:00:00+00', '10000000-0000-0000-0000-000000000001', NULL, '00000000-0000-0000-0000-000000000014', 'Periodic maintenance at 10,000 km.', '2026-05-18 05:00:00+00', '2026-05-18 03:00:00+00', 'COMPLETED', 'SERVICE', '2026-05-18 05:00:00+00', '00000000-0000-0000-0000-000000000015', 'TAYOTA00000000008', NULL) ON CONFLICT DO NOTHING;
+INSERT INTO public."APPOINTMENT" VALUES ('51000000-0000-0000-0000-000000000003', NULL, NULL, '22000000-0000-0000-0000-000000000004', NULL, '2026-05-24 03:00:00+00', '2026-05-24 02:00:00+00', '10000000-0000-0000-0000-000000000002', NULL, NULL, 'Customer wants to test Camry Hybrid.', '2026-06-05 03:30:00+00', '2026-06-05 02:30:00+00', 'CONFIRMED', 'TEST_DRIVE', '2026-05-24 03:00:00+00', '00000000-0000-0000-0000-000000000015', NULL, NULL) ON CONFLICT DO NOTHING;
+INSERT INTO public."APPOINTMENT" VALUES ('51000000-0000-0000-0000-000000000004', NULL, NULL, '22000000-0000-0000-0000-000000000005', NULL, NULL, '2026-05-25 04:00:00+00', '10000000-0000-0000-0000-000000000004', NULL, NULL, 'Guest requested seven-seat SUV.', '2026-06-10 03:00:00+00', '2026-06-10 02:00:00+00', 'PENDING', 'TEST_DRIVE', '2026-05-25 04:00:00+00', NULL, NULL, '50000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: APPOINTMENT_HOLIDAY; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."APPOINTMENT_HOLIDAY" VALUES ('58000000-0000-0000-0000-000000000001', true, '2026-05-26 17:10:28.406964+00', '10000000-0000-0000-0000-000000000001', '2026-09-02', 'National holiday', '2026-05-26 17:10:28.406964+00') ON CONFLICT DO NOTHING;
+INSERT INTO public."APPOINTMENT_HOLIDAY" VALUES ('58000000-0000-0000-0000-000000000002', true, '2026-05-26 17:10:28.406964+00', '10000000-0000-0000-0000-000000000002', '2026-09-02', 'National holiday', '2026-05-26 17:10:28.406964+00') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: CAR_STYLE; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."CAR_STYLE" VALUES ('20000000-0000-0000-0000-000000000001', 'Comfortable passenger cars for city and family usage', 'Sedan') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_STYLE" VALUES ('20000000-0000-0000-0000-000000000002', 'High-clearance cars for family and long-distance trips', 'SUV') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_STYLE" VALUES ('20000000-0000-0000-0000-000000000003', 'Efficient electrified driving for city and long-distance usage', 'Hybrid') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_STYLE" VALUES ('20000000-0000-0000-0000-000000000004', 'Flexible multi-purpose cars for families and business transport', 'MPV') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_STYLE" VALUES ('20000000-0000-0000-0000-000000000005', 'Premium technology, comfort and executive presence', 'Luxury') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: CAR_SERIES; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."CAR_SERIES" VALUES ('21000000-0000-0000-0000-000000000001', '2026-05-26 17:10:28.201304+00', 'Compact sedan series', 'Vios', '20000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_SERIES" VALUES ('21000000-0000-0000-0000-000000000002', '2026-05-26 17:10:28.201304+00', 'Urban SUV series', 'Corolla Cross', '20000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_SERIES" VALUES ('21000000-0000-0000-0000-000000000003', '2026-05-26 17:10:28.317069+00', 'Executive sedan series', 'Camry', '20000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_SERIES" VALUES ('21000000-0000-0000-0000-000000000004', '2026-05-26 17:10:28.317069+00', 'Seven-seat SUV series', 'Fortuner', '20000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_SERIES" VALUES ('21000000-0000-0000-0000-000000000005', '2026-05-26 17:10:28.317069+00', 'Compact hybrid crossover series', 'Yaris Cross', '20000000-0000-0000-0000-000000000003') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_SERIES" VALUES ('21000000-0000-0000-0000-000000000006', '2026-05-26 17:10:28.317069+00', 'Family MPV series', 'Innova Cross', '20000000-0000-0000-0000-000000000004') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_SERIES" VALUES ('21000000-0000-0000-0000-000000000007', '2026-05-26 17:10:28.317069+00', 'Premium adventure SUV series', 'Land Cruiser Prado', '20000000-0000-0000-0000-000000000005') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: CAR_VERSION; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000003', '2026-05-26 17:10:28.319744+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779872977/tayota/car-gallery/file_kpkdj4.png', 2026, 'Camry 2.0Q', 0.00, 'https://example.com/videos/camry-20q.mp4', true, '21000000-0000-0000-0000-000000000003') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000004', '2026-05-26 17:10:28.319744+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779874882/tayota/car-gallery/file_iat6zz.png', 2026, 'Camry 2.5HV', 0.00, 'https://example.com/videos/camry-25hv.mp4', true, '21000000-0000-0000-0000-000000000003') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000009', '2026-05-26 17:10:28.319744+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875135/tayota/car-gallery/file_y554pk.png', 2026, 'Corolla Cross HEV', 0.00, 'https://example.com/videos/corolla-cross-hev.mp4', true, '21000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000005', '2026-05-26 17:10:28.319744+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875207/tayota/car-gallery/file_alyczl.png', 2026, 'Fortuner Legender 2.4AT', 0.00, 'https://example.com/videos/fortuner-legender.mp4', true, '21000000-0000-0000-0000-000000000004') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000007', '2026-05-26 17:10:28.319744+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875263/tayota/car-gallery/file_oimavh.png', 2026, 'Innova Cross 2.0V', 0.00, 'https://example.com/videos/innova-cross.mp4', true, '21000000-0000-0000-0000-000000000006') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000008', '2026-05-26 17:10:28.319744+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875361/tayota/car-gallery/file_g7mbnf.jpg', 2026, 'Land Cruiser Prado VX', 0.00, 'https://example.com/videos/prado-vx.mp4', true, '21000000-0000-0000-0000-000000000007') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000010', '2026-05-26 17:10:28.319744+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875416/tayota/car-gallery/file_brjw4t.png', 2026, 'Vios 1.5E CVT', 0.00, 'https://example.com/videos/vios-15e.mp4', true, '21000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000001', '2026-05-26 17:10:28.208567+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875497/tayota/car-gallery/file_aee4px.png', 2026, 'Vios 1.5G CVT', 0.00, 'https://example.com/videos/vios-15g.mp4', true, '21000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000006', '2026-05-26 17:10:28.319744+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875558/tayota/car-gallery/file_jhvbjz.png', 2026, 'Yaris Cross Hybrid', 0.00, 'https://example.com/videos/yaris-cross-hybrid.mp4', true, '21000000-0000-0000-0000-000000000005') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_VERSION" VALUES ('22000000-0000-0000-0000-000000000002', '2026-05-26 17:10:28.208567+00', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875067/tayota/car-gallery/file_nr42th.png', 2026, 'Corolla Cross 1.8V', 50.00, 'https://example.com/videos/corolla-cross-18v.mp4', true, '21000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: DEALERSHIP; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."DEALERSHIP" VALUES ('10000000-0000-0000-0000-000000000001', '12 Le Duan, District 1, Ho Chi Minh City', 2, '2026-05-26 17:10:28.165831+00', true, 10.78123456, 106.70234567, 'Tayota District 1', '08:00 - 18:00', '02811112222', 'tayota-district-1') ON CONFLICT DO NOTHING;
+INSERT INTO public."DEALERSHIP" VALUES ('10000000-0000-0000-0000-000000000002', '105 Nguyen Luong Bang, District 7, Ho Chi Minh City', 18, '2026-05-26 17:10:28.306822+00', true, 10.72981234, 106.70381234, 'Tayota Phu My Hung', '08:00 - 18:30', '02822223333', 'tayota-phu-my-hung') ON CONFLICT DO NOTHING;
+INSERT INTO public."DEALERSHIP" VALUES ('10000000-0000-0000-0000-000000000003', '22 Vo Van Ngan, Thu Duc City, Ho Chi Minh City', 22, '2026-05-26 17:10:28.306822+00', true, 10.85061234, 106.77131234, 'Tayota Thu Duc', '08:00 - 18:00', '02833334444', 'tayota-thu-duc') ON CONFLICT DO NOTHING;
+INSERT INTO public."DEALERSHIP" VALUES ('10000000-0000-0000-0000-000000000004', '68 Le Van Luong, Thanh Xuan, Hanoi', 16, '2026-05-26 17:10:28.306822+00', true, 21.00761234, 105.80161234, 'Tayota Hanoi West', '08:00 - 18:00', '02444445555', 'tayota-hanoi-west') ON CONFLICT DO NOTHING;
+INSERT INTO public."DEALERSHIP" VALUES ('10000000-0000-0000-0000-000000000005', '09 Nguyen Van Linh, Hai Chau, Da Nang', 14, '2026-05-26 17:10:28.306822+00', true, 16.06041234, 108.22191234, 'Tayota Da Nang', '08:00 - 17:30', '02365556666', 'tayota-da-nang') ON CONFLICT DO NOTHING;
+INSERT INTO public."DEALERSHIP" VALUES ('10000000-0000-0000-0000-000000000006', '188 30/4 Street, Ninh Kieu, Can Tho', 12, '2026-05-26 17:10:28.306822+00', true, 10.03321234, 105.78361234, 'Tayota Can Tho', '08:00 - 17:30', '02926667777', 'tayota-can-tho') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: CAR; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."CAR" VALUES ('TAYOTA00000000001', '2026-05-26 17:10:28.254098+00', 'ENG-TAYOTA-0001', NULL, '2026-01-01 00:00:00+00', 'IN_STOCK', '22000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR" VALUES ('TAYOTA00000000002', '2026-05-26 17:10:28.254098+00', 'ENG-TAYOTA-0002', '00000000-0000-0000-0000-000000000005', '2026-01-01 00:00:00+00', 'SOLD', '22000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR" VALUES ('TAYOTA00000000003', '2026-05-26 17:10:28.334142+00', 'ENG-TAYOTA-0003', NULL, '2026-01-01 00:00:00+00', 'IN_STOCK', '22000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR" VALUES ('TAYOTA00000000004', '2026-05-26 17:10:28.334142+00', 'ENG-TAYOTA-0004', NULL, '2026-01-01 00:00:00+00', 'IN_STOCK', '22000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000003') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR" VALUES ('TAYOTA00000000005', '2026-05-26 17:10:28.334142+00', 'ENG-TAYOTA-0005', NULL, '2026-01-01 00:00:00+00', 'IN_STOCK', '22000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000004') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR" VALUES ('TAYOTA00000000006', '2026-05-26 17:10:28.334142+00', 'ENG-TAYOTA-0006', NULL, '2026-01-01 00:00:00+00', 'IN_STOCK', '22000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000005') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR" VALUES ('TAYOTA00000000007', '2026-05-26 17:10:28.334142+00', 'ENG-TAYOTA-0007', NULL, '2026-01-01 00:00:00+00', 'IN_STOCK', '22000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000006') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR" VALUES ('TAYOTA00000000008', '2026-05-26 17:10:28.34029+00', 'ENG-TAYOTA-0008', '00000000-0000-0000-0000-000000000015', '2026-01-01 00:00:00+00', 'SOLD', '22000000-0000-0000-0000-000000000009', '10000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: CAR_ACCESSORY; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."CAR_ACCESSORY" VALUES ('30000000-0000-0000-0000-000000000001', '22000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ACCESSORY" VALUES ('30000000-0000-0000-0000-000000000002', '22000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: CAR_ARTICLE; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000003', 'A refined cabin, balanced ride and quiet daily usability make Camry 2.0Q a confident executive sedan.', '2026-05-26 17:10:28.247398+00', '/images/articles/camry-20q-design.png', true, 'Camry 2.0Q design highlights', 'DESIGN', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000003') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000004', 'Driver assistance, clear displays and connected controls support a smoother ownership experience.', '2026-05-26 17:10:28.247398+00', '/images/articles/camry-20q-technology.png', true, 'Technology inside Camry 2.0Q', 'TECHNOLOGY', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000003') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000005', 'Hybrid efficiency, premium seating and confident acceleration define the Camry 2.5HV experience.', '2026-05-26 17:10:28.247398+00', '/images/articles/camry-25hv-design.png', true, 'Camry 2.5HV comfort focus', 'DESIGN', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000004') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000006', 'The hybrid powertrain and digital cabin help reduce fuel use without losing long-distance refinement.', '2026-05-26 17:10:28.247398+00', '/images/articles/camry-25hv-technology.png', true, 'Hybrid technology in Camry 2.5HV', 'TECHNOLOGY', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000004') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000007', 'Corolla Cross HEV brings compact SUV visibility, flexible space and efficient hybrid driving.', '2026-05-26 17:10:28.247398+00', '/images/articles/corolla-cross-hev-design.png', true, 'Corolla Cross HEV urban utility', 'DESIGN', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000009') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000008', 'Smart energy management and safety support make daily commuting calmer and more predictable.', '2026-05-26 17:10:28.247398+00', '/images/articles/corolla-cross-hev-technology.png', true, 'Hybrid systems for city drives', 'TECHNOLOGY', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000009') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000009', 'Fortuner Legender balances seven-seat practicality with a stronger road presence for family travel.', '2026-05-26 17:10:28.247398+00', '/images/articles/fortuner-legender-design.png', true, 'Fortuner Legender family capability', 'DESIGN', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000005') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000010', 'Durable engineering, clear driver information and confident traction support longer routes.', '2026-05-26 17:10:28.247398+00', '/images/articles/fortuner-legender-technology.png', true, 'Confidence technology for Fortuner', 'TECHNOLOGY', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000005') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000011', 'Innova Cross 2.0V keeps family access simple with flexible seating and a calm cabin layout.', '2026-05-26 17:10:28.247398+00', '/images/articles/innova-cross-20v-design.png', true, 'Innova Cross family space', 'DESIGN', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000007') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000012', 'Helpful controls, convenient storage and safety features make shared family drives easier.', '2026-05-26 17:10:28.247398+00', '/images/articles/innova-cross-20v-technology.png', true, 'Everyday technology in Innova Cross', 'TECHNOLOGY', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000007') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000013', 'Land Cruiser Prado VX emphasizes premium comfort, elevated visibility and confident adventure styling.', '2026-05-26 17:10:28.247398+00', '/images/articles/land-cruiser-prado-vx-design.png', true, 'Land Cruiser Prado VX presence', 'DESIGN', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000008') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000014', 'Advanced chassis control and cabin technology help the Prado feel composed in varied conditions.', '2026-05-26 17:10:28.247398+00', '/images/articles/land-cruiser-prado-vx-technology.png', true, 'Prado VX control systems', 'TECHNOLOGY', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000008') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000015', 'Vios 1.5E CVT focuses on simple operation, low running cost and everyday sedan comfort.', '2026-05-26 17:10:28.247398+00', '/images/articles/vios-15e-cvt-design.png', true, 'Vios 1.5E CVT daily value', 'DESIGN', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000010') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000016', 'Efficient CVT tuning and practical cabin controls support smooth city use.', '2026-05-26 17:10:28.247398+00', '/images/articles/vios-15e-cvt-technology.png', true, 'Vios 1.5E CVT city technology', 'TECHNOLOGY', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000010') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000017', 'Vios 1.5G CVT adds a more complete comfort package while staying easy to own.', '2026-05-26 17:10:28.247398+00', '/images/articles/vios-15g-cvt-design.png', true, 'Vios 1.5G CVT comfort package', 'DESIGN', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000018', 'Safety assistance and intuitive displays keep the Vios 1.5G CVT friendly for daily commuting.', '2026-05-26 17:10:28.247398+00', '/images/articles/vios-15g-cvt-technology.png', true, 'Vios 1.5G CVT safety features', 'TECHNOLOGY', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000019', 'Yaris Cross Hybrid combines compact size, SUV stance and efficient electrified driving.', '2026-05-26 17:10:28.247398+00', '/images/articles/yaris-cross-hybrid-design.png', true, 'Yaris Cross Hybrid compact SUV style', 'DESIGN', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000006') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000020', 'Hybrid drive modes and safety assistance help Yaris Cross Hybrid adapt to city traffic.', '2026-05-26 17:10:28.247398+00', '/images/articles/yaris-cross-hybrid-technology.png', true, 'Yaris Cross Hybrid smart efficiency', 'TECHNOLOGY', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000006') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000021', 'Corolla Cross 1.8V gives families a practical SUV body with comfortable visibility and storage.', '2026-05-26 17:10:28.247398+00', '/images/articles/corolla-cross-18v-design.png', true, 'Corolla Cross 1.8V practical design', 'DESIGN', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000022', 'Clear information displays and driver support features make Corolla Cross 1.8V easy to use every day.', '2026-05-26 17:10:28.247398+00', '/images/articles/corolla-cross-18v-technology.png', true, 'Corolla Cross 1.8V driver support', 'TECHNOLOGY', '2026-05-26 17:10:28.247398+00', '22000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+DELETE FROM public."CAR_ARTICLE" WHERE id IN ('26000000-0000-0000-0000-000000000001', '26000000-0000-0000-0000-000000000002');
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000023', 'Tayota showroom số giúp khách hàng xem catalog, so sánh phiên bản, đặt lịch lái thử và kết nối đại lý trong cùng một trải nghiệm.', '2026-05-26 17:10:28.247398+00', '/images/articles/camry-20q-design.png', true, 'Trải nghiệm mua xe Tayota trực tuyến', 'TIN TỨC', '2026-05-26 17:10:28.247398+00', NULL) ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000024', 'Hệ thống đại lý Tayota được chuẩn hóa quy trình tư vấn, lái thử và chăm sóc sau bán hàng để khách hàng dễ theo dõi lịch hẹn.', '2026-05-26 17:10:28.247398+00', '/images/articles/corolla-cross-hev-technology.png', true, 'Đồng bộ dịch vụ đại lý trên toàn hệ thống', 'DỊCH VỤ', '2026-05-26 17:10:28.247398+00', NULL) ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_ARTICLE" VALUES ('26000000-0000-0000-0000-000000000025', 'Các dòng sedan, SUV và hybrid của Tayota được cập nhật thêm hình ảnh gallery, thông số và bài viết để hỗ trợ so sánh trước khi đặt lịch.', '2026-05-26 17:10:28.247398+00', '/images/articles/yaris-cross-hybrid-design.png', true, 'Cập nhật catalog xe Tayota 2026', 'CATALOG', '2026-05-26 17:10:28.247398+00', NULL) ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: CAR_GALLERY; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000009', '/images/cars/camry-20q-gallery-1.png', '22000000-0000-0000-0000-000000000003') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000010', '/images/cars/camry-20q-gallery-2.png', '22000000-0000-0000-0000-000000000003') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000011', '/images/cars/camry-20q-gallery-3.png', '22000000-0000-0000-0000-000000000003') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000012', '/images/cars/camry-25hv-gallery-1.png', '22000000-0000-0000-0000-000000000004') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000013', '/images/cars/camry-25hv-gallery-2.png', '22000000-0000-0000-0000-000000000004') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000014', '/images/cars/camry-25hv-gallery-3.png', '22000000-0000-0000-0000-000000000004') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000015', '/images/cars/corolla-cross-hev-gallery-1.png', '22000000-0000-0000-0000-000000000009') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000016', '/images/cars/corolla-cross-hev-gallery-2.png', '22000000-0000-0000-0000-000000000009') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000017', '/images/cars/corolla-cross-hev-gallery-3.png', '22000000-0000-0000-0000-000000000009') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000018', '/images/cars/fortuner-legender-gallery-1.png', '22000000-0000-0000-0000-000000000005') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000019', '/images/cars/fortuner-legender-gallery-2.png', '22000000-0000-0000-0000-000000000005') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000020', '/images/cars/fortuner-legender-gallery-3.png', '22000000-0000-0000-0000-000000000005') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000021', '/images/cars/innova-cross-20v-gallery-1.png', '22000000-0000-0000-0000-000000000007') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000022', '/images/cars/innova-cross-20v-gallery-2.png', '22000000-0000-0000-0000-000000000007') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000023', '/images/cars/innova-cross-20v-gallery-3.png', '22000000-0000-0000-0000-000000000007') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000024', '/images/cars/land-cruiser-prado-vx-gallery-1.png', '22000000-0000-0000-0000-000000000008') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000025', '/images/cars/land-cruiser-prado-vx-gallery-2.png', '22000000-0000-0000-0000-000000000008') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000026', '/images/cars/land-cruiser-prado-vx-gallery-3.png', '22000000-0000-0000-0000-000000000008') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000027', '/images/cars/vios-15e-cvt-gallery-1.png', '22000000-0000-0000-0000-000000000010') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000028', '/images/cars/vios-15e-cvt-gallery-2.png', '22000000-0000-0000-0000-000000000010') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000029', '/images/cars/vios-15e-cvt-gallery-3.png', '22000000-0000-0000-0000-000000000010') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000030', '/images/cars/vios-15g-cvt-gallery-1.png', '22000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000031', '/images/cars/vios-15g-cvt-gallery-2.png', '22000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000032', '/images/cars/vios-15g-cvt-gallery-3.png', '22000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000033', '/images/cars/yaris-cross-hybrid-gallery-1.png', '22000000-0000-0000-0000-000000000006') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000034', '/images/cars/yaris-cross-hybrid-gallery-2.png', '22000000-0000-0000-0000-000000000006') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000035', '/images/cars/yaris-cross-hybrid-gallery-3.png', '22000000-0000-0000-0000-000000000006') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000036', '/images/cars/corolla-cross-18v-gallery-1.png', '22000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000037', '/images/cars/corolla-cross-18v-gallery-2.png', '22000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_GALLERY" VALUES ('25000000-0000-0000-0000-000000000038', '/images/cars/corolla-cross-18v-gallery-3.png', '22000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+DELETE FROM public."CAR_GALLERY" WHERE id IN (
+    '25000000-0000-0000-0000-000000000001',
+    '25000000-0000-0000-0000-000000000002',
+    '25000000-0000-0000-0000-000000000003',
+    '25000000-0000-0000-0000-000000000004',
+    '25000000-0000-0000-0000-000000000005',
+    '25000000-0000-0000-0000-000000000006',
+    '25000000-0000-0000-0000-000000000007',
+    '25000000-0000-0000-0000-000000000008'
+);
+
+
+--
+-- Data for Name: EXTERIOR_COLOR; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."EXTERIOR_COLOR" VALUES ('23000000-0000-0000-0000-000000000001', 'White Pearl') ON CONFLICT DO NOTHING;
+INSERT INTO public."EXTERIOR_COLOR" VALUES ('23000000-0000-0000-0000-000000000002', 'Attitude Black') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: INTERIOR_COLOR; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."INTERIOR_COLOR" VALUES ('24000000-0000-0000-0000-000000000001', 'Black') ON CONFLICT DO NOTHING;
+INSERT INTO public."INTERIOR_COLOR" VALUES ('24000000-0000-0000-0000-000000000002', 'Beige') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: CAR_PRICE; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875752/tayota/car-price-exterior/file_hs2cgf.png', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779875735/tayota/car-price-interior/file_zlbq4n.png', 1220000000.00, '22000000-0000-0000-0000-000000000003', '23000000-0000-0000-0000-000000000001', '24000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876136/tayota/car-price-exterior/file_ssoh3b.png', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876161/tayota/car-price-interior/file_htgafx.png', 1530000000.00, '22000000-0000-0000-0000-000000000004', '23000000-0000-0000-0000-000000000002', '24000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876192/tayota/car-price-exterior/file_aerp0i.png', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876260/tayota/car-price-interior/file_cwa7xl.png', 860000000.00, '22000000-0000-0000-0000-000000000002', '23000000-0000-0000-0000-000000000002', '24000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876529/tayota/car-price-exterior/file_fsflbl.png', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876522/tayota/car-price-interior/file_l5lbmz.png', 955000000.00, '22000000-0000-0000-0000-000000000009', '23000000-0000-0000-0000-000000000001', '24000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876599/tayota/car-price-exterior/file_buwp34.png', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876591/tayota/car-price-interior/file_sdbqls.png', 1350000000.00, '22000000-0000-0000-0000-000000000005', '23000000-0000-0000-0000-000000000002', '24000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876758/tayota/car-price-exterior/file_fqjmpb.png', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876774/tayota/car-price-interior/file_rzyzkm.png', 995000000.00, '22000000-0000-0000-0000-000000000007', '23000000-0000-0000-0000-000000000001', '24000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876860/tayota/car-price-exterior/file_luh4ys.jpg', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876854/tayota/car-price-interior/file_ofnpso.jpg', 3480000000.00, '22000000-0000-0000-0000-000000000008', '23000000-0000-0000-0000-000000000002', '24000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876971/tayota/car-price-exterior/file_tv3xdb.png', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779876962/tayota/car-price-interior/file_pdhogc.png', 498000000.00, '22000000-0000-0000-0000-000000000010', '23000000-0000-0000-0000-000000000001', '24000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779877092/tayota/car-price-exterior/file_u4ahpx.png', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779877055/tayota/car-price-interior/file_bpo39a.png', 545000000.00, '22000000-0000-0000-0000-000000000001', '23000000-0000-0000-0000-000000000001', '24000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_PRICE" VALUES ('https://res.cloudinary.com/dndoyt0zb/image/upload/v1779877147/tayota/car-price-exterior/file_bjamux.png', 'https://res.cloudinary.com/dndoyt0zb/image/upload/v1779877155/tayota/car-price-interior/file_csyymc.png', 765000000.00, '22000000-0000-0000-0000-000000000006', '23000000-0000-0000-0000-000000000001', '24000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: CAR_SPECIFICATION; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000001', '11.0s', 42, 4, '1496 cc', 'Gasoline', 'CVT', 1550, 1475, 4425, 180, 5, 'Vietnam', '140 Nm', 'Toyota', 1730) ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000002', '10.5s', 47, 4, '1798 cc', 'Gasoline', 'CVT', 1850, 1620, 4460, 185, 5, 'Thailand', '172 Nm', 'Toyota', 1825) ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000003', '9.5s', 60, 4, '1987 cc', 'Gasoline', 'CVT', 2100, 1445, 4885, 210, 5, 'Thailand', '206 Nm', 'Toyota', 1840) ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000004', '8.3s', 50, 4, '2487 cc', 'Hybrid', 'e-CVT', 2140, 1445, 4885, 220, 5, 'Thailand', '221 Nm', 'Toyota', 1840) ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000005', '11.2s', 80, 4, '2393 cc', 'Diesel', '6AT', 2610, 1835, 4795, 180, 7, 'Indonesia', '400 Nm', 'Toyota', 1855) ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000006', '11.0s', 36, 3, '1490 cc', 'Hybrid', 'e-CVT', 1690, 1615, 4310, 170, 5, 'Indonesia', '121 Nm', 'Toyota', 1770) ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000007', '10.8s', 52, 4, '1987 cc', 'Gasoline', 'CVT', 2210, 1795, 4755, 180, 7, 'Indonesia', '205 Nm', 'Toyota', 1850) ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000008', '9.7s', 80, 4, '2393 cc', 'Gasoline', '8AT', 2950, 1935, 4925, 190, 7, 'Japan', '430 Nm', 'Toyota', 1980) ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000009', '10.0s', 43, 4, '1798 cc', 'Hybrid', 'e-CVT', 1850, 1620, 4460, 180, 5, 'Thailand', '142 Nm', 'Toyota', 1825) ON CONFLICT DO NOTHING;
+INSERT INTO public."CAR_SPECIFICATION" VALUES ('22000000-0000-0000-0000-000000000010', '11.5s', 42, 4, '1496 cc', 'Gasoline', 'CVT', 1550, 1475, 4425, 180, 5, 'Vietnam', '140 Nm', 'Toyota', 1730) ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: CHAT_SESSION; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."CHAT_SESSION" VALUES ('54000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000013', '2026-05-20 05:25:00+00', '2026-05-20 05:00:00+00', NULL, NULL, 'CLOSED', '2026-05-20 05:25:00+00', '00000000-0000-0000-0000-000000000015') ON CONFLICT DO NOTHING;
+INSERT INTO public."CHAT_SESSION" VALUES ('54000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000013', '2026-05-27 08:54:38.869275+00', '2026-05-25 05:00:00+00', 'guest-web-0001', NULL, 'CLOSED', '2026-05-27 08:54:39.040227+00', NULL) ON CONFLICT DO NOTHING;
+INSERT INTO public."CHAT_SESSION" VALUES ('190ff96c-c86e-4f7d-b954-f21f83499e5d', '00000000-0000-0000-0000-000000000013', '2026-05-27 08:55:35.85622+00', '2026-05-27 08:53:42.461715+00', '5432a431-a2ee-47db-ba3b-c9df6e99f963', NULL, 'CLOSED', '2026-05-27 08:55:35.863827+00', NULL) ON CONFLICT DO NOTHING;
+INSERT INTO public."CHAT_SESSION" VALUES ('45b2e511-7a9e-4fca-a588-171f441b329e', '00000000-0000-0000-0000-000000000013', '2026-05-27 08:55:39.232877+00', '2026-05-27 08:53:42.461714+00', 'b397c46c-cf95-4b42-bb95-58956d77ab05', NULL, 'CLOSED', '2026-05-27 08:55:39.241622+00', NULL) ON CONFLICT DO NOTHING;
+INSERT INTO public."CHAT_SESSION" VALUES ('567a0bdd-6a33-470a-9a56-2e52b7ccb397', '00000000-0000-0000-0000-000000000013', '2026-05-27 08:55:44.900928+00', '2026-05-27 08:48:05.945396+00', 'd7464359-12dc-484e-9c95-e05d1ac0ae67', NULL, 'CLOSED', '2026-05-27 08:55:44.910277+00', NULL) ON CONFLICT DO NOTHING;
+INSERT INTO public."CHAT_SESSION" VALUES ('fb867fed-6b85-4067-a0ac-38ca9cfa567f', '00000000-0000-0000-0000-000000000013', NULL, '2026-05-27 08:48:05.945396+00', '9125b36b-f1bf-4312-b720-13a875460c76', NULL, 'CHATTING', '2026-05-27 08:56:16.121876+00', NULL) ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: CHAT_MESSAGE; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."CHAT_MESSAGE" VALUES ('55000000-0000-0000-0000-000000000001', 'When should I bring the car for periodic maintenance?', '2026-05-20 05:00:00+00', '00000000-0000-0000-0000-000000000015', 'CUSTOMER', '54000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CHAT_MESSAGE" VALUES ('55000000-0000-0000-0000-000000000002', 'Your maintenance appointment is confirmed for May 18.', '2026-05-20 05:10:00+00', '00000000-0000-0000-0000-000000000013', 'ASSISTANT', '54000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."CHAT_MESSAGE" VALUES ('55000000-0000-0000-0000-000000000003', 'I would like a quotation for Fortuner.', '2026-05-25 05:00:00+00', NULL, 'CUSTOMER', '54000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+INSERT INTO public."CHAT_MESSAGE" VALUES ('55000000-0000-0000-0000-000000000004', 'I can arrange a test drive and send the quotation.', '2026-05-25 05:05:00+00', '00000000-0000-0000-0000-000000000013', 'ASSISTANT', '54000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+INSERT INTO public."CHAT_MESSAGE" VALUES ('4b3a048d-0482-44da-9a7c-bfe8b680bc6d', 'hello', '2026-05-27 08:48:09.924107+00', NULL, 'CUSTOMER', 'fb867fed-6b85-4067-a0ac-38ca9cfa567f') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: SERVICE; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."SERVICE" VALUES ('52000000-0000-0000-0000-000000000001', NULL, NULL, '2026-05-18 05:00:00+00', '2026-05-18 03:00:00+00', '10000000-0000-0000-0000-000000000001', NULL, '00000000-0000-0000-0000-000000000014', 10125, 'Changed oil and inspected brake system.', '2026-05-18 03:15:00+00', '2026-05-18 03:00:00+00', 'COMPLETED', 1950000.00, '2026-05-18 05:00:00+00', '00000000-0000-0000-0000-000000000015', 'Vehicle in good condition, normal tire wear.', 'TAYOTA00000000008', '51000000-0000-0000-0000-000000000002', NULL) ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: CUSTOMER_REVIEW; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."CUSTOMER_REVIEW" (id, created_at, user_id, guest_full_name, guest_email, guest_phone, mechanic_comment, mechanic_id, mechanic_rating, review_token, review_type, service_comment, service_rating, status, submitted_at, token_expires_at, dealership_id, appointment_id, service_id) VALUES ('57000000-0000-0000-0000-000000000001', '2026-05-10 04:00:00+00', '10000000-0000-0000-0000-000000000001', NULL, NULL, NULL, NULL, NULL, NULL, 'demo-review-test-drive-0001', 'TEST_DRIVE', 'Comfortable test drive experience.', 5, 'SUBMITTED', '2026-05-10 05:00:00+00', '2026-06-10 03:00:00+00', '00000000-0000-0000-0000-000000000015', '51000000-0000-0000-0000-000000000001', NULL) ON CONFLICT DO NOTHING;
+INSERT INTO public."CUSTOMER_REVIEW" (id, created_at, user_id, guest_full_name, guest_email, guest_phone, mechanic_comment, mechanic_id, mechanic_rating, review_token, review_type, service_comment, service_rating, status, submitted_at, token_expires_at, dealership_id, appointment_id, service_id) VALUES ('57000000-0000-0000-0000-000000000002', '2026-05-18 06:00:00+00', '10000000-0000-0000-0000-000000000001', NULL, NULL, NULL, 'Mechanic explained every completed item.', '00000000-0000-0000-0000-000000000014', 5, 'demo-review-service-0001', 'SERVICE', 'Quick and transparent maintenance service.', 5, 'SUBMITTED', '2026-05-18 07:00:00+00', '2026-06-18 05:00:00+00', '00000000-0000-0000-0000-000000000015', NULL, '52000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: MECHANIC; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."MECHANIC" VALUES ('00000000-0000-0000-0000-000000000004', true, 4.80, '10000000-0000-0000-0000-000000000001', 'General maintenance') ON CONFLICT DO NOTHING;
+INSERT INTO public."MECHANIC" VALUES ('00000000-0000-0000-0000-000000000008', true, 4.90, '10000000-0000-0000-0000-000000000003', 'Hybrid diagnostics') ON CONFLICT DO NOTHING;
+INSERT INTO public."MECHANIC" VALUES ('00000000-0000-0000-0000-000000000014', true, 4.80, '10000000-0000-0000-0000-000000000001', 'General maintenance') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: NOTIFICATION; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."NOTIFICATION" VALUES ('56000000-0000-0000-0000-000000000001', 'Your Camry Hybrid test drive appointment has been confirmed.', '2026-05-24 03:00:00+00', false, NULL, NULL, 'Test drive confirmed', 'APPOINTMENT', '00000000-0000-0000-0000-000000000015') ON CONFLICT DO NOTHING;
+INSERT INTO public."NOTIFICATION" VALUES ('56000000-0000-0000-0000-000000000002', 'Your vehicle is ready for collection after periodic maintenance.', '2026-05-18 05:00:00+00', true, '2026-05-18 06:00:00+00', '00000000-0000-0000-0000-000000000014', 'Service completed', 'SERVICE', '00000000-0000-0000-0000-000000000015') ON CONFLICT DO NOTHING;
+INSERT INTO public."NOTIFICATION" VALUES ('56000000-0000-0000-0000-000000000003', 'A maintenance service ticket was assigned to you.', '2026-05-18 03:00:00+00', true, '2026-05-18 03:05:00+00', NULL, 'New assigned job', 'SERVICE', '00000000-0000-0000-0000-000000000014') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: SERVICE_ADVISOR; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."SERVICE_ADVISOR" VALUES ('00000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."SERVICE_ADVISOR" VALUES ('2914e2b8-d126-40aa-814c-f8b671f4e200', '10000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."SERVICE_ADVISOR" VALUES ('00000000-0000-0000-0000-000000000012', '10000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: SERVICE_ITEM; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."SERVICE_ITEM" VALUES ('53000000-0000-0000-0000-000000000001', NULL, 'NORMAL', '2026-05-18 03:20:00+00', 450000.00, 'Periodic maintenance labor', 'LABOR', '10,000 km inspection.', 1, 450000.00, '52000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."SERVICE_ITEM" VALUES ('53000000-0000-0000-0000-000000000002', NULL, 'NORMAL', '2026-05-18 03:20:00+00', 1500000.00, 'Engine oil and filter package', 'PART', 'OEM consumables.', 1, 1500000.00, '52000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: SERVICE_TIME_SLOT; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000001', true, 'TEST_DRIVE', '2026-05-26 17:10:28.275865+00', '10000000-0000-0000-0000-000000000001', '10:00:00', '09:00:00', '2026-05-26 17:10:28.275865+00') ON CONFLICT DO NOTHING;
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000002', true, 'TEST_DRIVE', '2026-05-26 17:10:28.275865+00', '10000000-0000-0000-0000-000000000001', '15:00:00', '14:00:00', '2026-05-26 17:10:28.275865+00') ON CONFLICT DO NOTHING;
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000003', true, 'SERVICE', '2026-05-26 17:10:28.275865+00', '10000000-0000-0000-0000-000000000001', '11:00:00', '10:00:00', '2026-05-26 17:10:28.275865+00') ON CONFLICT DO NOTHING;
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000004', true, 'SERVICE', '2026-05-26 17:10:28.275865+00', '10000000-0000-0000-0000-000000000001', '16:00:00', '15:00:00', '2026-05-26 17:10:28.275865+00') ON CONFLICT DO NOTHING;
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000005', true, 'TEST_DRIVE', '2026-05-26 17:10:28.337543+00', '10000000-0000-0000-0000-000000000002', '09:30:00', '08:30:00', '2026-05-26 17:10:28.337543+00') ON CONFLICT DO NOTHING;
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000006', true, 'TEST_DRIVE', '2026-05-26 17:10:28.337543+00', '10000000-0000-0000-0000-000000000002', '11:30:00', '10:30:00', '2026-05-26 17:10:28.337543+00') ON CONFLICT DO NOTHING;
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000007', true, 'SERVICE', '2026-05-26 17:10:28.337543+00', '10000000-0000-0000-0000-000000000002', '14:30:00', '13:30:00', '2026-05-26 17:10:28.337543+00') ON CONFLICT DO NOTHING;
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000008', true, 'TEST_DRIVE', '2026-05-26 17:10:28.337543+00', '10000000-0000-0000-0000-000000000003', '10:30:00', '09:30:00', '2026-05-26 17:10:28.337543+00') ON CONFLICT DO NOTHING;
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000009', true, 'SERVICE', '2026-05-26 17:10:28.337543+00', '10000000-0000-0000-0000-000000000003', '15:30:00', '14:30:00', '2026-05-26 17:10:28.337543+00') ON CONFLICT DO NOTHING;
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000010', true, 'TEST_DRIVE', '2026-05-26 17:10:28.337543+00', '10000000-0000-0000-0000-000000000004', '10:00:00', '09:00:00', '2026-05-26 17:10:28.337543+00') ON CONFLICT DO NOTHING;
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000011', true, 'SERVICE', '2026-05-26 17:10:28.337543+00', '10000000-0000-0000-0000-000000000005', '11:00:00', '10:00:00', '2026-05-26 17:10:28.337543+00') ON CONFLICT DO NOTHING;
+INSERT INTO public."SERVICE_TIME_SLOT" VALUES ('40000000-0000-0000-0000-000000000012', true, 'TEST_DRIVE', '2026-05-26 17:10:28.337543+00', '10000000-0000-0000-0000-000000000006', '16:00:00', '15:00:00', '2026-05-26 17:10:28.337543+00') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: USER; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000001', '2026-05-26 17:10:28.146271+00', 'admin@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ADMIN', 'ACTIVE') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000002', '2026-05-26 17:10:28.146271+00', 'manager@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MANAGER', 'ACTIVE') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000003', '2026-05-26 17:10:28.146271+00', 'advisor@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'SERVICE_ADVISOR', 'ACTIVE') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000004', '2026-05-26 17:10:28.146271+00', 'mechanic@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MECHANIC', 'ACTIVE') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000005', '2026-05-26 17:10:28.146271+00', 'customer@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'USER', 'ACTIVE') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000006', '2026-05-26 17:10:28.287349+00', 'assistant@tayota.vn', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ASSISTANT', 'ACTIVE') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000007', '2026-05-26 17:10:28.287349+00', 'admin@tayota.vn', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ADMIN', 'ACTIVE') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000008', '2026-05-26 17:10:28.287349+00', 'mechanic@tayota.vn', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MECHANIC', 'ACTIVE') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000009', '2026-05-26 17:10:28.287349+00', 'user@tayota.vn', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'USER', 'ACTIVE') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000013', '2026-05-26 17:10:28.287349+00', 'assistant.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ASSISTANT', 'ACTIVE') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000015', '2026-05-26 17:10:28.287349+00', 'customer.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'USER', 'ACTIVE') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER" VALUES ('2914e2b8-d126-40aa-814c-f8b671f4e200', '2026-05-26 17:10:29.4774+00', 'advisor.demo@tayota.com', 'LOCAL', '$2a$10$DisRh1o1St0wbkblcWXebea67jmF2/xB2IAXA/4Ir7K0kQ.9bGXbG', NULL, 'SERVICE_ADVISOR', 'ACTIVE') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER" VALUES ('bc258d2a-30ae-400c-ab44-36c7564f7e99', '2026-05-27 08:47:44.144204+00', 'nguyenhuy04112005@gmail.com', 'LOCAL', '$2a$10$1Yd15AMiepR0Ls7tUjLsreb3.UsW1JFMbPeJ.PbLhvmQn6XQkj6hG', NULL, 'USER', 'ACTIVE') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000012', '2026-05-26 17:10:28.287349+00', 'service.advisor.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'SERVICE_ADVISOR', 'ACTIVE') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000010', '2026-05-26 17:10:28.287349+00', 'admin.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'ADMIN', 'ACTIVE') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000011', '2026-05-26 17:10:28.287349+00', 'manager.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MANAGER', 'ACTIVE') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER" VALUES ('00000000-0000-0000-0000-000000000014', '2026-05-26 17:10:28.287349+00', 'mechanic.demo@tayota.com', 'LOCAL', '$2a$10$FpQ8.jFyNIZILeSU9HIxPOh9YZD4dOuywa7s4ME90Zfb3.awDmcsq', NULL, 'MECHANIC', 'ACTIVE') ON CONFLICT DO NOTHING;
+
+
+--
+-- Data for Name: USER_PROFILE; Type: TABLE DATA; Schema: public; Owner: tayota
+--
+
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota Head Office', '/default-avatar.png', '1988-01-01', 'Tayota Admin', true, '0901000001', '00000000-0000-0000-0000-000000000001') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota Head Office', '/default-avatar.png', '1990-01-01', 'Tayota Manager', true, '0901000002', '00000000-0000-0000-0000-000000000002') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota District 1', '/default-avatar.png', '1992-01-01', 'Tayota Service Advisor', true, '0901000003', '00000000-0000-0000-0000-000000000003') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota District 1', '/default-avatar.png', '1993-01-01', 'Tayota Mechanic', true, '0901000004', '00000000-0000-0000-0000-000000000004') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER_PROFILE" VALUES ('Ho Chi Minh City', '/default-avatar.png', '1998-01-01', 'Tayota Customer', true, '0901000005', '00000000-0000-0000-0000-000000000005') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota Phu My Hung', '/default-avatar.png', '1994-02-02', 'Tayota Assistant', true, '0902000006', '00000000-0000-0000-0000-000000000006') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota Head Office', '/default-avatar.png', '1987-02-02', 'Tayota Admin VN', true, '0902000007', '00000000-0000-0000-0000-000000000007') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota Thu Duc', '/default-avatar.png', '1991-02-02', 'Tayota Mechanic VN', true, '0902000008', '00000000-0000-0000-0000-000000000008') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER_PROFILE" VALUES ('Ho Chi Minh City', '/default-avatar.png', '1999-02-02', 'Tayota User', true, '0902000009', '00000000-0000-0000-0000-000000000009') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota Head Office', '/default-avatar.png', '1988-01-01', 'Tayota Demo Admin', true, '0903000010', '00000000-0000-0000-0000-000000000010') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota Head Office', '/default-avatar.png', '1989-02-01', 'Tayota Demo Manager', true, '0903000011', '00000000-0000-0000-0000-000000000011') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota District 1', '/default-avatar.png', '1991-03-01', 'Tayota Demo Advisor', true, '0903000012', '00000000-0000-0000-0000-000000000012') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota District 1', '/default-avatar.png', '1993-04-01', 'Tayota Demo Assistant', false, '0903000013', '00000000-0000-0000-0000-000000000013') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota District 1', '/default-avatar.png', '1992-05-01', 'Tayota Demo Mechanic', true, '0903000014', '00000000-0000-0000-0000-000000000014') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER_PROFILE" VALUES ('Ho Chi Minh City', '/default-avatar.png', '1997-06-01', 'Tayota Demo Customer', false, '0903000015', '00000000-0000-0000-0000-000000000015') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER_PROFILE" VALUES ('Tayota Head Office', '/default-avatar.png', '1988-01-01', 'Tayota Demo Advisor', true, '0903000012', '2914e2b8-d126-40aa-814c-f8b671f4e200') ON CONFLICT DO NOTHING;
+INSERT INTO public."USER_PROFILE" VALUES (NULL, NULL, NULL, 'nguyenhuy04112005', NULL, NULL, 'bc258d2a-30ae-400c-ab44-36c7564f7e99') ON CONFLICT DO NOTHING;
+
+
+--
+-- PostgreSQL database dump complete
+--

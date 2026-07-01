@@ -1,33 +1,42 @@
-# --- BẢO MẬT ---
+### ENV ###
 .env
-secrets.xml
-*.pem
-*.log
 
-# --- IDE (IntelliJ, VS Code) ---
-.idea/
-*.iml
-.vscode/
-.settings/
-.classpath
-.project
-bin/
-*.sublime-project
-*.sublime-workspace
+### Database ###
+docker-data
 
-# --- BUILD & DEPENDENCIES (Maven/Gradle) ---
+### Node ###
+node_modules
+
+HELP.md
 target/
-!.mvn/wrapper/maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
 build/
-.gradle/
-*.class
-*.jar
-*.war
-*.ear
+!**/src/main/**/build/
+!**/src/test/**/build/
 
-# --- DATABASE ---
-data-docker/
-
-# --- HỆ ĐIỀU HÀNH ---
-.DS_Store
-Thumbs.db
+### VS Code ###
+.vscode/

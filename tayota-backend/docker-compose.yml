@@ -5,63 +5,160 @@ services:
       - "${API_GATEWAY_PORT:-9090}:${API_GATEWAY_PORT:-9090}"
     environment:
       - API_GATEWAY_PORT=${API_GATEWAY_PORT:-9090}
-      - AUTH_SERVICE_HOST=${AUTH_SERVICE_HOST:-auth-service}
-      - AUTH_SERVICE_PORT=${AUTH_SERVICE_PORT:-9091}
-      - USER_SERVICE_HOST=${USER_SERVICE_HOST:-user-service}
-      - USER_SERVICE_PORT=${USER_SERVICE_PORT:-9092}
-      - CAR_SERVICE_HOST=${CAR_SERVICE_HOST:-car-service}
-      - CAR_SERVICE_PORT=${CAR_SERVICE_PORT:-9093}
+      - FRONTEND_ORIGINS=${FRONTEND_ORIGINS:-http://localhost:3000}
       - OPERATION_SERVICE_HOST=${OPERATION_SERVICE_HOST:-operation-service}
-      - OPERATION_SERVICE_PORT=${OPERATION_SERVICE_PORT:-9094}
-      - WORKSHOP_SERVICE_HOST=${WORKSHOP_SERVICE_HOST:-after-sales-service}
-      - WORKSHOP_SERVICE_PORT=${WORKSHOP_SERVICE_PORT:-9095}
+      - OPERATION_SERVICE_PORT=${OPERATION_SERVICE_PORT:-9091}
       - AI_SERVICE_HOST=${AI_SERVICE_HOST:-ai-service}
-      - AI_SERVICE_PORT=${AI_SERVICE_PORT:-9096}
-      - CHAT_SERVICE_HOST=${CHAT_SERVICE_HOST:-chat-service}
-      - CHAT_SERVICE_PORT=${CHAT_SERVICE_PORT:-9097}
-      - ANALYSIS_SERVICE_HOST=${ANALYSIS_SERVICE_HOST:-analysis-service}
-      - ANALYSIS_SERVICE_PORT=${ANALYSIS_SERVICE_PORT:-9099}
-      - NOTIFICATION_SERVICE_HOST=${NOTIFICATION_SERVICE_HOST:-notification-service}
-      - NOTIFICATION_SERVICE_PORT=${NOTIFICATION_SERVICE_PORT:-9099}
+      - AI_SERVICE_PORT=${AI_SERVICE_PORT:-9094}
+      - JWT_SECRET=${JWT_SECRET:-change-me-to-a-long-random-secret}
+      - GATEWAY_INTERNAL_SECRET=${GATEWAY_INTERNAL_SECRET:-change-me-gateway-internal-secret}
+      - AI_CHAT_COOKIE_SECURE=${COOKIE_SECURE:-false}
+      - AI_CHAT_SESSION_TTL_SECONDS=${AI_CHAT_SESSION_TTL_SECONDS:-21600}
+    depends_on:
+      operation-service:
+        condition: service_started
+      ai-service:
+        condition: service_started
     networks:
       - tayota-network
-  postgres:
+
+  # --- Postgres Operation Service ---
+  postgres-operation-service:
     image: postgres:17
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-tayota}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
+      POSTGRES_DB: ${POSTGRES_OPERATION_DB:-tayota_operation_db}
     ports:
       - "5432:5432"
     volumes:
-      - ./docker-data/postgres-tayota:/var/lib/postgresql/data
+      - ./docker-data/postgres-operation-service:/var/lib/postgresql/data
     networks:
       - tayota-network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tayota} -d ${POSTGRES_OPERATION_DB:-tayota_operation_db}" ]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  auth-service:
-    build: auth-service
+  # --- MongoDB ---
+  mongodb:
+    image: mongo:8.0
     environment:
-      - SERVER_PORT=${AUTH_SERVICE_PORT}
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
-      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-tayota}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-123456}
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./docker-data/mongo-data:/data/db
+    networks:
+      - tayota-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Qdrant Vector Database ---
+  qdrant:
+    image: qdrant/qdrant:v1.7.4
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./docker-data/qdrant-storage:/qdrant/storage
+    networks:
+      - tayota-network
+
+   # --- Operation Service ---
+  operation-service:
+    build:
+      context: .
+      dockerfile: operation-service/Dockerfile
+    environment:
+      - SERVER_PORT=${OPERATION_SERVICE_PORT:-9091}
       - SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update # Tự động đồng bộ database với Entity
-      - SPRING_SQL_INIT_MODE=always # Luôn chạy schema.sql khi khởi động dự án
-      - SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION=false # Chạy các file .sql trước Hibernate
-      - SPRING_SQL_INIT_SEPARATOR=//
-      - JWT_SECRET=${JWT_SECRET}
+      - SPRING_SQL_INIT_MODE=always # Chạy schema.sql và data.sql khi khởi động dự án
+      - SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION=true # Chạy các file .sql sau Hibernate
+      # --- Postgres ---
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-operation-service:5432/${POSTGRES_OPERATION_DB:-tayota_operation_db}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-tayota}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-123456}
+      # --- JWT ---
+      - JWT_SECRET=${JWT_SECRET:-change-me-to-a-long-random-secret}
+      - JWT_ACCESS_TOKEN_EXPIRATION=${JWT_ACCESS_TOKEN_EXPIRATION:-900000}
+      - JWT_REFRESH_TOKEN_EXPIRATION=${JWT_REFRESH_TOKEN_EXPIRATION:-604800000}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_IDS=${GOOGLE_CLIENT_IDS:-${GOOGLE_CLIENT_ID:-}}
+      - GOOGLE_CSRF_REQUIRED=${GOOGLE_CSRF_REQUIRED:-false}
+      # --- Cookie ---
+      - COOKIE_SECURE=${COOKIE_SECURE:-false}
+      - COOKIE_SAME_SITE=${COOKIE_SAME_SITE:-Lax}
+      # --- Email (SMTP) ---
+      # Địa chỉ máy chủ SMTP (Ví dụ: smtp.gmail.com cho Gmail)
+      - SPRING_MAIL_HOST=${MAIL_HOST:-smtp.gmail.com}
+      # Cổng gửi mail (587 là cổng tiêu chuẩn cho TLS/STARTTLS)
+      - SPRING_MAIL_PORT=${MAIL_PORT:-587}
+      # Email dùng để gửi đi (Thay bằng email của bạn hoặc dùng biến .env)
+      - SPRING_MAIL_USERNAME=${MAIL_USERNAME:-}
+      # QUAN TRỌNG: Mật khẩu ứng dụng (App Password), không phải mật khẩu đăng nhập email
+      - SPRING_MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      # Yêu cầu xác thực khi gửi mail (Luôn là true với Gmail)
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true
+      # Bật bảo mật TLS (Bắt buộc để tránh bị lộ thông tin trên đường truyền)
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
+      # Tin cậy máy chủ SMTP (Dấu * nghĩa là tin cậy mọi host để tránh lỗi SSL trong Docker)
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED=true
+      - APPOINTMENT_BUSINESS_ZONE=${APPOINTMENT_BUSINESS_ZONE:-Asia/Bangkok}
+      - APPOINTMENT_USER_DAILY_LIMIT=${APPOINTMENT_USER_DAILY_LIMIT:-5}
+      - APPOINTMENT_GUEST_DAILY_LIMIT=${APPOINTMENT_GUEST_DAILY_LIMIT:-3}
+      - APPOINTMENT_USER_COOLDOWN=${APPOINTMENT_USER_COOLDOWN:-60s}
+      - APPOINTMENT_GUEST_COOLDOWN=${APPOINTMENT_GUEST_COOLDOWN:-120s}
+      - APPOINTMENT_MINIMUM_NOTICE=${APPOINTMENT_MINIMUM_NOTICE:-12h}
+      - APPOINTMENT_EXPIRATION_CRON=${APPOINTMENT_EXPIRATION_CRON:-0 10 0 * * *}
+      - REVIEW_LINK_BASE_URL=${REVIEW_LINK_BASE_URL:-http://localhost:3000/reviews}
+      - REVIEW_EXPIRATION_CRON=${REVIEW_EXPIRATION_CRON:-0 20 0 * * *}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
+      - CLOUDINARY_FOLDER_PREFIX=${CLOUDINARY_FOLDER_PREFIX:-tayota}
     depends_on:
-#      - postgres
-      postgres:
+      postgres-operation-service:
         condition: service_healthy
     networks:
       - tayota-network
+
+  # --- AI Service ---
+  ai-service:
+    build: ai-service
+    ports:
+      - "${AI_SERVICE_PORT:-9094}:${AI_SERVICE_PORT:-9094}"
+    environment:
+      - AI_SERVICE_PORT=${AI_SERVICE_PORT:-9094}
+      - FRONTEND_BASE_URL=${FRONTEND_BASE_URL:-http://localhost:3000}
+      - CATALOG_API_BASE_URL=http://${OPERATION_SERVICE_HOST:-operation-service}:${OPERATION_SERVICE_PORT:-9091}
+      - GATEWAY_INTERNAL_SECRET=${GATEWAY_INTERNAL_SECRET:-change-me-gateway-internal-secret}
+      - LLM_PROVIDER=${LLM_PROVIDER:-groq}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GROQ_MODEL=${GROQ_MODEL:-llama-3.3-70b-versatile}
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_API_KEY=${QDRANT_API_KEY:-}
+      - MONGO_URI=mongodb://${MONGO_USER:-tayota}:${MONGO_PASSWORD:-123456}@mongodb:27017/${MONGO_AI_DB:-tayota_ai_db}?authSource=admin
+      - MONGO_DB=${MONGO_AI_DB:-tayota_ai_db}
+      - MONGO_GRIDFS_BUCKET=ai_pdfs
+      - COLLECTION=${COLLECTION:-atbm_httt}
+      - SESSION_TTL_SECS=${SESSION_TTL_SECS:-3600}
+      - RAG_WARMUP_ON_START=${RAG_WARMUP_ON_START:-true}
+      - RAG_WARMUP_QUERY=${RAG_WARMUP_QUERY:-Toyota warmup}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    networks:
+      - tayota-network
+
 networks:
   tayota-network:
     driver: bridge

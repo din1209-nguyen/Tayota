@@ -2,9 +2,18 @@ server:
   port: ${API_GATEWAY_PORT:9090}
 logging:
   level:
-    org.springframework.cloud.gateway: TRACE
-    org.springframework.cloud.gateway.handler.RoutePredicateHandlerMapping: TRACE
-    reactor.netty: DEBUG
+    org.springframework.cloud.gateway: INFO
+    org.springframework.cloud.gateway.handler.RoutePredicateHandlerMapping: INFO
+    reactor.netty: INFO
+ai:
+  chat:
+    cookie:
+      secure: ${AI_CHAT_COOKIE_SECURE:false}
+    session-ttl-seconds: ${AI_CHAT_SESSION_TTL_SECONDS:21600}
+jwt:
+  secret: ${JWT_SECRET:change-me-to-a-long-random-secret}
+gateway:
+  internal-secret: ${GATEWAY_INTERNAL_SECRET:change-me-gateway-internal-secret}
 spring:
   application:
     name: api-gateway
@@ -13,65 +22,36 @@ spring:
       server:
         webflux:
           routes:
-            - id: auth-service-route
-              uri: http://${AUTH_SERVICE_HOST:auth-service}:${AUTH_SERVICE_PORT:9091}
+            - id: operation-user-ws-route
+              uri: ws://${OPERATION_SERVICE_HOST:operation-service}:${OPERATION_SERVICE_PORT:9091}
               predicates:
-                - Path=/auth/**
+                - Path=/user/chat/ws,/user/chat/ws/**
               filters:
                 - StripPrefix=1
-
-            - id: user-service-route
-              uri: http://${USER_SERVICE_HOST:user-service}:${USER_SERVICE_PORT:9092}
+            - id: operation-user-route
+              uri: http://${OPERATION_SERVICE_HOST:operation-service}:${OPERATION_SERVICE_PORT:9091}
               predicates:
                 - Path=/user/**
               filters:
                 - StripPrefix=1
 
-            - id: car-service-route
-              uri: http://${CAR_SERVICE_HOST:car-service}:${CAR_SERVICE_PORT:9093}
+            - id: car-route
+              uri: http://${OPERATION_SERVICE_HOST:operation-service}:${OPERATION_SERVICE_PORT:9091}
               predicates:
                 - Path=/car/**
               filters:
                 - StripPrefix=1
 
             - id: operation-service-route
-              uri: http://${OPERATION_SERVICE_HOST:operation-service}:${OPERATION_SERVICE_PORT:9094}
+              uri: http://${OPERATION_SERVICE_HOST:operation-service}:${OPERATION_SERVICE_PORT:9091}
               predicates:
                 - Path=/operation/**
               filters:
                 - StripPrefix=1
 
-            - id: workshop-service-route
-              uri: http://${WORKSHOP_SERVICE_HOST:after-sales-service}:${WORKSHOP_SERVICE_PORT:9095}
-              predicates:
-                - Path=/workshop/**
-              filters:
-                - StripPrefix=1
-
             - id: ai-service-route
-              uri: http://${AI_SERVICE_HOST:ai-service}:${AI_SERVICE_PORT:9096}
+              uri: http://${AI_SERVICE_HOST:ai-service}:${AI_SERVICE_PORT:9094}
               predicates:
                 - Path=/ai/**
-              filters:
-                - StripPrefix=1
-
-            - id: chat-service-route
-              uri: http://${CHAT_SERVICE_HOST:chat-service}:${CHAT_SERVICE_PORT:9097}
-              predicates:
-                - Path=/chat/**
-              filters:
-                - StripPrefix=1
-
-            - id: analysis-service-route
-              uri: http://${ANALYSIS_SERVICE_HOST:analysis-service}:${ANALYSIS_SERVICE_PORT:9099}
-              predicates:
-                - Path=/analysis/**
-              filters:
-                - StripPrefix=1
-
-            - id: notification-service-route
-              uri: http://${NOTIFICATION_SERVICE_HOST:notification-service}:${NOTIFICATION_SERVICE_PORT:9099}
-              predicates:
-                - Path=/notification/**
               filters:
                 - StripPrefix=1

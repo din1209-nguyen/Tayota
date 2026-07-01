@@ -13,16 +13,18 @@ Slots:
 
 import json
 import re
+import unicodedata
 from typing import Dict, Any, Optional
 
 from groq import Groq
 import os
 from dotenv import load_dotenv
+from performance import env_flag
 load_dotenv()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GROQ_MODEL   = "llama-3.3-70b-versatile"
-groq_client  = Groq(api_key=GROQ_API_KEY)
+GROQ_MODEL   = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+groq_client  = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 SLOT_EXTRACTION_ENABLED = os.getenv("ENABLE_SLOT_EXTRACTION", "true").lower() not in {
     "0",
@@ -42,11 +44,20 @@ IMPLICIT_SLOT_OVERRIDE_ENABLED = os.getenv(
     "ENABLE_IMPLICIT_SLOT_OVERRIDE",
     "true",
 ).lower() in {"1", "true", "yes", "on"}
+ENABLE_LLM_SLOT_EXTRACTION = env_flag("ENABLE_LLM_SLOT_EXTRACTION", "true")
+SLOT_REGEX_FIRST = env_flag("SLOT_REGEX_FIRST", "true")
 
 
 def should_extract_slots(intent: str) -> bool:
     """Return True when slot extraction should run for this intent."""
     return SLOT_EXTRACTION_ENABLED and intent in SLOT_EXTRACTION_INTENTS
+
+
+def _normalize_text(text: str) -> str:
+    text = (text or "").casefold().replace("đ", "d")
+    text = unicodedata.normalize("NFD", text)
+    text = "".join(char for char in text if unicodedata.category(char) != "Mn")
+    return re.sub(r"\s+", " ", text).strip()
 
 # ── Định nghĩa slots ──────────────────────────────────────────────────────────
 
@@ -203,11 +214,131 @@ def _regex_fallback(text: str) -> Dict[str, Any]:
 
 # ── LLM extractor ─────────────────────────────────────────────────────────────
 
+def _regex_fallback_fast(text: str) -> Dict[str, Any]:
+    return {
+        "budget": _regex_extract_budget_fast(text),
+        "seats": _regex_extract_seats_fast(text),
+        "purpose": _regex_extract_purpose_fast(text),
+        "fuel": _regex_extract_fuel_fast(text),
+        "region": _regex_extract_region_fast(text),
+        "type_car": _regex_extract_type_car_fast(text),
+        "overrides": [],
+        "clears": [],
+    }
+
+
+def _regex_extract_budget_fast(text: str) -> Optional[float]:
+    t = _normalize_text(text)
+    match = re.search(r"(\d+(?:[.,]\d+)?)\s*(?:ty|ti)\s*(\d+)?", t)
+    if match:
+        ty = float(match.group(1).replace(",", "."))
+        extra = float(match.group(2)) * 100 if match.group(2) else 0
+        return ty * 1000 + extra
+    match = re.search(r"(\d+(?:[.,]\d+)?)\s*(?:trieu|tr\b)", t)
+    if match:
+        return float(match.group(1).replace(",", "."))
+    return None
+
+
+def _regex_extract_seats_fast(text: str) -> Optional[int]:
+    match = re.search(r"(\d+)\s*(?:cho|ghe|seat)", _normalize_text(text))
+    return int(match.group(1)) if match else None
+
+
+def _regex_extract_fuel_fast(text: str) -> Optional[str]:
+    t = _normalize_text(text)
+    if any(marker in t for marker in ("hybrid", "xang lai")):
+        return "hybrid"
+    if any(marker in t for marker in ("dien", "electric")):
+        return "Ä‘iá»‡n"
+    if any(marker in t for marker in ("dau", "diesel")):
+        return "dáº§u"
+    if "xang" in t:
+        return "xÄƒng"
+    return None
+
+
+def _regex_extract_region_fast(text: str) -> Optional[str]:
+    t = _normalize_text(text)
+    if any(marker in t for marker in ("off-road", "offroad", "dia hinh", "duong xau", "leo nui")):
+        return "Ä‘á»‹a hÃ¬nh"
+    if any(marker in t for marker in ("duong dai", "cao toc", "lien tinh", "duong truong")):
+        return "Ä‘Æ°á»ng dÃ i"
+    if any(marker in t for marker in ("thanh pho", "noi thanh", "do thi", "di pho")):
+        return "thÃ nh phá»‘"
+    return None
+
+
+def _regex_extract_purpose_fast(text: str) -> Optional[str]:
+    t = _normalize_text(text)
+    if "gia dinh" in t:
+        return "gia Ä‘Ã¬nh"
+    if "kinh doanh" in t:
+        return "kinh doanh"
+    if any(marker in t for marker in ("chay dich vu", "taxi", "grab", "cho khach")):
+        return "cháº¡y dá»‹ch vá»¥"
+    if any(marker in t for marker in ("off-road", "offroad", "dia hinh")):
+        return "off-road"
+    if any(marker in t for marker in ("ca nhan", "di lam", "mot minh")):
+        return "cÃ¡ nhÃ¢n"
+    return None
+
+
+def _regex_extract_type_car_fast(text: str) -> Optional[str]:
+    t = _normalize_text(text)
+    if "sedan" in t:
+        return "sedan"
+    if "suv" in t:
+        return "SUV"
+    if any(marker in t for marker in ("mpv", "da dung")):
+        return "Ä‘a dá»¥ng"
+    if any(marker in t for marker in ("ban tai", "pickup", "pick-up")):
+        return "bÃ¡n táº£i"
+    if "hatchback" in t:
+        return "hatchback"
+    return None
+
+
+def _has_regex_slot(slots: Dict[str, Any]) -> bool:
+    return any(slots.get(key) is not None for key in SLOT_SCHEMA)
+
+
+def _needs_llm_slot_extraction(text: str, regex_slots: Dict[str, Any]) -> bool:
+    t = _normalize_text(text)
+    complex_markers = (
+        "thay vi",
+        "doi thanh",
+        "doi sang",
+        "khong can",
+        "bo yeu cau",
+        "khong quan tam",
+        "thoi khong",
+    )
+    if any(marker in t for marker in complex_markers):
+        return True
+    if not _has_regex_slot(regex_slots):
+        return any(
+            marker in t
+            for marker in ("tu van", "chon xe", "phu hop", "nhu cau", "muc dich", "di lai")
+        )
+    return False
+
+
 def extract_slots(text: str) -> Dict[str, Any]:
     """
     Trích xuất slots từ text (có thể là 1 câu hoặc đoạn hội thoại).
     Trả về dict với 6 keys, giá trị None nếu không tìm thấy.
     """
+    regex_slots = _regex_fallback_fast(text)
+    if (
+        SLOT_REGEX_FIRST
+        and (not ENABLE_LLM_SLOT_EXTRACTION or not _needs_llm_slot_extraction(text, regex_slots))
+    ):
+        return regex_slots
+
+    if not ENABLE_LLM_SLOT_EXTRACTION or not groq_client:
+        return regex_slots
+
     messages = [
         {"role": "system", "content": EXTRACTOR_SYSTEM},
         {"role": "user",   "content": f'Đoạn hội thoại:\n"""\n{text}\n"""'},
@@ -264,7 +395,7 @@ def extract_slots(text: str) -> Dict[str, Any]:
 
     except Exception as e:
         print(f"⚠️  Slot extractor LLM lỗi ({e}), dùng regex fallback")
-        return _regex_fallback(text)
+        return regex_slots
 
 
 def merge_slots(existing: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]:
@@ -272,9 +403,9 @@ def merge_slots(existing: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]
 
     In a consulting conversation, a short follow-up such as "xe 5 cho thi sao"
     usually means "change the seat filter to 5", even if the extractor did not
-    explicitly mark it as an override. We only apply that implicit override when
-    exactly one slot is present in the new turn to avoid clobbering broader
-    preferences by accident.
+    explicitly mark it as an override. When a turn contains multiple extracted
+    slots, values for already-filled slots are implicit overrides too, so a
+    message such as "doi sang 5 cho xang" can update both seats and fuel.
     """
     merged    = dict(existing)
     overrides = [
@@ -292,15 +423,23 @@ def merge_slots(existing: Dict[str, Any], new: Dict[str, Any]) -> Dict[str, Any]
         if key in SLOT_SCHEMA:
             merged[key] = None
 
-    # Bước 2: nếu chỉ có đúng 1 slot được extract và không có slot nào khác
-    # → coi như user đang chỉnh slot đó (implicit override)
+    # Bước 2: coi slot user nhắc lại là đang chỉnh slot đó (implicit override)
     filled_new = [k for k in SLOT_SCHEMA if new.get(k) is not None]
-    if (
-        IMPLICIT_SLOT_OVERRIDE_ENABLED
-        and len(filled_new) == 1
-        and filled_new[0] not in overrides
-    ):
-        overrides = overrides + filled_new  # ← tự động override slot duy nhất
+    if IMPLICIT_SLOT_OVERRIDE_ENABLED:
+        if len(filled_new) == 1:
+            implicit_overrides = filled_new
+        else:
+            implicit_overrides = [
+                key for key in filled_new
+                if merged.get(key) is not None
+            ]
+        overrides = [
+            *overrides,
+            *(
+                key for key in implicit_overrides
+                if key not in overrides and key not in clears
+            ),
+        ]
 
     # Bước 3: merge slot mới
     for key in SLOT_SCHEMA:

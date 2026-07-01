@@ -1,6 +1,8 @@
 import argparse
 import os
+import re
 import sys
+import unicodedata
 import uuid
 from collections.abc import Callable
 from typing import Any, Dict, List, TypeVar
@@ -28,6 +30,7 @@ COLLECTION = os.getenv("COLLECTION", "atbm_httt")
 EMBED_DIM = 384
 BATCH_SIZE = 100
 T = TypeVar("T")
+_client: QdrantClient | None = None
 
 DOCUMENT_CATEGORY_SUMMARY = "summary"
 DOCUMENT_CATEGORY_BASIC_ADVICE = "basic_advice"
@@ -38,16 +41,32 @@ DOCUMENT_CATEGORY_WIGO = "wigo"
 DOCUMENT_CATEGORY_MPV = "mpv"
 
 
+def _normalize_lookup_text(text: str | None) -> str:
+    text = (text or "").casefold().replace("đ", "d")
+    normalized = unicodedata.normalize("NFD", text)
+    normalized = "".join(
+        char for char in normalized if unicodedata.category(char) != "Mn"
+    )
+    return re.sub(r"[^a-z0-9]+", " ", normalized).strip()
+
+
 def infer_document_category(source: str | None) -> str | None:
     """Suy ra category ổn định từ tên/source tài liệu khi chưa có metadata rõ ràng."""
     if not source:
         return None
-    normalized = source.casefold()
+    normalized = _normalize_lookup_text(source)
     if normalized == DOCUMENT_CATEGORY_SUMMARY or "summary" in normalized:
         return DOCUMENT_CATEGORY_SUMMARY
-    if "tu van co ban" in normalized or "tư vấn cơ bản" in normalized:
+    if any(
+        marker in normalized
+        for marker in (
+            "tu van co ban",
+            "file tu van",
+            "basic advice",
+        )
+    ):
         return DOCUMENT_CATEGORY_BASIC_ADVICE
-    if "hilux" in normalized or "ban tai" in normalized or "bán tải" in normalized:
+    if "hilux" in normalized or "ban tai" in normalized:
         return DOCUMENT_CATEGORY_HILUX
     if "sedan" in normalized or any(model in normalized for model in ("vios", "camry", "altis")):
         return DOCUMENT_CATEGORY_SEDAN
@@ -58,7 +77,7 @@ def infer_document_category(source: str | None) -> str | None:
         return DOCUMENT_CATEGORY_SUV
     if "wigo" in normalized or "hatchback" in normalized:
         return DOCUMENT_CATEGORY_WIGO
-    if "da dung" in normalized or "đa dụng" in normalized or any(
+    if "da dung" in normalized or any(
         model in normalized for model in ("mpv", "avanza", "veloz", "innova", "alphard")
     ):
         return DOCUMENT_CATEGORY_MPV
@@ -85,7 +104,10 @@ def _qdrant_call(action: str, operation: Callable[[], T]) -> T:
 
 def get_client() -> QdrantClient:
     """Khởi tạo QdrantClient từ cấu hình môi trường."""
-    return QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+    global _client
+    if _client is None:
+        _client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+    return _client
 
 
 def qdrant_point_id(chunk_id: str) -> str:
@@ -145,6 +167,10 @@ def _chunk_payload(chunk: Dict[str, Any]) -> Dict[str, Any]:
         "content_hash": metadata.get("content_hash"),
         "document_id": metadata.get("document_id"),
         "gridfs_file_id": metadata.get("gridfs_file_id"),
+        "document_tags": metadata.get("document_tags", []),
+        "mentioned_models": metadata.get("mentioned_models", []),
+        "label_source": metadata.get("label_source"),
+        "label_confidence": metadata.get("label_confidence"),
     }
 
 
@@ -179,10 +205,17 @@ def search(
     score_threshold: float = 0.4,
     source_names: List[str] | None = None,
     document_categories: List[str] | None = None,
+    document_tags: List[str] | None = None,
+    mentioned_models: List[str] | None = None,
 ) -> List[Dict[str, Any]]:
     """Tìm các chunk gần nhất trong Qdrant theo vector truy vấn."""
     client = get_client()
-    query_filter = _source_filter(source_names, document_categories)
+    query_filter = _source_filter(
+        source_names,
+        document_categories,
+        document_tags=document_tags,
+        mentioned_models=mentioned_models,
+    )
 
     if hasattr(client, "query_points"):
         results = _qdrant_call(
@@ -226,22 +259,22 @@ def search_neighbor_chunks(
     if not source_id or page is None or chunk_index is None or chunk_index < 0:
         return []
 
-    neighbor_indices = [
-        idx
-        for idx in range(chunk_index - window, chunk_index + window + 1)
-        if idx >= 0 and idx != chunk_index
-    ]
-    if not neighbor_indices:
+    window = max(window, 0)
+    if window == 0:
         return []
 
     client = get_client()
+    candidate_pages = [
+        candidate
+        for candidate in range(page - window, page + window + 1)
+        if candidate >= 0
+    ]
     query_filter = Filter(
         must=[
             FieldCondition(key="source_id", match=MatchValue(value=source_id)),
-            FieldCondition(key="page", match=MatchValue(value=page)),
             FieldCondition(
-                key="chunk_index",
-                match=MatchAny(any=neighbor_indices),
+                key="page",
+                match=MatchAny(any=candidate_pages),
             ),
         ]
     )
@@ -250,20 +283,44 @@ def search_neighbor_chunks(
         lambda: client.scroll(
             collection_name=COLLECTION,
             scroll_filter=query_filter,
-            limit=len(neighbor_indices) + 2,
+            limit=max(50, (window * 2 + 1) * 10),
             with_payload=True,
             with_vectors=False,
         ),
     )
-    neighbors = [_point_payload_result(p.payload, score=0.0) for p in points]
-    neighbors.sort(key=lambda item: item.get("chunk_index") or 0)
-    return neighbors
+    candidates = [_point_payload_result(p.payload, score=0.0) for p in points]
+    candidates.sort(
+        key=lambda item: (item.get("page") or 0, item.get("chunk_index") or 0)
+    )
+
+    seed_position = None
+    for index, item in enumerate(candidates):
+        if item.get("page") == page and item.get("chunk_index") == chunk_index:
+            seed_position = index
+            break
+
+    if seed_position is None:
+        return [
+            item
+            for item in candidates
+            if not (item.get("page") == page and item.get("chunk_index") == chunk_index)
+        ][: window * 2]
+
+    start = max(0, seed_position - window)
+    end = seed_position + window + 1
+    return [
+        item
+        for item in candidates[start:end]
+        if not (item.get("page") == page and item.get("chunk_index") == chunk_index)
+    ]
 
 
 def scroll_chunks(
     *,
     source_names: List[str] | None = None,
     document_categories: List[str] | None = None,
+    document_tags: List[str] | None = None,
+    mentioned_models: List[str] | None = None,
     limit: int = 1000,
 ) -> List[Dict[str, Any]]:
     """Scroll chunk từ Qdrant, tùy chọn lọc theo danh sách source."""
@@ -272,7 +329,12 @@ def scroll_chunks(
         "scroll chunks",
         lambda: client.scroll(
             collection_name=COLLECTION,
-            scroll_filter=_source_filter(source_names, document_categories),
+            scroll_filter=_source_filter(
+                source_names,
+                document_categories,
+                document_tags=document_tags,
+                mentioned_models=mentioned_models,
+            ),
             limit=limit,
             with_payload=True,
             with_vectors=False,
@@ -284,13 +346,23 @@ def scroll_chunks(
 def _source_filter(
     source_names: List[str] | None,
     document_categories: List[str] | None = None,
+    *,
+    document_tags: List[str] | None = None,
+    mentioned_models: List[str] | None = None,
 ) -> Filter | None:
     """Tạo filter Qdrant theo category ổn định, kèm fallback source cũ nếu có."""
     source_names = [source for source in (source_names or []) if source]
     document_categories = [
         category for category in (document_categories or []) if category
     ]
-    if not source_names and not document_categories:
+    document_tags = [tag for tag in (document_tags or []) if tag]
+    mentioned_models = [model for model in (mentioned_models or []) if model]
+    if (
+        not source_names
+        and not document_categories
+        and not document_tags
+        and not mentioned_models
+    ):
         return None
 
     conditions = []
@@ -306,6 +378,20 @@ def _source_filter(
             FieldCondition(
                 key="source",
                 match=MatchAny(any=source_names),
+            )
+        )
+    if document_tags:
+        conditions.append(
+            FieldCondition(
+                key="document_tags",
+                match=MatchAny(any=document_tags),
+            )
+        )
+    if mentioned_models:
+        conditions.append(
+            FieldCondition(
+                key="mentioned_models",
+                match=MatchAny(any=mentioned_models),
             )
         )
 
@@ -332,6 +418,10 @@ def _point_payload_result(payload: Dict[str, Any], score: float = 1.0) -> Dict[s
         "char_end": payload.get("char_end"),
         "document_id": payload.get("document_id"),
         "gridfs_file_id": payload.get("gridfs_file_id"),
+        "document_tags": payload.get("document_tags") or [],
+        "mentioned_models": payload.get("mentioned_models") or [],
+        "label_source": payload.get("label_source"),
+        "label_confidence": payload.get("label_confidence"),
     }
 
 
@@ -437,6 +527,10 @@ def upsert_summary_chunk(car_names: List[str]) -> None:
                         "char_start": 0,
                         "char_end": len(content),
                         "content_hash": None,
+                        "document_tags": [],
+                        "mentioned_models": unique_names,
+                        "label_source": "rule",
+                        "label_confidence": 1.0,
                     },
                 )
             ],
@@ -474,6 +568,7 @@ def ingest_documents(
         extract_multiple_pdfs,
         mark_documents_processed,
     )
+    from document_labeler import apply_document_labels
     from embed import embed_chunks
 
     if rebuild:
@@ -506,6 +601,7 @@ def ingest_documents(
         print("[INFO] Khong co tai lieu de ingest.")
         return get_collection_info()
 
+    docs = apply_document_labels(docs)
     chunks = chunk_documents(docs)
     if not chunks:
         print("[INFO] Khong tao duoc chunk nao.")

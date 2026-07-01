@@ -10,7 +10,7 @@ import { statusLabel } from "@/lib/format";
 const UNAVAILABLE_TEXT =
   "AI tạm gián đoạn. Vui lòng thử lại sau hoặc chuyển sang live chat để nhân viên Tayota hỗ trợ trực tiếp.";
 const CUSTOMER_LIVE_CHAT_ROLES = new Set(["USER", "CUSTOMER"]);
-const CHAT_POSITION_STORAGE_KEY = "tayota_chat_widget_position_v2";
+const URL_PATTERN = /https?:\/\/[^\s<>()]+[^\s<>().,;:!?]/g;
 
 function splitMessageText(text = "") {
   const normalized = String(text).replace(/\r\n/g, "\n").trim();
@@ -24,7 +24,7 @@ function splitMessageText(text = "") {
   if (existingParagraphs.length > 1) return existingParagraphs;
   if (normalized.length <= 180) return [normalized];
 
-  const sentences = normalized.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) || [normalized];
+  const sentences = normalized.split(/(?<=[.!?])\s+/);
   const paragraphs = [];
   let current = "";
 
@@ -64,12 +64,6 @@ function splitQuestionParagraph(paragraph) {
   return parts;
 }
 
-function splitSentenceParagraph(paragraph) {
-  return (paragraph.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) || [paragraph])
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
 function isFollowUpPrompt(paragraph) {
   const normalized = paragraph.toLowerCase();
   return (
@@ -91,7 +85,7 @@ function splitAssistantReplies(text = "") {
     .map((item) => item.trim())
     .filter(Boolean);
 
-  paragraphs.flatMap(splitSentenceParagraph).flatMap(splitQuestionParagraph).forEach((paragraph) => {
+  paragraphs.flatMap(splitQuestionParagraph).forEach((paragraph) => {
     if (isFollowUpPrompt(paragraph)) {
       if (mainParagraphs.length) {
         replies.push(mainParagraphs.join("\n"));
@@ -109,7 +103,25 @@ function splitAssistantReplies(text = "") {
 
 function MessageText({ text }) {
   const paragraphs = splitMessageText(text);
-  return paragraphs.length ? paragraphs.map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 12)}`}>{paragraph}</p>) : <p />;
+  return paragraphs.length ? paragraphs.map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 12)}`}>{renderTextWithLinks(paragraph)}</p>) : <p />;
+}
+
+function renderTextWithLinks(text) {
+  const nodes = [];
+  let lastIndex = 0;
+  for (const match of text.matchAll(URL_PATTERN)) {
+    const url = match[0];
+    const index = match.index || 0;
+    if (index > lastIndex) nodes.push(text.slice(lastIndex, index));
+    nodes.push(
+      <a href={url} key={`${url}-${index}`} target="_blank" rel="noreferrer">
+        {url}
+      </a>
+    );
+    lastIndex = index + url.length;
+  }
+  if (lastIndex < text.length) nodes.push(text.slice(lastIndex));
+  return nodes.length ? nodes : text;
 }
 
 function canUseCustomerLiveChat(user) {
@@ -148,16 +160,8 @@ function clampChatPosition(nextLeft, nextTop, isOpen, mode) {
 }
 
 function getDefaultChatPosition(isOpen, mode) {
-  if (typeof window === "undefined") return { left: 22, top: 22 };
+  if (typeof window === "undefined") return null;
   const size = getChatWidgetSize(isOpen, mode);
-  if (!isOpen) {
-    return clampChatPosition(
-      window.innerWidth * 0.62,
-      window.matchMedia("(max-width: 620px)").matches ? 86 : 48,
-      isOpen,
-      mode
-    );
-  }
   return clampChatPosition(window.innerWidth - size.width - 22, window.innerHeight - size.height - 22, isOpen, mode);
 }
 
@@ -174,7 +178,7 @@ export default function ChatLauncher() {
   const [connectionState, setConnectionState] = useState("ready");
   const [liveStatus, setLiveStatus] = useState("idle");
   const [currentUser, setCurrentUser] = useState(null);
-  const [position, setPosition] = useState({ left: 22, top: 22 });
+  const [position, setPosition] = useState(null);
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef({
     active: false,
@@ -187,7 +191,7 @@ export default function ChatLauncher() {
     frame: 0,
     captureTarget: null,
   });
-  const latestPositionRef = useRef(position);
+  const latestPositionRef = useRef({ left: 22, top: 22 });
   const [messages, setMessages] = useState([
     { role: "assistant", text: "Xin chào, tôi có thể tư vấn dòng xe, lịch lái thử và dịch vụ Tayota." },
   ]);
@@ -202,37 +206,27 @@ export default function ChatLauncher() {
   }, [currentUser, mode]);
 
   useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(CHAT_POSITION_STORAGE_KEY);
-      if (!stored) {
-        setPosition(getDefaultChatPosition(false, ""));
-        return;
-      }
-      const parsed = JSON.parse(stored);
-      if (Number.isFinite(parsed?.left) && Number.isFinite(parsed?.top)) {
-        setPosition(clampChatPosition(parsed.left, parsed.top, false, ""));
-      } else if (Number.isFinite(parsed?.right) && Number.isFinite(parsed?.bottom)) {
-        const size = getChatWidgetSize(false, "");
-        setPosition(clampChatPosition(window.innerWidth - parsed.right - size.width, window.innerHeight - parsed.bottom - size.height, false, ""));
-      } else {
-        setPosition(getDefaultChatPosition(false, ""));
-      }
-    } catch {
-      setPosition(getDefaultChatPosition(false, ""));
-    }
+    setPosition(getDefaultChatPosition(false, ""));
   }, []);
 
   useEffect(() => {
-    latestPositionRef.current = position;
+    if (position) latestPositionRef.current = position;
   }, [position]);
 
   useEffect(() => {
-    setPosition((current) => clampChatPosition(current.left, current.top, open, mode));
+    setPosition((current) => {
+      if (!open) return getDefaultChatPosition(false, "");
+      const basePosition = current || getDefaultChatPosition(open, mode);
+      return clampChatPosition(basePosition.left, basePosition.top, open, mode);
+    });
   }, [open, mode]);
 
   useEffect(() => {
     function handleResize() {
-      setPosition((current) => clampChatPosition(current.left, current.top, open, mode));
+      setPosition((current) => {
+        const basePosition = current || getDefaultChatPosition(open, mode);
+        return clampChatPosition(basePosition.left, basePosition.top, open, mode);
+      });
     }
 
     window.addEventListener("resize", handleResize);
@@ -288,6 +282,9 @@ export default function ChatLauncher() {
   }
 
   const liveChatAllowed = canUseCustomerLiveChat(currentUser);
+  const widgetStyle = position
+    ? { left: position.left, top: position.top, right: "auto", bottom: "auto" }
+    : { right: 22, bottom: 22, left: "auto", top: "auto" };
 
   function commitDragPosition(left, top) {
     const nextPosition = clampChatPosition(left, top, open, mode);
@@ -350,10 +347,6 @@ export default function ChatLauncher() {
     current.captureTarget?.releasePointerCapture?.(event.pointerId);
     current.captureTarget = null;
     setDragging(false);
-    const nextPosition = clampChatPosition(current.nextLeft, current.nextTop, open, mode);
-    try {
-      window.localStorage.setItem(CHAT_POSITION_STORAGE_KEY, JSON.stringify(nextPosition));
-    } catch {}
   }
 
   function openLauncher() {
@@ -369,7 +362,7 @@ export default function ChatLauncher() {
     <div
       className={`chat-widget ${dragging ? "is-dragging" : ""}`}
       id="ai-chat"
-      style={{ left: position.left, top: position.top, right: "auto", bottom: "auto" }}
+      style={widgetStyle}
     >
       {open ? (
         <section className={`chat-panel ${mode === "live" ? "chat-panel-live" : ""}`} aria-label="Tư vấn Tayota">

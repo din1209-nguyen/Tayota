@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from performance import env_flag
 
 from conversation_state_manager import MongoStateError, state_manager
 from mongo_storage import (
@@ -38,6 +39,10 @@ load_dotenv()
 class Source(BaseModel):
     source: str | None = None
     document_category: str | None = None
+    document_tags: list[str] = Field(default_factory=list)
+    mentioned_models: list[str] = Field(default_factory=list)
+    label_source: str | None = None
+    label_confidence: float | None = None
     page: int | None = None
     score: float | None = None
     chunk_id: str | None = None
@@ -166,6 +171,34 @@ DOCUMENT_CATEGORIES = {
     DOCUMENT_CATEGORY_WIGO,
     DOCUMENT_CATEGORY_MPV,
 }
+RAG_WARMUP_ON_START = env_flag(
+    "RAG_WARMUP_ON_START",
+    os.getenv("EMBED_WARMUP_ON_START", "false"),
+)
+RAG_WARMUP_QUERY = os.getenv("RAG_WARMUP_QUERY", "Toyota warmup")
+
+
+@app.on_event("startup")
+def warmup_rag_dependencies() -> None:
+    """Optionally preload RAG dependencies before the first chat request."""
+    if not RAG_WARMUP_ON_START:
+        return
+
+    print("[INFO] Warming up RAG dependencies...")
+
+    try:
+        from embed import embed_query
+
+        embed_query(RAG_WARMUP_QUERY)
+        print("[INFO] Embedding model warm-up completed.")
+    except Exception as exc:
+        print(f"[WARN] Embedding warm-up failed: {exc}")
+
+    try:
+        get_collection_info()
+        print("[INFO] Qdrant warm-up completed.")
+    except Exception as exc:
+        print(f"[WARN] Qdrant warm-up failed: {exc}")
 
 
 @app.middleware("http")
